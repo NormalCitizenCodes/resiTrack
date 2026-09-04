@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
@@ -27,13 +27,22 @@ const ALL = 'all';
 
 export default function ResidentsIndex({ residents, sectors, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
+    const role = usePage().props.auth.user.role;
+
+    const restore = (resident: Resident) => {
+        if (confirm(`Activate / Restore ${resident.full_name}?`)) {
+            router.post(`/residents/${resident.id}/toggle`, {}, { preserveScroll: true });
+        }
+    };
 
     // Debounced search so we don't fire a request on every keystroke.
     useEffect(() => {
         const handler = setTimeout(() => {
             if (search === (filters.search ?? '')) {
+
                 return;
             }
+
             router.get('/residents', cleanQuery({ ...filters, search }), {
                 preserveState: true,
                 preserveScroll: true,
@@ -100,6 +109,8 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value={ALL}>All records</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
                             <SelectItem value="flagged">Duplicate-flagged</SelectItem>
                         </SelectContent>
                     </Select>
@@ -131,6 +142,11 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                                         <Link href={`/residents/${resident.id}`} className="hover:underline">
                                             {resident.full_name}
                                         </Link>
+                                        {resident.contact_number && (
+                                            <span className="block text-xs text-muted-foreground">
+                                                Contact: {resident.contact_number}
+                                            </span>
+                                        )}
                                         {resident.philsys_card_no && (
                                             <span className="block text-xs text-muted-foreground">
                                                 PhilSys: {resident.philsys_card_no}
@@ -157,9 +173,16 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button asChild variant="outline" size="sm">
-                                            <Link href={`/residents/${resident.id}`}>View</Link>
-                                        </Button>
+                                        <div className="flex justify-end gap-2">
+                                            <Button asChild variant="outline" size="sm">
+                                                <Link href={`/residents/${resident.id}`}>View</Link>
+                                            </Button>
+                                            {!resident.is_active && role !== 'bhw' && (
+                                                <Button variant="secondary" size="sm" onClick={() => restore(resident)}>
+                                                    Activate / Restore
+                                                </Button>
+                                            )}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))}

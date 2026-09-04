@@ -52,6 +52,7 @@ class HouseholdController extends Controller
         $household = new Household($request->validated());
         $household->barangay_id = $user->barangay_id ?? \App\Models\Barangay::value('id');
         $household->save();
+        $household->update(['household_id' => sprintf('HH-%06d', $household->id)]);
 
         AuditLogger::record('create', 'households', $household->id, null, [
             'household_number' => $household->household_number,

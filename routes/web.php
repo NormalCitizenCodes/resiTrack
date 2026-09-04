@@ -10,11 +10,17 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProgramApplicationController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\PasswordRecoveryController;
 use App\Http\Controllers\ResidentController;
+use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::post('forgot-password', [PasswordRecoveryController::class, 'store'])
+    ->middleware('guest')
+    ->name('password.email');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -22,6 +28,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Barangay resident-profiling module (barangay staff + super admin).
     Route::middleware('role:super_admin,barangay_admin,bhw')->group(function () {
         Route::resource('residents', ResidentController::class);
+        Route::get('resident-registrations', [ResidentRegistrationController::class, 'index'])->name('resident-registrations.index');
+        Route::post('resident-registrations/{registration}/approve', [ResidentRegistrationController::class, 'approve'])->name('resident-registrations.approve');
+        Route::post('residents/{resident}/toggle', [ResidentController::class, 'toggleActive'])->name('residents.toggle');
+        Route::delete('residents/{resident}/permanent', [ResidentController::class, 'forceDestroy'])->middleware('role:super_admin')->name('residents.force-destroy');
         Route::resource('households', HouseholdController::class)->except(['edit', 'update', 'destroy']);
         Route::post('households/{household}/wellbeing-assessments', [HouseholdWellbeingAssessmentController::class, 'store'])
             ->name('households.wellbeing-assessments.store');
@@ -45,6 +55,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('staff/{staff}/toggle', [StaffController::class, 'toggleActive'])->name('staff.toggle');
     });
 
+    Route::middleware('role:bhw')->group(function () {
+        Route::get('account-recovery', [PasswordRecoveryController::class, 'index'])->name('account-recovery.index');
+        Route::post('account-recovery/{recoveryRequest}/approve', [PasswordRecoveryController::class, 'approve'])->name('account-recovery.approve');
+        Route::post('account-recovery/{recoveryRequest}/reject', [PasswordRecoveryController::class, 'reject'])->name('account-recovery.reject');
+        Route::get('account-recovery/password/{token}', [PasswordRecoveryController::class, 'password'])->name('account-recovery.password');
+        Route::post('account-recovery/password/{token}', [PasswordRecoveryController::class, 'updatePassword'])->name('account-recovery.password.update');
+    });
+
     // Partner-agency programs module.
     // Program management (create/edit/delete) is restricted to agencies; browsing
     // and application review routes apply their own finer-grained checks.
@@ -59,8 +77,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('applications/{application}', [ProgramApplicationController::class, 'update'])->name('applications.update');
     });
 
-    Route::get('programs', [ProgramController::class, 'index'])->name('programs.index');
-    Route::get('programs/{program}', [ProgramController::class, 'show'])->name('programs.show');
     Route::post('programs/{program}/apply', [ProgramApplicationController::class, 'store'])->name('programs.apply');
 
     // Announcements — browsing open to all roles; posting/deleting restricted to staff.
@@ -81,5 +97,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('my-profile', [MyProfileController::class, 'edit'])->name('my-profile.edit');
     Route::put('my-profile', [MyProfileController::class, 'update'])->name('my-profile.update');
 });
+
+Route::get('programs', [ProgramController::class, 'index'])->name('programs.index');
+Route::get('programs/{program}', [ProgramController::class, 'show'])->name('programs.show');
 
 require __DIR__.'/settings.php';

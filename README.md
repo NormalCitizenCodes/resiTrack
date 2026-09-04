@@ -45,7 +45,7 @@ npm run dev            # Vite dev server (HMR)
 
 ## Test Accounts
 
-All seeded accounts use the password **`password`**.
+All seeded accounts use their email address as their password.
 
 | Role | Email | Sees |
 | --- | --- | --- |

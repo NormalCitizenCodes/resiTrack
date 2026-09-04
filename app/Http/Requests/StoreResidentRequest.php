@@ -21,8 +21,15 @@ class StoreResidentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $emailRules = ['nullable', 'email', 'max:150'];
+        if ($this->boolean('create_account')) {
+            $emailRules[] = Rule::unique('users', 'email');
+        }
+
         return [
             'household_id' => ['nullable', 'integer', 'exists:households,id'],
+            'create_account' => ['boolean'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed', 'required_if:create_account,1'],
             'philsys_card_no' => ['nullable', 'string', 'max:32', 'regex:/^[0-9\- ]+$/'],
             'last_name' => ['required', 'string', 'max:100'],
             'first_name' => ['required', 'string', 'max:100'],
@@ -35,7 +42,7 @@ class StoreResidentRequest extends FormRequest
             'religion' => ['nullable', 'string', 'max:100'],
             'citizenship' => ['nullable', 'string', 'max:100'],
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\- ]+$/'],
-            'email' => ['nullable', 'email', 'max:150'],
+            'email' => $emailRules,
             'address' => ['nullable', 'string', 'max:255'],
             'occupation' => ['nullable', 'string', 'max:150'],
             'employment_status' => ['nullable', Rule::in(['employed', 'unemployed', 'self_employed'])],

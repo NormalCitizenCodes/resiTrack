@@ -21,7 +21,7 @@ class ProgramController extends Controller
     {
         $user = $request->user();
 
-        $isManaging = $user->hasRole('partner_agency', 'super_admin');
+        $isManaging = $user?->hasRole('partner_agency', 'super_admin') ?? false;
 
         $programs = Program::query()
             ->with(['agency:id,agency_name,agency_type', 'barangay:id,name', 'sectors:id,code,sector_name'])
@@ -31,15 +31,21 @@ class ProgramController extends Controller
                 'beneficiaries',
             ])
             // Agencies manage only their own programs; everyone else sees active ones.
-            ->when($user->role === 'partner_agency', fn ($q) => $q->where('agency_id', $user->agency_id))
+            ->when($user?->role === 'partner_agency', fn ($q) => $q->where('agency_id', $user->agency_id))
             ->when(! $isManaging, function ($q) use ($user) {
                 $q->where('status', 'active')
                     // Browsing residents/staff only see programs open to their own
                     // barangay, or city-wide ones (barangay_id null).
-                    ->when($user->barangay_id, function ($q) use ($user) {
+                    ->when($user?->barangay_id, function ($q) use ($user) {
                         $q->where(fn ($inner) => $inner->whereNull('barangay_id')->orWhere('barangay_id', $user->barangay_id));
-                    }, fn ($q) => $q->whereNull('barangay_id'));
+                    });
             })
+            ->when($request->string('search')->trim()->value(), function ($q, $search) {
+                $q->where(fn ($inner) => $inner
+                    ->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%"));
+            })
+            ->when($request->string('sector')->value(), fn ($q, $sector) => $q->whereHas('sectors', fn ($s) => $s->where('code', $sector)))
             ->latest()
             ->paginate(12)
             ->withQueryString();
@@ -47,7 +53,9 @@ class ProgramController extends Controller
         return Inertia::render('programs/index', [
             'programs' => $programs,
             'canManage' => $isManaging,
-            'viewerRole' => $user->role,
+            'viewerRole' => $user?->role,
+            'sectors' => VulnerabilitySector::orderBy('id')->get(['id', 'code', 'sector_name']),
+            'filters' => $request->only(['search', 'sector']),
         ]);
     }
 
@@ -84,13 +92,13 @@ class ProgramController extends Controller
         $user = $request->user();
         $program->load(['agency:id,agency_name,agency_type', 'barangay:id,name', 'sectors:id,code,sector_name']);
 
-        $isOwner = $user->isSuperAdmin()
-            || ($user->role === 'partner_agency' && $program->agency_id === $user->agency_id);
+        $isOwner = $user?->isSuperAdmin()
+            || ($user?->role === 'partner_agency' && $program->agency_id === $user->agency_id);
 
         $props = [
             'program' => $program,
             'isOwner' => $isOwner,
-            'viewerRole' => $user->role,
+            'viewerRole' => $user?->role,
         ];
 
         // Agency owner: see all applications + beneficiaries to review.
@@ -106,7 +114,7 @@ class ProgramController extends Controller
         }
 
         // Barangay staff: eligible residents in their barangay + endorsements so far.
-        if ($user->isBarangayStaff() && $user->barangay_id) {
+        if ($user?->isBarangayStaff() && $user->barangay_id) {
             $props['eligibleResidents'] = $this->eligibility->eligibleResidents($program, $user->barangay_id);
             $props['barangayApplications'] = $program->applications()
                 ->whereHas('resident', fn ($r) => $r->where('barangay_id', $user->barangay_id))
@@ -115,7 +123,7 @@ class ProgramController extends Controller
         }
 
         // Resident: their own application to this program, if any.
-        if ($user->role === 'resident' && $user->resident_id) {
+        if ($user?->role === 'resident' && $user->resident_id) {
             $props['myApplication'] = $program->applications()
                 ->where('resident_id', $user->resident_id)
                 ->first();

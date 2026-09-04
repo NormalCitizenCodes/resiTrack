@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Fragment } from 'react';
 import {
     Breadcrumb,
@@ -8,13 +8,26 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { useTranslation } from '@/hooks/use-translation';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
+
+const RESIDENT_BREADCRUMB_KEYS: Record<string, string> = {
+    Dashboard: 'nav.dashboard',
+    Programs: 'nav.programs',
+    Announcements: 'nav.announcements',
+    'My Applications': 'nav.myApplications',
+    'My Profile': 'nav.myProfile',
+    Notifications: 'notifications.title',
+};
 
 export function Breadcrumbs({
     breadcrumbs,
 }: {
     breadcrumbs: BreadcrumbItemType[];
 }) {
+    const role = usePage().props.auth?.user?.role;
+    const { t } = useTranslation();
+
     return (
         <>
             {breadcrumbs.length > 0 && (
@@ -28,12 +41,12 @@ export function Breadcrumbs({
                                     <BreadcrumbItem>
                                         {isLast ? (
                                             <BreadcrumbPage>
-                                                {item.title}
+                                                {role === 'resident' ? t(RESIDENT_BREADCRUMB_KEYS[item.title] ?? item.title) : item.title}
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink asChild>
                                                 <Link href={item.href}>
-                                                    {item.title}
+                                                    {role === 'resident' ? t(RESIDENT_BREADCRUMB_KEYS[item.title] ?? item.title) : item.title}
                                                 </Link>
                                             </BreadcrumbLink>
                                         )}

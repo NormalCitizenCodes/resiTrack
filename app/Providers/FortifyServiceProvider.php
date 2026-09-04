@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Models\User;
+use App\Models\Barangay;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -48,7 +49,14 @@ class FortifyServiceProvider extends ServiceProvider
         // Default Fortify auth only checks email/password — deactivated staff
         // (see StaffController) must be rejected here too, not just once logged in.
         Fortify::authenticateUsing(function (Request $request) {
-            $user = User::where('email', $request->email)->first();
+            $identifier = $request->input(Fortify::username());
+            $residentIdentifier = strtoupper((string) $identifier);
+            $user = User::where(function ($query) use ($identifier, $residentIdentifier) {
+                $query->where('email', $identifier)
+                    ->orWhere('registration_id', $residentIdentifier)
+                    ->orWhereHas('resident', fn ($resident) => $resident->where('resident_id', $residentIdentifier));
+            })
+                ->first();
 
             if (! $user || ! Hash::check($request->password, $user->password)) {
                 return null;
@@ -90,6 +98,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::registerView(fn () => Inertia::render('auth/register', [
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'barangays' => Barangay::orderBy('name')->get(['id', 'name']),
         ]));
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));

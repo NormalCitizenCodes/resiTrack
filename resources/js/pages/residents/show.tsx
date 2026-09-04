@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, Pencil } from 'lucide-react';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
@@ -24,9 +24,20 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
 }
 
 export default function ResidentShow({ resident, alerts }: { resident: Resident; alerts: DuplicateAlert[] }) {
-    const deactivate = () => {
-        if (confirm(`Deactivate ${resident.full_name}? The record is kept for audit but marked inactive.`)) {
-            router.delete(`/residents/${resident.id}`);
+    const { flash } = usePage().props;
+    const role = usePage().props.auth.user.role;
+    const canManageStatus = ['super_admin', 'barangay_admin'].includes(role);
+    const canPermanentlyDelete = role === 'super_admin';
+    const toggleActive = () => {
+        const action = resident.is_active ? 'deactivate' : 'restore';
+        if (confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} ${resident.full_name}?`)) {
+            router.post(`/residents/${resident.id}/toggle`);
+        }
+    };
+
+    const permanentlyDelete = () => {
+        if (confirm(`Permanently delete ${resident.full_name}? This cannot be undone.`)) {
+            router.delete(`/residents/${resident.id}/permanent`);
         }
     };
 
@@ -34,6 +45,18 @@ export default function ResidentShow({ resident, alerts }: { resident: Resident;
         <>
             <Head title={resident.full_name} />
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4">
+                {flash.residentRegistration && (
+                    <Card className="border-primary/30 bg-primary/5">
+                        <CardHeader><CardTitle>Resident Successfully Registered</CardTitle></CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <p className="text-lg font-semibold">{flash.residentRegistration.name}</p>
+                            <p>Resident ID: <strong>{flash.residentRegistration.residentId}</strong></p>
+                            <p>Household: <strong>{flash.residentRegistration.householdId ?? 'Unassigned'}</strong></p>
+                            <p>Resident Portal: <strong>{flash.residentRegistration.accountCreated ? 'Account created' : 'No account created'}</strong></p>
+                            {flash.residentRegistration.accountCreated && <p>The resident can log in using their Resident ID and password{flash.residentRegistration.emailLoginAvailable ? ' or email and password.' : '.'}</p>}
+                        </CardContent>
+                    </Card>
+                )}
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -49,9 +72,14 @@ export default function ResidentShow({ resident, alerts }: { resident: Resident;
                                 <Pencil className="size-4" /> Edit
                             </Link>
                         </Button>
-                        {resident.is_active && (
-                            <Button variant="destructive" onClick={deactivate}>
-                                Deactivate
+                        {canManageStatus && (
+                            <Button variant={resident.is_active ? 'destructive' : 'secondary'} onClick={toggleActive}>
+                                {resident.is_active ? 'Deactivate' : 'Activate / Restore'}
+                            </Button>
+                        )}
+                        {canPermanentlyDelete && (
+                            <Button variant="outline" onClick={permanentlyDelete}>
+                                Permanent Delete
                             </Button>
                         )}
                     </div>

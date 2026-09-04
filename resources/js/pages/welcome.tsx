@@ -1,7 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { CopyCheck, LayoutDashboard, Layers, ShieldCheck, Users } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { dashboard, login, register } from '@/routes';
+import { login, register } from '@/routes';
 
 const features = [
     {
@@ -45,15 +45,11 @@ export default function Welcome() {
                         <span className="text-lg font-semibold tracking-tight">resiTrack</span>
                     </div>
                     <nav className="flex items-center gap-3">
+                        <Link href="/programs" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+                            Programs
+                        </Link>
                         <ThemeToggle />
-                        {auth.user ? (
-                            <Link
-                                href={dashboard()}
-                                className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                            >
-                                Go to Dashboard
-                            </Link>
-                        ) : (
+                        {!auth.user && (
                             <>
                                 <Link
                                     href={login()}
@@ -87,10 +83,10 @@ export default function Welcome() {
                         </p>
                         <div className="mt-8 flex justify-center gap-3">
                             <Link
-                                href={auth.user ? dashboard() : login()}
+                                href={auth.user ? '/programs' : login()}
                                 className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                             >
-                                {auth.user ? 'Open Dashboard' : 'Get Started'}
+                                {auth.user ? 'View Programs' : 'Get Started'}
                             </Link>
                             <a
                                 href="#features"

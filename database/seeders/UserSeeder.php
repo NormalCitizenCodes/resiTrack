@@ -47,14 +47,6 @@ class UserSeeder extends Seeder
                 'last_name' => 'Cruz',
                 'agency_id' => $dswd?->id,
             ],
-            [
-                'name' => 'Resident User',
-                'email' => 'resident@resitrack.test',
-                'role' => User::ROLE_RESIDENT,
-                'first_name' => 'Juan',
-                'last_name' => 'Dela Cruz',
-                'barangay_id' => $barangay?->id,
-            ],
         ];
 
         foreach ($users as $data) {
@@ -62,7 +54,7 @@ class UserSeeder extends Seeder
                 ['email' => $data['email']],
                 [
                     ...$data,
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make($data['email']),
                     'email_verified_at' => now(),
                     'is_active' => true,
                 ]

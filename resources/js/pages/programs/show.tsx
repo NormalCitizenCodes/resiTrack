@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTranslation } from '@/hooks/use-translation';
-import { dashboard } from '@/routes';
+import { dashboard, login, register } from '@/routes';
 import type { Beneficiary, Program, ProgramApplication, Resident, Role } from '@/types';
 
 type Props = {
     program: Program;
     isOwner: boolean;
-    viewerRole: Role;
+    viewerRole?: Role | null;
     applications?: ProgramApplication[];
     beneficiaries?: Beneficiary[];
     eligibleResidents?: Resident[];
@@ -32,7 +32,7 @@ const STATUS_VARIANT: Record<string, 'secondary' | 'outline' | 'destructive' | '
 };
 
 function StatusBadge({ status }: { status: string }) {
-    return <Badge variant={STATUS_VARIANT[status] ?? 'outline'}>{status}</Badge>;
+    return <Badge variant={STATUS_VARIANT[status] ?? 'outline'}>{status === 'active' ? 'Open' : status === 'inactive' || status === 'expired' ? 'Closed' : status}</Badge>;
 }
 
 export default function ProgramShow(props: Props) {
@@ -135,6 +135,16 @@ export default function ProgramShow(props: Props) {
                         </div>
                     </CardContent>
                 </Card>
+
+                {!props.viewerRole && (
+                    <Card>
+                        <CardHeader><CardTitle>Resident Login Required</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-muted-foreground">Please log in to your resiTrack account to apply for this program.</p>
+                            <div className="flex flex-wrap gap-2"><Button asChild><Link href={login()}>Log In</Link></Button><Button asChild variant="outline"><Link href={register()}>Create Account</Link></Button></div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Resident self-service */}
                 {props.viewerRole === 'resident' && (

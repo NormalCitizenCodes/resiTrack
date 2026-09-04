@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart3, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, UserCircle, UserCog, Users } from 'lucide-react';
+import { BarChart3, ClipboardCheck, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, ShieldCheck, UserCircle, UserCog, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -30,6 +30,7 @@ function navItemsForRole(role: Role | undefined, t: (key: string) => string): Na
             const items = [
                 { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
                 { title: 'Residents', href: '/residents', icon: Users },
+                ...(role === 'bhw' ? [{ title: 'Online Registrations', href: '/resident-registrations', icon: ClipboardCheck }] : []),
                 { title: 'Households', href: '/households', icon: Home },
                 { title: 'Duplicate Alerts', href: '/duplicate-alerts', icon: CopyCheck },
                 { title: 'Programs', href: '/programs', icon: HandHeart },
@@ -41,6 +42,10 @@ function navItemsForRole(role: Role | undefined, t: (key: string) => string): Na
             // distinguishes barangay_admin from bhw — see StaffController.
             if (role !== 'bhw') {
                 items.push({ title: 'Staff', href: '/staff', icon: UserCog });
+            }
+
+            if (role === 'bhw') {
+                items.push({ title: 'Account Recovery', href: '/account-recovery', icon: ShieldCheck });
             }
 
             return items;

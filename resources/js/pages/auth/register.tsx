@@ -5,15 +5,17 @@ import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
 type Props = {
     passwordRules: string;
+    barangays: { id: number; name: string }[];
 };
 
-export default function Register({ passwordRules }: Props) {
+export default function Register({ passwordRules, barangays }: Props) {
     return (
         <>
             <Head title="Register" />
@@ -26,6 +28,23 @@ export default function Register({ passwordRules }: Props) {
                 {({ processing, errors }) => (
                     <>
                         <div className="grid gap-6">
+                            <div className="grid gap-2">
+                                <Label htmlFor="barangay_id">Barangay</Label>
+                                <Select name="barangay_id" required>
+                                    <SelectTrigger id="barangay_id">
+                                        <SelectValue placeholder="Select your barangay" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {barangays.map((barangay) => (
+                                            <SelectItem key={barangay.id} value={String(barangay.id)}>
+                                                {barangay.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.barangay_id} />
+                            </div>
+
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Name</Label>
                                 <Input

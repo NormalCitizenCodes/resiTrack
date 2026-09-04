@@ -21,6 +21,15 @@ export default function VerifyEmail({ status }: { status?: string }) {
             <Form {...send.form()} className="space-y-6 text-center">
                 {({ processing }) => (
                     <>
+                        <p className="text-sm text-muted-foreground">
+                            Your account is not yet linked to a resident record.
+                            Please visit your Barangay Hall and approach a
+                            Barangay Health Worker (BHW) to verify your account
+                            and complete your official resident profile.
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                            Status: Pending Profiling
+                        </p>
                         <Button disabled={processing} variant="secondary">
                             {processing && <Spinner />}
                             Resend verification email

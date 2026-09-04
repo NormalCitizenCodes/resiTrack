@@ -16,6 +16,7 @@ class Resident extends Model
 
     protected $fillable = [
         'household_id',
+        'resident_id',
         'barangay_id',
         'philsys_card_no',
         'last_name',

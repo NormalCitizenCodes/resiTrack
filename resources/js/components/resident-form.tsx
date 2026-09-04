@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import PasswordInput from '@/components/password-input';
 import {
     Select,
     SelectContent,
@@ -39,6 +40,9 @@ type ResidentFormData = {
     is_pwd: boolean;
     is_solo_parent: boolean;
     is_pregnant: boolean;
+    create_account: boolean;
+    password: string;
+    password_confirmation: string;
     [key: string]: string | boolean;
 };
 
@@ -67,6 +71,9 @@ function toInitial(resident?: Resident): ResidentFormData {
         is_pwd: resident?.is_pwd ?? false,
         is_solo_parent: resident?.is_solo_parent ?? false,
         is_pregnant: resident?.is_pregnant ?? false,
+        create_account: false,
+        password: '',
+        password_confirmation: '',
     };
 }
 
@@ -159,6 +166,17 @@ export function ResidentForm({
                 </CardContent>
             </Card>
 
+            {mode === 'create' && (
+                <Card>
+                    <CardHeader><CardTitle>Resident Portal Account</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">Ask the resident to enter their own password. The password will be hidden and cannot be viewed by the BHW.</p>
+                        <div className="flex items-center gap-3"><Checkbox id="create_account" checked={data.create_account} onCheckedChange={(checked) => setData('create_account', checked === true)} /><Label htmlFor="create_account">Create Resident Portal Account</Label></div>
+                        {data.create_account && <div className="grid gap-4 md:grid-cols-2"><Field label="Password" required error={errors.password}><PasswordInput value={data.password} onChange={(e) => setData('password', e.target.value)} autoComplete="new-password" /></Field><Field label="Confirm Password" required error={errors.password_confirmation}><PasswordInput value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} autoComplete="new-password" /></Field></div>}
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>Contact &amp; Socio-economic</CardTitle>
@@ -167,7 +185,7 @@ export function ResidentForm({
                     <Field label="Contact Number" error={errors.contact_number}>
                         <Input value={data.contact_number} onChange={(e) => setData('contact_number', e.target.value)} placeholder="09XXXXXXXXX" />
                     </Field>
-                    <Field label="Email" error={errors.email}>
+                        <Field label="Email (optional)" error={errors.email}>
                         <Input type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} />
                     </Field>
                     <Field label="Household" error={errors.household_id}>

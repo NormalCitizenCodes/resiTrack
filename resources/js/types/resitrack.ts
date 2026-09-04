@@ -58,6 +58,7 @@ export type HouseholdWellbeingAssessment = {
 
 export type Resident = {
     id: number;
+    resident_id: string | null;
     household_id: number | null;
     barangay_id: number;
     philsys_card_no: string | null;

@@ -13,6 +13,7 @@ class Household extends Model
     use HasFactory;
 
     protected $fillable = [
+        'household_id',
         'barangay_id',
         'zone_id',
         'household_number',

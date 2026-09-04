@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Menu, Search, ShieldCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -47,6 +46,12 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+const recoveryNavItem: NavItem = {
+    title: 'Account Recovery',
+    href: '/account-recovery',
+    icon: ShieldCheck,
+};
+
 const rightNavItems: NavItem[] = [
     {
         title: 'Repository',
@@ -66,6 +71,7 @@ const activeItemStyles =
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const page = usePage();
     const { auth } = page.props;
+    const navItems = auth.user.role === 'bhw' ? [...mainNavItems, recoveryNavItem] : mainNavItems;
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
 
@@ -93,12 +99,12 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                     Navigation menu
                                 </SheetTitle>
                                 <SheetHeader className="flex justify-start text-left">
-                                    <AppLogoIcon className="h-6 w-6 fill-current text-black dark:text-white" />
+                                    <AppLogo />
                                 </SheetHeader>
                                 <div className="flex h-full flex-1 flex-col space-y-4 p-4">
                                     <div className="flex h-full flex-col justify-between text-sm">
                                         <div className="flex flex-col space-y-4">
-                                            {mainNavItems.map((item) => (
+                                            {navItems.map((item) => (
                                                 <Link
                                                     key={item.title}
                                                     href={item.href}
@@ -146,7 +152,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">
                         <NavigationMenu className="flex h-full items-stretch">
                             <NavigationMenuList className="flex h-full items-stretch space-x-2">
-                                {mainNavItems.map((item, index) => (
+                                {navItems.map((item, index) => (
                                     <NavigationMenuItem
                                         key={index}
                                         className="relative flex h-full items-center"

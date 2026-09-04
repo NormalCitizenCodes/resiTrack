@@ -42,6 +42,32 @@ class NotificationService
     }
 
     /**
+     * Notify BHWs that an account is waiting for in-person verification.
+     * The account is intentionally not linked to a Resident yet.
+     */
+    public static function notifyNewResidentRegistration(User $registration): void
+    {
+        if ($registration->barangay_id === null) {
+            return;
+        }
+
+        $bhws = User::query()
+            ->where('role', User::ROLE_BHW)
+            ->where('barangay_id', $registration->barangay_id)
+            ->get(['id']);
+
+        foreach ($bhws as $bhw) {
+            self::notify(
+                $bhw->id,
+                null,
+                'system',
+                'New resident account awaiting verification',
+                "{$registration->name} created a resident account online. Verify the resident in person at the Barangay Hall before completing the official profile.",
+            );
+        }
+    }
+
+    /**
      * Notify residents (with a linked account) whose sectors match a new program.
      *
      * @return int number of residents notified

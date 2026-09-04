@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Models\Resident;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
@@ -29,6 +30,24 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
+        $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_residents_can_authenticate_with_their_resident_id(): void
+    {
+        $resident = Resident::factory()->create(['resident_id' => 'RES-000057']);
+        $user = User::factory()->create([
+            'role' => User::ROLE_RESIDENT,
+            'resident_id' => $resident->id,
+            'email' => 'resident@example.com',
+        ]);
+
+        $response = $this->post(route('login.store'), [
+            'email' => 'res-000057',
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
         $response->assertRedirect(route('dashboard', absolute: false));
     }
 

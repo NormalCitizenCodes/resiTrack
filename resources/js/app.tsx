@@ -5,8 +5,9 @@ import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import ProgramsLayout from '@/layouts/programs-layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'ResiTrack';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -18,6 +19,8 @@ createInertiaApp({
                 return AuthLayout;
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
+            case name === 'programs/index' || name === 'programs/show':
+                return ProgramsLayout;
             default:
                 return AppLayout;
         }
