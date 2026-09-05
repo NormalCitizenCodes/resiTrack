@@ -14,7 +14,7 @@ type RecoveryRequest = {
     barangay?: { name: string } | null;
 };
 
-export default function AccountRecovery({ recoveryRequests }: { recoveryRequests: RecoveryRequest[] }) {
+export default function AccountRecovery({ recoveryRequests, highlight }: { recoveryRequests: RecoveryRequest[]; highlight?: number | null }) {
     const review = (request: RecoveryRequest, action: 'approve' | 'reject') => {
         router.post(`/account-recovery/${request.id}/${action}`, {}, { preserveScroll: true });
     };
@@ -33,7 +33,7 @@ export default function AccountRecovery({ recoveryRequests }: { recoveryRequests
                 ) : (
                     <div className="grid gap-3">
                         {recoveryRequests.map((request) => (
-                            <Card key={request.id}>
+                            <Card key={request.id} id={`recovery-request-${request.id}`} className={request.id === highlight ? 'border-primary ring-2 ring-primary/30' : undefined}>
                                 <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
                                     <div className="space-y-1">
                                         <p className="font-semibold">{request.resident ? `${request.resident.first_name} ${request.resident.last_name}` : request.user.name}</p>

@@ -35,7 +35,7 @@ class AuthenticationTest extends TestCase
 
     public function test_residents_can_authenticate_with_their_resident_id(): void
     {
-        $resident = Resident::factory()->create(['resident_id' => 'RES-000057']);
+        $resident = Resident::factory()->create(['resident_id' => 'RES-2026-000057']);
         $user = User::factory()->create([
             'role' => User::ROLE_RESIDENT,
             'resident_id' => $resident->id,
@@ -43,12 +43,36 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response = $this->post(route('login.store'), [
-            'email' => 'res-000057',
+            'email' => 'res-2026-000057',
             'password' => 'password',
         ]);
 
         $this->assertAuthenticatedAs($user);
         $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_unprofiled_residents_cannot_authenticate_with_a_registration_id(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_RESIDENT,
+            'email' => 'pending@example.com',
+            'registration_id' => 'REG-000321',
+            'resident_id' => null,
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => 'REG-000321',
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+
+        $this->post(route('login.store'), [
+            'email' => 'pending@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()

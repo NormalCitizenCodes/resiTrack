@@ -54,7 +54,7 @@ it('allows a BHW to update a resident contact number', function () {
     expect($resident->fresh()->contact_number)->toBe('09268890200');
 });
 
-it('lets a BHW verify an online registration and create its official resident record', function () {
+it('lets a BHW search pending accounts and complete official profiling without creating a second login', function () {
     $registration = User::factory()->create([
         'name' => 'Maria Santos',
         'email' => 'maria@example.com',
@@ -62,17 +62,100 @@ it('lets a BHW verify an online registration and create its official resident re
         'barangay_id' => $this->barangay->id,
         'registration_id' => 'REG-000321',
         'resident_id' => null,
+        'password' => 'resident-secret',
     ]);
 
     $this->actingAs($this->staff)
-        ->post("/resident-registrations/{$registration->id}/approve")
+        ->get('/resident-registrations?search=maria@example.com')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('resident-registrations/index')
+            ->has('registrations', 1)
+            ->where('registrations.0.email', 'maria@example.com'));
+
+    $this->actingAs($this->staff)
+        ->get("/resident-registrations/{$registration->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('resident-registrations/show'));
+
+    $this->actingAs($this->staff)
+        ->get("/residents/create?linked_user={$registration->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('residents/create')
+            ->where('linkedAccount.id', $registration->id));
+
+    $this->actingAs($this->staff)
+        ->post('/residents', [
+            'linked_user_id' => $registration->id,
+            'first_name' => 'Maria',
+            'last_name' => 'Santos',
+            'date_of_birth' => now()->subYears(28)->format('Y-m-d'),
+            'sex' => 'female',
+            'civil_status' => 'single',
+            'email' => 'maria@example.com',
+        ])
         ->assertRedirect();
 
-    $resident = Resident::where('resident_id', 'REG-000321')->firstOrFail();
+    $resident = Resident::where('email', 'maria@example.com')->firstOrFail();
+    $year = now()->year;
 
-    expect($resident->first_name)->toBe('Maria')
-        ->and($resident->last_name)->toBe('Santos')
-        ->and($registration->fresh()->resident_id)->toBe($resident->id);
+    expect($resident->resident_id)->toBe(sprintf('RES-%d-%06d', $year, $resident->id))
+        ->and($resident->profiled_by_user_id)->toBe($this->staff->id)
+        ->and($resident->profiled_at)->not->toBeNull()
+        ->and($registration->fresh()->resident_id)->toBe($resident->id)
+        ->and(User::where('email', 'maria@example.com')->count())->toBe(1);
+
+    $this->actingAs($this->staff)
+        ->get('/resident-registrations')
+        ->assertInertia(fn ($page) => $page->has('registrations', 0));
+
+    Auth::logout();
+    $this->flushSession();
+
+    $this->post('/login', [
+        'email' => $resident->resident_id,
+        'password' => 'resident-secret',
+    ])->assertRedirect();
+    $this->assertAuthenticatedAs($registration);
+
+    Auth::logout();
+    $this->flushSession();
+
+    $this->post('/login', [
+        'email' => 'maria@example.com',
+        'password' => 'resident-secret',
+    ])->assertRedirect();
+    $this->assertAuthenticatedAs($registration);
+});
+
+it('links a pending account when profiling uses the same email even if create account is checked', function () {
+    $registration = User::factory()->create([
+        'name' => 'Juan Dela Cruz',
+        'email' => 'juan@email.com',
+        'role' => User::ROLE_RESIDENT,
+        'barangay_id' => $this->barangay->id,
+        'registration_id' => 'REG-000400',
+        'resident_id' => null,
+        'password' => 'resident-secret',
+    ]);
+
+    $this->actingAs($this->staff)
+        ->post('/residents', [
+            'create_account' => true,
+            'password' => 'unused-password',
+            'password_confirmation' => 'unused-password',
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'date_of_birth' => now()->subYears(30)->format('Y-m-d'),
+            'sex' => 'male',
+            'civil_status' => 'single',
+            'email' => 'juan@email.com',
+        ])
+        ->assertRedirect();
+
+    expect(User::where('email', 'juan@email.com')->count())->toBe(1)
+        ->and($registration->fresh()->resident_id)->not->toBeNull();
 });
 
 it('forbids resident-role users from the barangay module', function () {
@@ -112,7 +195,7 @@ it('creates an optional resident portal account with a generated resident ID', f
     $resident = Resident::where('last_name', 'Reyes')->firstOrFail();
     $account = User::where('resident_id', $resident->id)->firstOrFail();
 
-    expect($resident->resident_id)->toBe('RES-'.str_pad((string) $resident->id, 6, '0', STR_PAD_LEFT))
+    expect($resident->resident_id)->toBe('RES-'.now()->year.'-'.str_pad((string) $resident->id, 6, '0', STR_PAD_LEFT))
         ->and($account->email)->toBeNull()
         ->and(password_verify('resident-secret', $account->password))->toBeTrue()
         ->and(User::whereHas('resident', fn ($query) => $query->where('resident_id', $resident->resident_id))->whereKey($account->id)->exists())->toBeTrue();

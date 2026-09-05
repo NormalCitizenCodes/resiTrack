@@ -13,6 +13,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $barangay = Barangay::where('name', 'Barangay 22')->first();
+        $barangay23 = Barangay::where('name', 'Barangay 23')->first();
         $dswd = PartnerAgency::where('agency_type', 'DSWD')->first();
 
         $users = [
@@ -38,6 +39,22 @@ class UserSeeder extends Seeder
                 'first_name' => 'Josefa',
                 'last_name' => 'Reyes',
                 'barangay_id' => $barangay?->id,
+            ],
+            [
+                'name' => 'Barangay 23 Secretary',
+                'email' => 'secretary.b23@resitrack.test',
+                'role' => User::ROLE_BARANGAY_ADMIN,
+                'first_name' => 'Ana',
+                'last_name' => 'Garcia',
+                'barangay_id' => $barangay23?->id,
+            ],
+            [
+                'name' => 'Barangay 23 Health Worker',
+                'email' => 'bhw.b23@resitrack.test',
+                'role' => User::ROLE_BHW,
+                'first_name' => 'Pedro',
+                'last_name' => 'Garcia',
+                'barangay_id' => $barangay23?->id,
             ],
             [
                 'name' => 'DSWD Officer',

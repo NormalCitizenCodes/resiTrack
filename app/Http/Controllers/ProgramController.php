@@ -31,7 +31,9 @@ class ProgramController extends Controller
                 'beneficiaries',
             ])
             // Agencies manage only their own programs; everyone else sees active ones.
-            ->when($user?->role === 'partner_agency', fn ($q) => $q->where('agency_id', $user->agency_id))
+            ->when($user?->role === 'partner_agency', fn ($q) => $q
+                ->where('agency_id', $user->agency_id)
+                ->where(fn ($inner) => $inner->whereNull('barangay_id')->orWhere('barangay_id', $user->barangay_id)))
             ->when(! $isManaging, function ($q) use ($user) {
                 $q->where('status', 'active')
                     // Browsing residents/staff only see programs open to their own
@@ -61,9 +63,14 @@ class ProgramController extends Controller
 
     public function create(Request $request): Response
     {
+        $user = $request->user();
+
         return Inertia::render('programs/create', [
             'sectors' => VulnerabilitySector::orderBy('id')->get(['id', 'code', 'sector_name']),
-            'barangays' => Barangay::orderBy('name')->get(['id', 'name']),
+            'barangays' => $user->isSuperAdmin()
+                || ($user->role === 'partner_agency' && $user->barangay_id === null)
+                ? Barangay::orderBy('name')->get(['id', 'name'])
+                : Barangay::whereKey($user->barangay_id)->get(['id', 'name']),
         ]);
     }
 
@@ -93,7 +100,9 @@ class ProgramController extends Controller
         $program->load(['agency:id,agency_name,agency_type', 'barangay:id,name', 'sectors:id,code,sector_name']);
 
         $isOwner = $user?->isSuperAdmin()
-            || ($user?->role === 'partner_agency' && $program->agency_id === $user->agency_id);
+            || ($user?->role === 'partner_agency'
+                && $program->agency_id === $user->agency_id
+                && ($user->barangay_id === null || $program->barangay_id === null || $program->barangay_id === $user->barangay_id));
 
         $props = [
             'program' => $program,
@@ -177,7 +186,9 @@ class ProgramController extends Controller
         $user = $request->user();
 
         $owns = $user->isSuperAdmin()
-            || ($user->role === 'partner_agency' && $program->agency_id === $user->agency_id);
+            || ($user->role === 'partner_agency'
+                && $program->agency_id === $user->agency_id
+                && ($user->barangay_id === null || $program->barangay_id === null || $program->barangay_id === $user->barangay_id));
 
         abort_unless($owns, 403, 'You can only manage your own agency\'s programs.');
     }

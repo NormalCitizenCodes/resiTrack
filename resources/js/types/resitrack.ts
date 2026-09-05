@@ -93,6 +93,8 @@ export type Resident = {
     transfer_date: string | null;
     transfer_status: string | null;
     registered_at: string | null;
+    profiled_at?: string | null;
+    profiled_by?: { id: number; name: string } | null;
     barangay?: Barangay;
     household?: Household;
     sectors?: VulnerabilitySector[];
@@ -177,10 +179,13 @@ export type AppNotification = {
     id: number;
     user_id: number | null;
     resident_id: number | null;
+    related_user_id?: number | null;
     title: string;
     message: string | null;
     type: string;
+    action_url?: string | null;
     is_read: boolean;
+    read_at?: string | null;
     created_at: string | null;
 };
 

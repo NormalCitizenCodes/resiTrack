@@ -142,6 +142,11 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                                         <Link href={`/residents/${resident.id}`} className="hover:underline">
                                             {resident.full_name}
                                         </Link>
+                                        {resident.resident_id && (
+                                            <span className="block text-xs text-muted-foreground">
+                                                {resident.resident_id}
+                                            </span>
+                                        )}
                                         {resident.contact_number && (
                                             <span className="block text-xs text-muted-foreground">
                                                 Contact: {resident.contact_number}

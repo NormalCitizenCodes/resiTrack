@@ -11,9 +11,13 @@ import type { Barangay } from '@/types';
 
 export default function StaffCreate({
     barangays,
+    assignedBarangay,
+    isSuperAdmin,
     canCreateAdmin,
 }: {
     barangays: Barangay[];
+    assignedBarangay: Pick<Barangay, 'id' | 'name'> | null;
+    isSuperAdmin: boolean;
     canCreateAdmin: boolean;
 }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -32,7 +36,7 @@ export default function StaffCreate({
     return (
         <>
             <Head title="Add Staff" />
-            <form onSubmit={submit} className="mx-auto w-full max-w-xl flex-1 space-y-4 p-4">
+            <form onSubmit={submit} className="mx-auto w-full max-w-2xl flex-1 space-y-4 p-4 sm:p-6">
                 <div>
                     <h1 className="text-xl font-semibold tracking-tight">Add Staff</h1>
                     <p className="text-sm text-muted-foreground">
@@ -45,6 +49,7 @@ export default function StaffCreate({
                         <CardTitle>Account Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
                         <div>
                             <Label className="mb-1.5 block">
                                 Full Name <span className="text-red-500">*</span>
@@ -87,29 +92,35 @@ export default function StaffCreate({
                             </Select>
                             <InputError message={errors.role} className="mt-1" />
                         </div>
-                        {barangays.length > 0 && (
+                        </div>
+                        {(isSuperAdmin || assignedBarangay) && (
                             <div>
                                 <Label className="mb-1.5 block">Barangay</Label>
-                                <Select value={data.barangay_id} onValueChange={(v) => setData('barangay_id', v)}>
+                                <Select
+                                    value={isSuperAdmin ? data.barangay_id : String(assignedBarangay?.id ?? '')}
+                                    onValueChange={(v) => setData('barangay_id', v)}
+                                    disabled={!isSuperAdmin}
+                                >
                                     <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Select…" />
+                                        <SelectValue placeholder="Select barangay" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {barangays.map((barangay) => (
+                                        {(isSuperAdmin ? barangays : assignedBarangay ? [assignedBarangay] : []).map((barangay) => (
                                             <SelectItem key={barangay.id} value={String(barangay.id)}>
                                                 {barangay.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {!isSuperAdmin && <p className="mt-1 text-xs text-muted-foreground">Automatically assigned from your Barangay Admin account.</p>}
                                 <InputError message={errors.barangay_id} className="mt-1" />
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={processing}>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button type="submit" className="w-full sm:w-auto" disabled={processing}>
                         Create Account
                     </Button>
                 </div>

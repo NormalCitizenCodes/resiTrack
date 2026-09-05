@@ -12,10 +12,12 @@ use App\Models\User;
 use App\Models\VulnerabilitySector;
 use App\Services\AuditLogger;
 use App\Services\DuplicateDetectionService;
+use App\Services\NotificationService;
 use App\Services\SectorClassificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -38,6 +40,8 @@ class ResidentController extends Controller
                 $q->where(function ($inner) use ($search) {
                     $inner->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('resident_id', 'like', "%{$search}%")
                         ->orWhere('philsys_card_no', 'like', "%{$search}%");
                 });
             })
@@ -61,35 +65,52 @@ class ResidentController extends Controller
 
     public function create(Request $request): Response
     {
-        return Inertia::render('residents/create', $this->formData($request));
+        return Inertia::render('residents/create', [
+            ...$this->formData($request),
+            'linkedAccount' => $this->linkedAccountPayload($request),
+        ]);
     }
 
     public function store(StoreResidentRequest $request): RedirectResponse
     {
         $user = $request->user();
+        $linkedAccount = $request->pendingAccountToLink();
 
-        $resident = new Resident($request->validated());
-        $resident->barangay_id = $user->isSuperAdmin()
-            ? ($request->integer('barangay_id') ?: Barangay::value('id'))
-            : $user->barangay_id;
-        $resident->registered_at = Carbon::now();
-        $resident->save();
-        $resident->update(['resident_id' => sprintf('RES-%06d', $resident->id)]);
+        $resident = DB::transaction(function () use ($request, $user, $linkedAccount) {
+            $resident = new Resident($request->safe()->except([
+                'create_account',
+                'password',
+                'password_confirmation',
+                'linked_user_id',
+            ]));
+            $resident->barangay_id = $user->isSuperAdmin()
+                ? ($request->integer('barangay_id') ?: Barangay::value('id'))
+                : $user->barangay_id;
+            $resident->registered_at = Carbon::now();
+            $resident->profiled_by_user_id = $user->id;
+            $resident->profiled_at = Carbon::now();
+            $resident->save();
+            $resident->assignOfficialId();
 
-        if ($request->boolean('create_account')) {
-            User::create([
-                'name' => $resident->full_name,
-                'email' => $resident->email,
-                'password' => Hash::make($request->string('password')->toString()),
-                'role' => User::ROLE_RESIDENT,
-                'first_name' => $resident->first_name,
-                'last_name' => $resident->last_name,
-                'barangay_id' => $resident->barangay_id,
-                'resident_id' => $resident->id,
-                'is_active' => true,
-                'email_verified_at' => $resident->email ? now() : null,
-            ]);
-        }
+            if ($linkedAccount) {
+                $this->linkExistingAccount($linkedAccount, $resident);
+            } elseif ($request->boolean('create_account')) {
+                User::create([
+                    'name' => $resident->full_name,
+                    'email' => $resident->email,
+                    'password' => Hash::make($request->string('password')->toString()),
+                    'role' => User::ROLE_RESIDENT,
+                    'first_name' => $resident->first_name,
+                    'last_name' => $resident->last_name,
+                    'barangay_id' => $resident->barangay_id,
+                    'resident_id' => $resident->id,
+                    'is_active' => true,
+                    'email_verified_at' => $resident->email ? now() : null,
+                ]);
+            }
+
+            return $resident;
+        });
 
         // Classify vulnerability sectors, then screen for duplicates/transfers.
         $this->classifier->classify($resident);
@@ -97,10 +118,17 @@ class ResidentController extends Controller
 
         AuditLogger::record('create', 'residents', $resident->id, null, ['name' => $resident->full_name]);
 
-        $message = "Resident {$resident->full_name} registered successfully.";
+        $message = $linkedAccount
+            ? "Resident {$resident->full_name} was profiled and verified. The existing account is now linked."
+            : "Resident {$resident->full_name} registered successfully.";
         if ($newAlerts > 0) {
             $message .= " {$newAlerts} possible duplicate/transfer match(es) were flagged for review.";
         }
+
+        $accountCreated = $linkedAccount === null && $request->boolean('create_account');
+        $emailLoginAvailable = $linkedAccount
+            ? filled($linkedAccount->email)
+            : filled($resident->email);
 
         return redirect()
             ->route('residents.show', $resident)
@@ -109,8 +137,9 @@ class ResidentController extends Controller
                 'residentId' => $resident->resident_id,
                 'name' => $resident->full_name,
                 'householdId' => $resident->household?->household_id ?? $resident->household_id,
-                'accountCreated' => $request->boolean('create_account'),
-                'emailLoginAvailable' => filled($resident->email),
+                'accountCreated' => $accountCreated,
+                'accountLinked' => $linkedAccount !== null,
+                'emailLoginAvailable' => $emailLoginAvailable,
             ]);
     }
 
@@ -123,6 +152,7 @@ class ResidentController extends Controller
             'household',
             'barangay:id,name',
             'transferBarangay:id,name',
+            'profiledBy:id,name',
         ]);
 
         // Any open duplicate/transfer alerts that reference this resident.
@@ -176,6 +206,7 @@ class ResidentController extends Controller
 
         // Deactivate rather than hard-delete to preserve records for audit.
         $resident->update(['is_active' => false]);
+        $this->syncLinkedAccountStatus($resident, false, $request->user()->id);
 
         return redirect()
             ->route('residents.index')
@@ -189,6 +220,18 @@ class ResidentController extends Controller
 
         $resident->update(['is_active' => ! $resident->is_active]);
 
+        User::query()
+            ->where('resident_id', $resident->id)
+            ->update(['is_active' => $resident->is_active]);
+
+        $linkedAccount = User::query()->where('resident_id', $resident->id)->first();
+        if ($linkedAccount) {
+            $linkedAccount->update([
+                'deactivated_at' => $resident->is_active ? null : now(),
+                'deactivated_by' => $resident->is_active ? null : $request->user()->id,
+            ]);
+        }
+
         AuditLogger::record(
             $resident->is_active ? 'activate' : 'deactivate',
             'residents',
@@ -196,6 +239,17 @@ class ResidentController extends Controller
             null,
             ['name' => $resident->full_name],
         );
+        AuditLogger::record(
+            $resident->is_active ? 'account_reactivated' : 'account_deactivated',
+            'users',
+            $linkedAccount?->id,
+            ['is_active' => ! $resident->is_active],
+            ['is_active' => $resident->is_active, 'barangay_id' => $resident->barangay_id, 'actor_id' => $request->user()->id],
+        );
+
+        if ($resident->is_active && $linkedAccount) {
+            NotificationService::notifyAccountReactivated($linkedAccount);
+        }
 
         return redirect()
             ->route('residents.show', $resident)
@@ -254,5 +308,88 @@ class ResidentController extends Controller
             403,
             'Only a Super Admin or Barangay Admin can change resident status.',
         );
+    }
+
+    private function syncLinkedAccountStatus(Resident $resident, bool $active, int $actorId): void
+    {
+        $account = User::query()->where('resident_id', $resident->id)->first();
+
+        if (! $account) {
+            return;
+        }
+
+        $account->update([
+            'is_active' => $active,
+            'deactivated_at' => $active ? null : now(),
+            'deactivated_by' => $active ? null : $actorId,
+        ]);
+
+        AuditLogger::record(
+            $active ? 'account_reactivated' : 'account_deactivated',
+            'users',
+            $account->id,
+            ['is_active' => ! $active],
+            ['is_active' => $active, 'barangay_id' => $resident->barangay_id, 'actor_id' => $actorId],
+        );
+    }
+
+    /**
+     * @return array{id: int, name: string, email: string|null, first_name: string, last_name: string}|null
+     */
+    private function linkedAccountPayload(Request $request): ?array
+    {
+        if ($request->filled('linked_user') || $request->filled('account')) {
+            $account = $this->pendingAccount(
+                $request,
+                $request->integer('linked_user') ?: $request->integer('account'),
+            );
+            [$firstName, $lastName] = $this->splitName($account->name);
+
+            return [
+                'id' => $account->id,
+                'name' => $account->name,
+                'email' => $account->email,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+            ];
+        }
+
+        return null;
+    }
+
+    private function pendingAccount(Request $request, int $accountId): User
+    {
+        $account = User::query()->findOrFail($accountId);
+
+        abort_unless($account->isPendingProfiling(), 404);
+
+        $user = $request->user();
+
+        if (! $user->isSuperAdmin() && $account->barangay_id !== $user->barangay_id) {
+            abort(403, 'This registration belongs to another barangay.');
+        }
+
+        return $account;
+    }
+
+    private function linkExistingAccount(User $account, Resident $resident): void
+    {
+        $account->update([
+            'resident_id' => $resident->id,
+            'first_name' => $resident->first_name,
+            'last_name' => $resident->last_name,
+            'name' => $resident->full_name,
+        ]);
+
+        NotificationService::markRegistrationNotificationsComplete($account, $resident);
+        NotificationService::notifyResidentProfileVerified($account, $resident);
+    }
+
+    /** @return array{string, string} */
+    private function splitName(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name), 2) ?: [$name];
+
+        return [$parts[0], $parts[1] ?? $parts[0]];
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int|null $resident_id
  * @property string|null $registration_id
  * @property bool $is_active
+ * @property Carbon|null $deactivated_at
+ * @property int|null $deactivated_by
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -34,7 +37,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'role', 'first_name', 'last_name', 'barangay_id', 'agency_id', 'resident_id', 'registration_id', 'is_active', 'last_login_at'])]
+#[Fillable(['name', 'email', 'password', 'role', 'first_name', 'last_name', 'barangay_id', 'agency_id', 'resident_id', 'registration_id', 'is_active', 'deactivated_at', 'deactivated_by', 'last_login_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -70,6 +73,7 @@ class User extends Authenticatable implements PasskeyUser
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',
+            'deactivated_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
     }
@@ -87,6 +91,16 @@ class User extends Authenticatable implements PasskeyUser
     public function resident(): BelongsTo
     {
         return $this->belongsTo(Resident::class, 'resident_id');
+    }
+
+    public function reactivationRequests(): HasMany
+    {
+        return $this->hasMany(AccountReactivationRequest::class);
+    }
+
+    public function deletionRequests(): HasMany
+    {
+        return $this->hasMany(AccountDeletionRequest::class);
     }
 
     /**
@@ -108,5 +122,12 @@ class User extends Authenticatable implements PasskeyUser
     public function isBarangayStaff(): bool
     {
         return $this->hasRole(self::ROLE_SUPER_ADMIN, self::ROLE_BARANGAY_ADMIN, self::ROLE_BHW);
+    }
+
+    public function isPendingProfiling(): bool
+    {
+        return $this->role === self::ROLE_RESIDENT
+            && $this->resident_id === null
+            && $this->registration_id !== null;
     }
 }

@@ -24,6 +24,8 @@ class CreateNewUser implements CreatesNewUsers
             ...$this->profileRules(),
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
             'password' => $this->passwordRules(),
+        ], [
+            'email.unique' => 'An account with this email already exists. Please log in with your email and password.',
         ])->validate();
 
         $user = User::create([

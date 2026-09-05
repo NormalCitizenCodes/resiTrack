@@ -55,8 +55,8 @@ class HandleInertiaRequests extends Middleware
                 ? AppNotification::where('user_id', $user->id)->where('is_read', false)->count()
                 : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'language' => in_array($request->cookie('resident_lang'), ['en', 'fil', 'ceb'], true)
-                ? $request->cookie('resident_lang')
+            'language' => in_array($request->cookie('app_lang') ?? $request->cookie('resident_lang'), ['en', 'fil', 'ceb'], true)
+                ? ($request->cookie('app_lang') ?? $request->cookie('resident_lang'))
                 : 'en',
         ];
     }

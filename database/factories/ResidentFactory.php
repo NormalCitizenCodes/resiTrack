@@ -43,6 +43,15 @@ class ResidentFactory extends Factory
         ];
     }
 
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Resident $resident) {
+            if (blank($resident->resident_id)) {
+                $resident->assignOfficialId();
+            }
+        });
+    }
+
     public function senior(): static
     {
         return $this->state(fn () => [

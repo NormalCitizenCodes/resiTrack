@@ -57,8 +57,30 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseHas('app_notifications', [
             'user_id' => $bhw->id,
             'resident_id' => null,
+            'related_user_id' => $user->id,
             'type' => 'system',
+            'title' => '🔔 New Resident Account Created',
         ]);
         $this->assertDatabaseMissing('app_notifications', ['user_id' => $otherBhw->id]);
+    }
+
+    public function test_registration_rejects_a_duplicate_email_with_a_login_prompt(): void
+    {
+        $barangay = Barangay::factory()->create();
+        User::factory()->create([
+            'email' => 'taken@example.com',
+            'role' => User::ROLE_RESIDENT,
+            'barangay_id' => $barangay->id,
+        ]);
+
+        $this->post(route('register.store'), [
+            'name' => 'Someone Else',
+            'email' => 'taken@example.com',
+            'barangay_id' => $barangay->id,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertSessionHasErrors([
+            'email' => 'An account with this email already exists. Please log in with your email and password.',
+        ]);
     }
 }

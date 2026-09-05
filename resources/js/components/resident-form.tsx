@@ -43,6 +43,7 @@ type ResidentFormData = {
     create_account: boolean;
     password: string;
     password_confirmation: string;
+    linked_user_id: string;
     [key: string]: string | boolean;
 };
 
@@ -74,6 +75,7 @@ function toInitial(resident?: Resident): ResidentFormData {
         create_account: false,
         password: '',
         password_confirmation: '',
+        linked_user_id: '',
     };
 }
 
@@ -85,14 +87,19 @@ export function ResidentForm({
     households,
     resident,
     submitLabel,
+    linkedUserId,
 }: {
     mode: 'create' | 'edit';
     action: string;
     households: Household[];
     resident?: Resident;
     submitLabel: string;
+    linkedUserId?: number;
 }) {
-    const { data, setData, post, put, processing, errors } = useForm<ResidentFormData>(toInitial(resident));
+    const { data, setData, post, put, processing, errors } = useForm<ResidentFormData>({
+        ...toInitial(resident),
+        linked_user_id: linkedUserId ? String(linkedUserId) : '',
+    });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -103,8 +110,15 @@ export function ResidentForm({
         }
     };
 
-    return (
-        <form onSubmit={submit} className="space-y-4">
+        return (
+            <form onSubmit={submit} className="space-y-4">
+            {linkedUserId ? (
+                <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="py-4 text-sm">
+                        This profile will be linked to the existing resident account. An official Resident ID will be assigned after you submit. Do not create a second login.
+                    </CardContent>
+                </Card>
+            ) : null}
             <Card>
                 <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
@@ -166,7 +180,7 @@ export function ResidentForm({
                 </CardContent>
             </Card>
 
-            {mode === 'create' && (
+            {mode === 'create' && !linkedUserId && (
                 <Card>
                     <CardHeader><CardTitle>Resident Portal Account</CardTitle></CardHeader>
                     <CardContent className="space-y-4">

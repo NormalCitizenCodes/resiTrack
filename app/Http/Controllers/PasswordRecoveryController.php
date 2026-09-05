@@ -28,6 +28,7 @@ class PasswordRecoveryController extends Controller
 
         return Inertia::render('account-recovery/index', [
             'recoveryRequests' => $recoveryRequests,
+            'highlight' => $request->integer('highlight') ?: null,
         ]);
     }
 
@@ -61,6 +62,7 @@ class PasswordRecoveryController extends Controller
                 'user_id' => $bhw->id,
                 'resident_id' => $resident->resident_id,
                 'type' => 'password_recovery',
+                'action_url' => route('account-recovery.index', ['highlight' => $recoveryRequest->id]),
                 'title' => 'New account recovery request',
                 'message' => "{$resident->name} needs password recovery assistance.",
                 'is_read' => false,

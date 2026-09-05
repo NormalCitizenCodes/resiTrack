@@ -18,6 +18,8 @@ class StoreProgramRequest extends FormRequest
      */
     public function rules(): array
     {
+        $user = $this->user();
+
         return [
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:2000'],
@@ -26,7 +28,13 @@ class StoreProgramRequest extends FormRequest
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'status' => ['required', Rule::in(['active', 'inactive', 'expired'])],
-            'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
+            'barangay_id' => $user?->isSuperAdmin()
+                ? ['nullable', 'integer', 'exists:barangays,id']
+                : ($user?->role === 'partner_agency'
+                    ? ($user->barangay_id
+                        ? ['nullable', 'integer', Rule::in([$user->barangay_id])]
+                        : ['nullable', 'integer', 'exists:barangays,id'])
+                    : ['nullable', 'integer', 'exists:barangays,id']),
             'sector_ids' => ['array'],
             'sector_ids.*' => ['integer', 'exists:vulnerability_sectors,id'],
         ];

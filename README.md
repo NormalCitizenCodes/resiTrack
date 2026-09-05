@@ -1,8 +1,17 @@
-# resiTrack
+# ResiTrack
+
+![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111827)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-115%20passing-22C55E)
 
 **A Web- and Mobile-Based Resident Profiling System for Data-Driven Decision-Making and Equitable Distribution of Social Services Across Barangays.**
 
-Capstone implementation for Barangay 22, Cagayan de Oro City. This repository turns the approved research proposal into a working system.
+ResiTrack is a multi-barangay resident profiling and social services platform for barangay staff, residents, partner agencies, and city administrators. It is a capstone implementation for Cagayan de Oro City that turns the approved research proposal into a working system.
+
+The core design rule is:
+
+> **Role determines what a user can do. `barangay_id` determines where they can do it.**
 
 ## Tech Stack
 
@@ -13,24 +22,35 @@ Matches the stack specified in the research paper (Chapter III, §3.5.1):
 | Frontend | React 19 + Inertia.js + TypeScript |
 | Styling | Tailwind CSS 4 + shadcn/ui |
 | Backend | Laravel 13 (PHP 8.4), Eloquent ORM |
-| Auth | Laravel Fortify (role-based, 2FA & passkeys available) |
+| Auth | Laravel Fortify (role-based, 2FA, and passkeys available) |
 | Database | SQLite for local dev — portable to PostgreSQL / Supabase for production |
 
 > The paper targets PostgreSQL/Supabase in production. Eloquent migrations are database-agnostic, so development runs on zero-config SQLite and can be pointed at Supabase by changing `.env`.
 
+## Requirements
+
+- PHP 8.4+
+- Composer
+- Node.js 22+
+- npm
+- SQLite for local development, or PostgreSQL-compatible configuration for deployment
+
 ## Getting Started
 
 ```bash
-# 1. Install dependencies (already done if you cloned a complete copy)
+# 1. Install dependencies
 composer install
 npm install
 
-# 2. Environment + database
-cp .env.example .env          # if .env is missing
+# 2. Configure the application
+copy .env.example .env       # Windows PowerShell
+# cp .env.example .env       # macOS/Linux
 php artisan key:generate
-php artisan migrate:fresh --seed
 
-# 3. Run everything (server + Vite + queue + logs)
+# 3. Create the database and seed reference data
+php artisan migrate --seed
+
+# 4. Run everything (server + Vite + queue + logs)
 composer run dev
 ```
 
@@ -43,22 +63,37 @@ php artisan serve      # http://localhost:8000
 npm run dev            # Vite dev server (HMR)
 ```
 
+For a clean local database, use `php artisan migrate:fresh --seed`. Do not use that command against a shared or production database.
+
+## Useful Commands
+
+```bash
+php artisan test          # Laravel/Pest feature and unit tests
+npm run types:check       # TypeScript validation
+npm run build             # Production frontend build
+npm run lint:check       # ESLint validation
+php artisan route:list    # Registered routes and middleware
+```
+
 ## Test Accounts
 
 All seeded accounts use their email address as their password.
 
-| Role | Email | Sees |
-| --- | --- | --- |
-| Super Admin | `superadmin@resitrack.test` | City-wide dashboard, all barangays |
-| Barangay Admin (Secretary) | `secretary@resitrack.test` | Barangay 22 residents, households, alerts |
-| Barangay Health Worker | `bhw@resitrack.test` | Barangay 22 field data entry |
-| Partner Agency (DSWD) | `agency@resitrack.test` | Dashboard (programs module upcoming) |
-| Resident | `resident@resitrack.test` | Dashboard (self-service portal upcoming) |
+| Role | Email | Password | Scope |
+| --- | --- | --- | --- |
+| Super Admin | `superadmin@resitrack.test` | Same as email | All barangays and system-wide administration |
+| Barangay Admin | `secretary@resitrack.test` | Same as email | Barangay 22 |
+| BHW | `bhw@resitrack.test` | Same as email | Barangay 22 field operations |
+| Barangay Admin | `secretary.b23@resitrack.test` | Same as email | Barangay 23 |
+| BHW | `bhw.b23@resitrack.test` | Same as email | Barangay 23 field operations |
+| Partner Agency | `agency@resitrack.test` | Same as email | Assigned agency programs |
+
+Seeded reference barangays include Barangays 21, 22, 23, and 24. Test data may add resident accounts during profiling tests or local workflows.
 
 ## What's Implemented
 
 ### Foundation
-- Full database schema — 20 tables from the ERD (`resiTrack-ERD.png`): barangays, zones, households, residents, vulnerability sectors, sector criteria, programs, applications, beneficiaries, duplicate alerts, notifications, audit logs, offline-sync logs, and more.
+- Full relational database schema from the ERD (`resiTrack-ERD.png`): barangays, zones, households, residents, vulnerability sectors, sector criteria, programs, applications, beneficiaries, duplicate alerts, notifications, audit logs, account requests, offline-sync logs, and more.
 - Eloquent models with relationships for every table.
 - Role-based access control across the 5 user roles (`role` middleware).
 
@@ -85,7 +120,20 @@ All seeded accounts use their email address as their password.
 ### Community Features
 - **Household Wellbeing Assessment** — barangay staff record a household's wellbeing tier (Survival / Subsistence / Self-Sufficient) with a dated, append-only history on the household page, complementing resident-level sector classification with a household-level need signal.
 - **Announcements** — staff post barangay-wide broadcasts or target one or more vulnerability sectors at once (`announcement_sectors` pivot, same shape as program targeting); residents see a filtered feed (their barangay + broadcasts or any of their own sectors).
-- **In-app Notifications** (`App\Services\NotificationService`) — residents are notified when a matching program is published, when their application is approved/rejected, and when a relevant announcement is posted. A header bell shows the unread count (shared via Inertia props).
+- **In-app Notifications** (`App\Services\NotificationService`) — notifications use contextual `action_url` destinations, are pressable from the notification page and dashboard feed, mark themselves read on navigation, and support `read_at` timestamps. BHW and admin notifications open the exact registration, profiling form, recovery request, deletion request, or reactivation request.
+
+### Account Deletion and Reactivation
+- Residents cannot permanently delete their accounts through the normal interface. They submit an account deletion request with a reason.
+- Barangay Admins handle normal deletion and reactivation requests for their assigned barangay. Super Admins have system-wide oversight and escalation authority. BHWs cannot approve or reject these requests.
+- Approved deletion requests deactivate `users.is_active` while preserving the User, Resident, Resident ID, household, profiling, program, notification, and audit history.
+- Deactivated residents can request reactivation using their registered email or Resident ID. Duplicate pending requests are prevented.
+- Authorized administrators verify identity, add remarks, approve or reject, restore the existing account, and trigger a clickable resident notification. Reactivation never creates a replacement account or Resident ID.
+
+### Partner Agency Management
+- Partner Agency organizations use the existing `partner_agencies` table and agency accounts use the existing `partner_agency` role, `users.agency_id`, and `users.barangay_id` relationships.
+- Super Admins can create and edit organizations, assign accounts across barangays, and activate/deactivate accounts.
+- Barangay Admins can create and manage agency accounts only within their assigned barangay. The barangay assignment is locked server-side and in the form.
+- BHWs and residents cannot manage partner agency accounts. Agency program access is limited by agency ownership and assigned barangay where applicable.
 
 ### Resident Self-Service Dashboard
 Residents get a distinct dashboard from barangay staff — a feed, not the aggregate stats view (`App\Http\Controllers\DashboardController` branches by role; the previous behavior had every role sharing the staff stats page, including a "Pending Duplicate Alerts" card residents couldn't actually open).
@@ -97,7 +145,7 @@ Residents get a distinct dashboard from barangay staff — a feed, not the aggre
 ### Accessibility for Low Digital Literacy, Language, and Seniors
 Built after realizing residents who can't use a phone at all already have a safety net (BHWs can register and endorse them without a screen) — these three features are for residents who *can* use a phone but face literacy, language, or vision/motor barriers along the way.
 - **Comfortable scale** (`resources/js/hooks/use-comfortable-scale.ts`) — resident sessions get a 120% root font-size bump (`html.comfortable-scale` in `app.css`), automatically, with no toggle needed since the role is already known at render time. Because Tailwind's spacing/sizing scale is rem-based, this proportionally enlarges text, buttons, icons, and tap targets together — the same effect as increasing browser zoom, just scoped to residents.
-- **Filipino / Bisaya language toggle** — a switcher in the header (residents only) translates the static UI chrome (navigation, buttons, status words, form labels) on resident-facing pages into Filipino or Cebuano/Bisaya, not just Filipino: Barangay 22 is in Cagayan de Oro (Region X), where Cebuano is the language most residents actually think in, even though Filipino is taught in school. Preference persists via a plain (unencrypted, see `bootstrap/app.php`'s `encryptCookies(except:)`) `resident_lang` cookie, mirroring the existing `sidebar_state` cookie pattern. Deliberately **not** translated: program titles, resident names, sector names, and auto-generated classification reasons — those are user/system-generated content, a different problem than translating fixed UI text. Machine-authored; the Cebuano strings in particular should get a native-speaker proofread before a live defense.
+- **English / Filipino / Bisaya language toggle** — a shared header switcher is available to residents, BHWs, barangay admins, super admins, and partner agency users. It translates fixed UI chrome and staff navigation, and persists the preference in the `app_lang` cookie. Program titles, resident names, sector names, and other user-generated content remain unchanged.
 - **Read-aloud** (`resources/js/components/read-aloud-button.tsx`) — a "listen" button on feed items, announcements, and program descriptions using the browser's built-in Web Speech API (free, no backend). Solves illiteracy, not just language — translation alone doesn't help someone who can't read at all. Voice quality/availability for Filipino/Cebuano depends on the resident's device; Android phones generally fare better than desktop browsers.
 
 ### Staff Account Management
@@ -106,15 +154,24 @@ Built after realizing residents who can't use a phone at all already have a safe
 - **Deactivation now actually works.** Found while building this: `users.is_active` existed in the schema but nothing ever checked it — a "deactivated" account could still log in. Fixed in two places: `FortifyServiceProvider::authenticateUsing()` rejects login for an inactive account with a clear message, and `App\Http\Middleware\EnsureAccountIsActive` force-logs-out an already-open session the moment the account is deactivated, not just on the next login attempt.
 - Also fixed while wiring this up: `is_active` defaults to `true` at the DB level, but that default only applies on INSERT — an in-memory object (like the one Fortify hands straight to `Auth::login()` during self-registration, or what `actingAs()` uses in tests) never saw it, which would have logged out every freshly-registered user immediately. Fixed by setting the default on the `User` model itself (`protected $attributes`), not just the migration — `ResidentFactory` already did this for the same reason; `UserFactory` just hadn't needed to until `is_active` was actually checked anywhere.
 
+### Multi-Barangay Access Control
+- `super_admin` users can access system-wide data and all barangays.
+- `barangay_admin` and `bhw` users are scoped server-side to their assigned `barangay_id` for normal resident, household, staff, request, and agency-account operations.
+- Partner agency accounts are scoped by both `agency_id` and `barangay_id` where the program is barangay-targeted.
+- Duplicate and transfer detection intentionally remains system-wide so potential cross-barangay matches are not missed.
+- Frontend filtering is not the security boundary; controllers, request validation, role middleware, and authorization checks enforce access.
+
 ## Testing
 
 ```bash
 php artisan test
 ```
 
-Feature tests in `tests/Feature/ResidentProfilingTest.php` cover role access control, automatic sector classification, compound-vulnerability detection, in-barangay duplicate flagging, cross-barangay transfer detection, and validation. `tests/Feature/ResidentDashboardTest.php` covers the resident feed dashboard, profile completeness, and self-service edits re-triggering classification.
+Feature tests cover role access control, automatic sector classification, compound-vulnerability detection, in-barangay duplicate flagging, cross-barangay transfer detection, resident dashboards, self-service edits, account deletion, account reactivation, barangay isolation, Partner Agency management, program targeting, and authorization boundaries.
 
-## Roadmap (next)
+## Roadmap
 
 - **BHW offline sync** (table `offline_sync_logs` scaffolded).
 - **Production deployment** to Supabase/PostgreSQL.
+- Native email delivery for account and request notifications.
+- Native-speaker review of Filipino and Bisaya translations.

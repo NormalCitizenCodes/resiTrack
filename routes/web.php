@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AccountDeletionRequestController;
+use App\Http\Controllers\AccountReactivationRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DuplicateAlertController;
 use App\Http\Controllers\HouseholdController;
@@ -11,6 +13,7 @@ use App\Http\Controllers\ProgramApplicationController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PasswordRecoveryController;
+use App\Http\Controllers\PartnerAgencyController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\StaffController;
@@ -22,6 +25,9 @@ Route::post('forgot-password', [PasswordRecoveryController::class, 'store'])
     ->middleware('guest')
     ->name('password.email');
 
+Route::get('account-reactivation/request', [AccountReactivationRequestController::class, 'create'])->name('account-reactivation.create');
+Route::post('account-reactivation/request', [AccountReactivationRequestController::class, 'store'])->name('account-reactivation.store');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -29,7 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:super_admin,barangay_admin,bhw')->group(function () {
         Route::resource('residents', ResidentController::class);
         Route::get('resident-registrations', [ResidentRegistrationController::class, 'index'])->name('resident-registrations.index');
-        Route::post('resident-registrations/{registration}/approve', [ResidentRegistrationController::class, 'approve'])->name('resident-registrations.approve');
+        Route::get('resident-registrations/{registration}', [ResidentRegistrationController::class, 'show'])->name('resident-registrations.show');
         Route::post('residents/{resident}/toggle', [ResidentController::class, 'toggleActive'])->name('residents.toggle');
         Route::delete('residents/{resident}/permanent', [ResidentController::class, 'forceDestroy'])->middleware('role:super_admin')->name('residents.force-destroy');
         Route::resource('households', HouseholdController::class)->except(['edit', 'update', 'destroy']);
@@ -53,6 +59,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('staff/create', [StaffController::class, 'create'])->name('staff.create');
         Route::post('staff', [StaffController::class, 'store'])->name('staff.store');
         Route::post('staff/{staff}/toggle', [StaffController::class, 'toggleActive'])->name('staff.toggle');
+        Route::get('partner-agencies', [PartnerAgencyController::class, 'index'])->name('partner-agencies.index');
+        Route::post('partner-agencies', [PartnerAgencyController::class, 'storeAgency'])->middleware('role:super_admin')->name('partner-agencies.store');
+        Route::put('partner-agencies/{agency}', [PartnerAgencyController::class, 'updateAgency'])->middleware('role:super_admin')->name('partner-agencies.update');
+        Route::post('partner-agency-accounts', [PartnerAgencyController::class, 'storeAccount'])->name('partner-agency-accounts.store');
+        Route::put('partner-agency-accounts/{account}', [PartnerAgencyController::class, 'updateAccount'])->name('partner-agency-accounts.update');
+        Route::post('partner-agency-accounts/{account}/toggle', [PartnerAgencyController::class, 'toggleAccount'])->name('partner-agency-accounts.toggle');
     });
 
     Route::middleware('role:bhw')->group(function () {
@@ -91,6 +103,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    Route::middleware('role:resident')->group(function () {
+        Route::get('settings/account', [AccountDeletionRequestController::class, 'create'])->name('account-deletion.create');
+        Route::post('settings/account/deletion-request', [AccountDeletionRequestController::class, 'store'])->name('account-deletion.store');
+    });
+
+    Route::middleware('role:super_admin,barangay_admin')->group(function () {
+        Route::get('account-deletion-requests', [AccountDeletionRequestController::class, 'index'])->name('account-deletion-requests.index');
+        Route::post('account-deletion-requests/{deletionRequest}/approve', [AccountDeletionRequestController::class, 'approve'])->name('account-deletion-requests.approve');
+        Route::post('account-deletion-requests/{deletionRequest}/reject', [AccountDeletionRequestController::class, 'reject'])->name('account-deletion-requests.reject');
+        Route::get('account-reactivation-requests', [AccountReactivationRequestController::class, 'index'])->name('account-reactivation-requests.index');
+        Route::post('account-reactivation-requests/{reactivationRequest}/approve', [AccountReactivationRequestController::class, 'approve'])->name('account-reactivation-requests.approve');
+        Route::post('account-reactivation-requests/{reactivationRequest}/reject', [AccountReactivationRequestController::class, 'reject'])->name('account-reactivation-requests.reject');
+    });
 
     // Self-service profile editing — personal to whichever resident record the
     // acting user is linked to (not role-gated; scoped inside the controller).

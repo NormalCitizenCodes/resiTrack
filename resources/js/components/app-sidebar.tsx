@@ -29,23 +29,26 @@ function navItemsForRole(role: Role | undefined, t: (key: string) => string): Na
             // stay in English regardless of language — this branch never reads t().
             const items = [
                 { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-                { title: 'Residents', href: '/residents', icon: Users },
-                ...(role === 'bhw' ? [{ title: 'Online Registrations', href: '/resident-registrations', icon: ClipboardCheck }] : []),
-                { title: 'Households', href: '/households', icon: Home },
-                { title: 'Duplicate Alerts', href: '/duplicate-alerts', icon: CopyCheck },
-                { title: 'Programs', href: '/programs', icon: HandHeart },
-                { title: 'Reports', href: '/reports', icon: BarChart3 },
-                { title: 'Announcements', href: '/announcements', icon: Megaphone },
+                { title: t('nav.residents'), href: '/residents', icon: Users },
+                ...(role === 'bhw' ? [{ title: t('nav.pendingResidentAccounts'), href: '/resident-registrations', icon: ClipboardCheck }] : []),
+                { title: t('nav.households'), href: '/households', icon: Home },
+                { title: t('nav.duplicateAlerts'), href: '/duplicate-alerts', icon: CopyCheck },
+                { title: t('nav.programs'), href: '/programs', icon: HandHeart },
+                { title: t('nav.reports'), href: '/reports', icon: BarChart3 },
+                { title: t('nav.announcements'), href: '/announcements', icon: Megaphone },
             ];
 
             // Staff account management is the one thing that actually
             // distinguishes barangay_admin from bhw — see StaffController.
             if (role !== 'bhw') {
-                items.push({ title: 'Staff', href: '/staff', icon: UserCog });
+                items.push({ title: t('nav.staff'), href: '/staff', icon: UserCog });
+                items.push({ title: t('nav.accountDeletionRequests'), href: '/account-deletion-requests', icon: ShieldCheck });
+                items.push({ title: t('nav.accountReactivationRequests'), href: '/account-reactivation-requests', icon: ShieldCheck });
+                items.push({ title: t('nav.partnerAgencies'), href: '/partner-agencies', icon: HandHeart });
             }
 
             if (role === 'bhw') {
-                items.push({ title: 'Account Recovery', href: '/account-recovery', icon: ShieldCheck });
+                items.push({ title: t('nav.accountRecovery'), href: '/account-recovery', icon: ShieldCheck });
             }
 
             return items;

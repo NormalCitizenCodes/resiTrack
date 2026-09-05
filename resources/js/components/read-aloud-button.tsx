@@ -1,5 +1,6 @@
 import { Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { MouseEventHandler } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/use-translation';
 
@@ -16,7 +17,7 @@ const SPEECH_LANG: Record<string, string> = {
  * backend, degrades to hidden if unsupported. Aimed at residents who can't
  * read at all, which a language toggle alone doesn't solve.
  */
-export function ReadAloudButton({ text }: { text: string }) {
+export function ReadAloudButton({ text, onClick }: { text: string; onClick?: MouseEventHandler<HTMLButtonElement> }) {
     const { language, t } = useTranslation();
     const [speaking, setSpeaking] = useState(false);
     const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -56,7 +57,11 @@ export function ReadAloudButton({ text }: { text: string }) {
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
-            onClick={toggle}
+            onClick={(event) => {
+                event.stopPropagation();
+                onClick?.(event);
+                toggle();
+            }}
             aria-label={speaking ? t('common.stopReading') : t('common.readAloud')}
         >
             {speaking ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}

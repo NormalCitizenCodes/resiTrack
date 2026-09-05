@@ -160,29 +160,24 @@ function FeedCard({ feed }: { feed: AppNotification[] }) {
                             key={item.id}
                             className={cn(
                                 'flex items-start gap-3 rounded-lg border p-3 transition-colors',
-                                !item.is_read &&
-                                    'border-primary/40 bg-primary/5',
+                                !item.is_read && 'border-primary/40 bg-primary/5',
                             )}
                         >
-                            <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                            <div className="flex-1 space-y-0.5">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium">
-                                        {item.title}
-                                    </span>
-                                    {!item.is_read && (
-                                        <span className="size-2 rounded-full bg-primary" />
-                                    )}
+                            <Link
+                                href={item.action_url ?? '#'}
+                                onClick={() => item.action_url && !item.is_read && markRead(item.id)}
+                                className={cn('flex min-w-0 flex-1 items-start gap-3', !item.action_url && 'pointer-events-none')}
+                            >
+                                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                                <div className="flex-1 space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{item.title}</span>
+                                        {!item.is_read && <span className="size-2 rounded-full bg-primary" />}
+                                    </div>
+                                    {item.message && <p className="whitespace-pre-line text-sm text-muted-foreground">{item.message}</p>}
+                                    <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
                                 </div>
-                                {item.message && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {item.message}
-                                    </p>
-                                )}
-                                <p className="text-xs text-muted-foreground">
-                                    {formatDate(item.created_at)}
-                                </p>
-                            </div>
+                            </Link>
                             <div className="flex shrink-0 items-center gap-1">
                                 <ReadAloudButton
                                     text={[item.title, item.message]
@@ -276,12 +271,14 @@ export default function ResidentDashboard({
     sectors,
     recentApplications,
     feed,
+    deletionRequest,
 }: {
     resident: Resident | null;
     completeness: Completeness;
     sectors: SectorWithReasons[];
     recentApplications: ProgramApplication[];
     feed: AppNotification[];
+    deletionRequest: { status: 'pending' | 'approved' | 'rejected'; admin_remarks: string | null } | null;
 }) {
     const { t } = useTranslation();
 
@@ -324,6 +321,24 @@ export default function ResidentDashboard({
 
                 {resident && (
                     <>
+                        {deletionRequest?.status === 'pending' && <Card className="border-amber-500/40 bg-amber-500/10"><CardContent className="space-y-1 py-4"><p className="font-medium">Account Deletion Request Pending</p><p className="text-sm text-muted-foreground">Your account deletion request is currently being reviewed by an administrator.</p></CardContent></Card>}
+                        {deletionRequest?.status === 'rejected' && <Card className="border-destructive/30 bg-destructive/5"><CardContent className="space-y-1 py-4"><p className="font-medium">Account Deletion Request Rejected</p><p className="text-sm text-muted-foreground">Your account will remain active.{deletionRequest.admin_remarks ? ` ${deletionRequest.admin_remarks}` : ''}</p></CardContent></Card>}
+                        <Card className="border-primary/30 bg-primary/5">
+                            <CardContent className="space-y-2 py-6 text-center">
+                                <p className="font-medium">
+                                    ✅ Your resident profile has been successfully completed and verified.
+                                </p>
+                                <p className="text-sm">
+                                    Resident ID: <strong>{resident.resident_id}</strong>
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    You can now log in using either your Resident ID or registered email address together with your password.
+                                </p>
+                                <p className="text-sm font-semibold text-foreground">
+                                    Status: Profiled / Verified / Linked
+                                </p>
+                            </CardContent>
+                        </Card>
                         <ProfileCompletenessCard completeness={completeness} />
                         <SectorsCard sectors={sectors} />
                         <FeedCard feed={feed} />

@@ -20,6 +20,7 @@ declare module '@inertiajs/core' {
                     name: string;
                     householdId: string | number | null;
                     accountCreated: boolean;
+                    accountLinked?: boolean;
                     emailLoginAvailable: boolean;
                 } | null;
             };

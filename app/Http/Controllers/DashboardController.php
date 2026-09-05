@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
+use App\Models\AccountDeletionRequest;
 use App\Models\ProgramApplication;
 use App\Models\Resident;
 use App\Models\User;
@@ -61,6 +62,7 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(15)
                 ->get(),
+            'deletionRequest' => AccountDeletionRequest::where('user_id', $user->id)->latest()->first(),
         ]);
     }
 }

@@ -43,6 +43,8 @@ class StaffController extends Controller
 
         return Inertia::render('staff/create', [
             'barangays' => $user->isSuperAdmin() ? Barangay::orderBy('name')->get(['id', 'name']) : [],
+            'assignedBarangay' => $user->isSuperAdmin() ? null : $user->barangay?->only(['id', 'name']),
+            'isSuperAdmin' => $user->isSuperAdmin(),
             'canCreateAdmin' => $user->isSuperAdmin(),
         ]);
     }

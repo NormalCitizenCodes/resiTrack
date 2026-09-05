@@ -1,4 +1,4 @@
-// Translations for resident-facing UI chrome only (labels, buttons, status
+// Translations for shared UI chrome (labels, buttons, status
 // words, instructional copy). Deliberately NOT translated: program titles,
 // resident names, sector names, and auto-generated classification reasons —
 // those are user/system-generated content, a different (bigger) problem than
@@ -27,6 +27,16 @@ const en: Dictionary = {
     'nav.myApplications': 'My Applications',
     'nav.announcements': 'Announcements',
     'nav.myProfile': 'My Profile',
+    'nav.residents': 'Residents',
+    'nav.pendingResidentAccounts': 'Pending Resident Accounts',
+    'nav.households': 'Households',
+    'nav.duplicateAlerts': 'Duplicate Alerts',
+    'nav.reports': 'Reports',
+    'nav.staff': 'Staff',
+    'nav.accountRecovery': 'Account Recovery',
+    'nav.accountDeletionRequests': 'Account Deletion Requests',
+    'nav.accountReactivationRequests': 'Account Reactivation Requests',
+    'nav.partnerAgencies': 'Partner Agencies',
 
     'common.viewAll': 'View all',
     'common.pending': 'pending',
@@ -105,6 +115,10 @@ const en: Dictionary = {
     'notifications.type.announcement': 'Announcement',
     'notifications.type.duplicate_alert': 'Duplicate',
     'notifications.type.system': 'System',
+    'notifications.type.profiling_required': 'Profiling Required',
+    'notifications.type.profiling_completed': 'Profiling Completed',
+    'notifications.type.account_deletion': 'Account Deletion',
+    'notifications.type.account_reactivation': 'Account Reactivation',
 
     'programs.available': 'Available Programs',
     'programs.search': 'Search programs...',
@@ -138,6 +152,16 @@ const fil: Dictionary = {
     'nav.myApplications': 'Aking mga Aplikasyon',
     'nav.announcements': 'Mga Anunsyo',
     'nav.myProfile': 'Aking Impormasyon',
+    'nav.residents': 'Mga Residente',
+    'nav.pendingResidentAccounts': 'Mga Pending nga Account sa Residente',
+    'nav.households': 'Mga Panimalay',
+    'nav.duplicateAlerts': 'Mga Duplicate Alert',
+    'nav.reports': 'Mga Report',
+    'nav.staff': 'Mga Kawani',
+    'nav.accountRecovery': 'Pag-recover sa Account',
+    'nav.accountDeletionRequests': 'Mga Request sa Pag-delete sa Account',
+    'nav.accountReactivationRequests': 'Mga Request sa Pag-reactivate sa Account',
+    'nav.partnerAgencies': 'Mga Partner Agency',
 
     'common.viewAll': 'Tingnan lahat',
     'common.pending': 'naghihintay',
@@ -216,6 +240,7 @@ const fil: Dictionary = {
     'notifications.type.announcement': 'Anunsyo',
     'notifications.type.duplicate_alert': 'Duplicate',
     'notifications.type.system': 'Sistema',
+    'notifications.type.account_reactivation': 'Pag-reactivate sa Account',
 
     'programs.available': 'Mga Bukas na Programa',
     'programs.search': 'Maghanap ng mga programa...',
@@ -249,6 +274,16 @@ const ceb: Dictionary = {
     'nav.myApplications': 'Akong mga Aplikasyon',
     'nav.announcements': 'Mga Pahibalo',
     'nav.myProfile': 'Akong Impormasyon',
+    'nav.accountReactivationRequests': 'Mga Request sa Pag-reactivate sa Account',
+    'nav.partnerAgencies': 'Mga Partner Agency',
+    'nav.residents': 'Mga Residente',
+    'nav.pendingResidentAccounts': 'Mga Pending nga Account sa Residente',
+    'nav.households': 'Mga Panimalay',
+    'nav.duplicateAlerts': 'Mga Duplicate Alert',
+    'nav.reports': 'Mga Report',
+    'nav.staff': 'Mga Kawani',
+    'nav.accountRecovery': 'Pag-recover sa Account',
+    'nav.accountDeletionRequests': 'Mga Request sa Pag-delete sa Account',
 
     'common.viewAll': 'Tan-awa tanan',
     'common.pending': 'gihulat pa',
@@ -327,6 +362,7 @@ const ceb: Dictionary = {
     'notifications.type.announcement': 'Pahibalo',
     'notifications.type.duplicate_alert': 'Duplicate',
     'notifications.type.system': 'Sistema',
+    'notifications.type.account_reactivation': 'Pag-reactivate sa Account',
 
     'programs.available': 'Mga Bukas nga Programa',
     'programs.search': 'Pangitaa ang mga programa...',

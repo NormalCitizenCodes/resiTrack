@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
@@ -13,10 +13,34 @@ import { request } from '@/routes/password';
 
 type Props = {
     status?: string;
+    error?: string;
     canResetPassword: boolean;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+function AccountDeactivatedNotice({ message }: { message: string }) {
+    return (
+        <div className="mt-6 space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-foreground">
+            <p className="font-semibold text-destructive">Account Deactivated</p>
+            <p className="whitespace-pre-line">{message.replace('Account Deactivated. ', '')}</p>
+            <div>
+                <p className="font-medium">What should I do?</p>
+                <ol className="mt-1 list-inside list-decimal space-y-1 text-muted-foreground">
+                    <li>Visit your Barangay Hall.</li>
+                    <li>Approach a Barangay Secretary, Barangay Administrator, or authorized BHW.</li>
+                    <li>Tell them that your Resident Account has been deactivated.</li>
+                    <li>The barangay staff will verify your identity and account.</li>
+                    <li>After verification, the Barangay Admin/Secretary may reactivate your account if appropriate.</li>
+                </ol>
+            </div>
+            <p className="text-muted-foreground">Please provide your full name and registered email address so the barangay staff can locate your account and verify your information.</p>
+                    <Button asChild variant="outline" className="w-full">
+                        <Link href="/account-reactivation/request">Request Account Reactivation</Link>
+                    </Button>
+        </div>
+    );
+}
+
+export default function Login({ status, error, canResetPassword }: Props) {
     return (
         <>
             <Head title="Resident Portal Login" />
@@ -30,7 +54,7 @@ export default function Login({ status, canResetPassword }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email or Resident ID</Label>
+                                <Label htmlFor="email">Resident ID or Email</Label>
                                 <Input
                                     id="email"
                                     type="text"
@@ -39,9 +63,11 @@ export default function Login({ status, canResetPassword }: Props) {
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="username"
-                                    placeholder="Enter your email or Resident ID"
+                                    placeholder="RES-2026-000123 or email@example.com"
                                 />
-                                <InputError message={errors.email} />
+                                {!errors.email?.startsWith('Account Deactivated.') && (
+                                    <InputError message={errors.email} />
+                                )}
                             </div>
 
                             <div className="grid gap-2">
@@ -95,6 +121,9 @@ export default function Login({ status, canResetPassword }: Props) {
                                 Sign up
                             </TextLink>
                         </div>
+                        {errors.email?.startsWith('Account Deactivated.') && (
+                            <AccountDeactivatedNotice message={errors.email} />
+                        )}
                     </>
                 )}
             </Form>
@@ -103,6 +132,9 @@ export default function Login({ status, canResetPassword }: Props) {
                 <div className="mb-4 text-center text-sm font-medium text-green-600">
                     {status}
                 </div>
+            )}
+            {error?.startsWith('Account Deactivated.') && (
+                <AccountDeactivatedNotice message={error} />
             )}
         </>
     );

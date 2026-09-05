@@ -47,13 +47,20 @@ export default function ResidentShow({ resident, alerts }: { resident: Resident;
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4">
                 {flash.residentRegistration && (
                     <Card className="border-primary/30 bg-primary/5">
-                        <CardHeader><CardTitle>Resident Successfully Registered</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>{flash.residentRegistration.accountLinked ? 'Official profiling completed' : 'Resident Successfully Registered'}</CardTitle></CardHeader>
                         <CardContent className="space-y-2 text-sm">
                             <p className="text-lg font-semibold">{flash.residentRegistration.name}</p>
                             <p>Resident ID: <strong>{flash.residentRegistration.residentId}</strong></p>
                             <p>Household: <strong>{flash.residentRegistration.householdId ?? 'Unassigned'}</strong></p>
-                            <p>Resident Portal: <strong>{flash.residentRegistration.accountCreated ? 'Account created' : 'No account created'}</strong></p>
-                            {flash.residentRegistration.accountCreated && <p>The resident can log in using their Resident ID and password{flash.residentRegistration.emailLoginAvailable ? ' or email and password.' : '.'}</p>}
+                            {flash.residentRegistration.accountLinked && (
+                                <p>The existing resident account is now linked to this official record. The resident can log in using their Resident ID or email and password.</p>
+                            )}
+                            {!flash.residentRegistration.accountLinked && (
+                                <>
+                                    <p>Resident Portal: <strong>{flash.residentRegistration.accountCreated ? 'Account created' : 'No account created'}</strong></p>
+                                    {flash.residentRegistration.accountCreated && <p>The resident can log in using their Resident ID and password{flash.residentRegistration.emailLoginAvailable ? ' or email and password.' : '.'}</p>}
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 )}
@@ -116,6 +123,7 @@ export default function ResidentShow({ resident, alerts }: { resident: Resident;
                     </CardHeader>
                     <CardContent>
                         <dl className="grid gap-4 md:grid-cols-3">
+                            <DetailRow label="Resident ID" value={resident.resident_id} />
                             <DetailRow label="PhilSys Card No." value={resident.philsys_card_no} />
                             <DetailRow label="Date of Birth" value={resident.date_of_birth?.substring(0, 10)} />
                             <DetailRow label="Age" value={resident.age} />
@@ -125,6 +133,8 @@ export default function ResidentShow({ resident, alerts }: { resident: Resident;
                             <DetailRow label="Religion" value={resident.religion} />
                             <DetailRow label="Citizenship" value={resident.citizenship} />
                             <DetailRow label="Barangay" value={resident.barangay?.name} />
+                            <DetailRow label="Profiled by" value={resident.profiled_by?.name} />
+                            <DetailRow label="Profiling date" value={resident.profiled_at ? new Date(resident.profiled_at).toLocaleString() : null} />
                         </dl>
                     </CardContent>
                 </Card>
