@@ -1,5 +1,62 @@
 # Change Record
 
+## 2026-09-21: Role boundaries, duplicate escalation, brand system, public site
+
+Applies the September walkthrough notes, tightens the super admin role, adds a duplicate escalation step, and rebuilds the visual layer around the resiTrack brand.
+
+### Role boundaries and permissions
+- The super admin is read-only for residents and households. Write routes are grouped under `role:barangay_admin,bhw`. Deactivating or restoring a resident is now barangay admin only. Permanent deletion stays a super admin action.
+- BHWs lose all announcement access (sidebar item, list, create, delete).
+- Duplicate alert actions now verify the acting user's barangay. Previously any staff member could resolve or dismiss another barangay's alert by ID.
+- A household created by a super admin was silently filed under the first barangay in the database. Super admin creation is now blocked.
+
+### Duplicate escalation
+- New columns on `duplicate_alerts`: `escalated_at`, `escalated_by`, `escalation_note` (migration `2026_09_20_000001`).
+- A BHW can escalate a pending alert with a note. Barangay admins in that barangay are notified. Once escalated, only a barangay admin can resolve or dismiss it. An Escalated tab lists them.
+
+### Notes from the walkthrough
+- Removed the emoji and sparkle icon from the resident dashboard; status is carried by color.
+- Account reactivation request page no longer shows the sidebar.
+- Household picker shows household number, family name, and address.
+- Email is required when a BHW creates a resident portal account.
+- Households list gains purok, wellbeing level, and 4Ps filters and a wellbeing column.
+- Dashboard stat cards only link for roles that can open the target page.
+
+### Super admin oversight
+- Barangay filter and column on the Residents and Households lists, and a By Barangay summary on the dashboard.
+
+### Staff conveniences
+- Quick resident search in the top bar, sidebar badges (pending alerts, pending resident accounts), and a role-aware quick action.
+
+### Brand and design system
+- Light-first palette, Inter, status color tokens, and restrained navy gradients, all in `resources/css/app.css`. Light is now the default theme, with a one-time reset of browsers that had the old automatic "system" value.
+- Real logo replaces the placeholder badge everywhere, with regenerated favicon and touch icons. The wordmark is standardized to `resiTrack`.
+- Floating navy sidebar with a pill light and dark toggle, badges, and a quick action. The toggle animates in step with the sidebar.
+- Resident dashboard rebuilt with a welcome band, quick links, and a two-column layout.
+
+### Responsive behavior
+- Below 1024px the sidebar is a drawer that closes after each link and does not remember state. On larger screens the collapsed or expanded state persists across pages via the `sidebar_state` cookie, which is now the source of truth over the per-request prop.
+- Fixed overflow on the landing header, duplicate alert tabs and buttons, top bar, pagination, and notification titles. Phones show only the current page name in the breadcrumb.
+
+### Public site
+- New landing page with a hero, live aggregate numbers, a partner agency section, a resident guide, and a footer, served by `LandingController`.
+- New Privacy Notice, Terms of Use, and FAQ pages (drafts for review).
+- The landing header collapses to a menu drawer on phones.
+- Redesigned sign-in and sign-up pages with a Log in / Sign up switch and a live password checklist built from the server's password rules.
+
+### Bug fixes found along the way
+- Logged-out visitors opening `/programs` saw a blank page (a missing language provider in the guest layout). Present since the first commit.
+- React hydration mismatches on pages with read-aloud buttons (the button checked browser speech support during render). Fixed with `useSyncExternalStore`.
+- All em dashes removed from copy, comments, and documentation.
+
+### Tests
+- New tests for super admin read-only access, per-barangay dashboard summary, duplicate escalation, alert barangay isolation, household filters, sidebar badge scoping, sidebar cookie state, the public landing page (totals only, no names), and the three legal pages. 130 tests pass.
+
+### Operational notes
+- Run `php artisan migrate` for the escalation columns.
+- Restart `npm run dev` after pulling, since the font configuration in `vite.config.ts` changed.
+- If Vite serves an empty module after a file is rewritten while the dev server runs, touch the file or restart Vite.
+
 ## Feature Branch
 
 `feature/resident-registration-bhw-flow`
