@@ -1,1 +1,5 @@
 *.sqlite*
+
+# The one database we do commit: a clean sample built from the seeders (test
+# accounts and fake residents only). Never commit database/database.sqlite.
+!sample/resitrack-sample.sqlite

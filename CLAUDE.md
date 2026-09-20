@@ -28,6 +28,8 @@ composer ci:check         # everything CI runs
 
 On this Windows machine `composer`/`php` are only on PATH in PowerShell (Herd Lite), not in the Bash tool.
 
+Database files: never commit `database/database.sqlite` (it is the local working DB, holds real emails and sessions, and git cannot replace it while the dev server has it open). The only tracked database is the clean sample at `database/sample/resitrack-sample.sqlite`; regenerate it after migration or seeder changes as described in the README, and check it has no non-`.test` accounts before committing.
+
 Dev server gotchas: restart `composer run dev` after changing `vite.config.ts`. If Vite serves an empty module after a file is rewritten while it is running (the browser then reports a missing export and nothing is clickable), `touch` the file or restart Vite. PHPStan and ESLint both report existing issues in older code; do not treat those as regressions from new work.
 
 ## Architecture

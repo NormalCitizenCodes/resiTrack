@@ -67,6 +67,25 @@ npm run dev            # Vite dev server (HMR)
 
 For a clean local database, use `php artisan migrate:fresh --seed`. Do not use that command against a shared or production database.
 
+### Sample database
+
+`database/sample/resitrack-sample.sqlite` is a ready-made database with the test accounts below, 54 fake residents, 12 households, and 4 programs, so you can explore the app without seeding. It contains no real people and no login sessions.
+
+```bash
+copy database\sample\resitrack-sample.sqlite database\database.sqlite   # Windows PowerShell
+# cp database/sample/resitrack-sample.sqlite database/database.sqlite   # macOS/Linux
+php artisan migrate       # applies any migrations newer than the snapshot
+```
+
+Never commit `database/database.sqlite` itself: it is your working database and is ignored on purpose. Only the sample snapshot is tracked. If you add a migration or change the seeders, regenerate the snapshot against a scratch file so your own database is untouched:
+
+```powershell
+$env:DB_DATABASE = "$PWD\database\sample\resitrack-sample.sqlite"
+php artisan migrate:fresh --seed --force
+php artisan db:seed --class=SampleResidentSeeder --force
+Remove-Item Env:\DB_DATABASE
+```
+
 ## Useful Commands
 
 ```bash

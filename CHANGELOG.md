@@ -52,6 +52,10 @@ Applies the September walkthrough notes, tightens the super admin role, adds a d
 ### Tests
 - New tests for super admin read-only access, per-barangay dashboard summary, duplicate escalation, alert barangay isolation, household filters, sidebar badge scoping, sidebar cookie state, the public landing page (totals only, no names), and the three legal pages. 130 tests pass.
 
+### Sample database
+- `database/sample/resitrack-sample.sqlite` is now tracked: a clean snapshot built from the seeders (6 test accounts, 54 fake residents, 12 households, 4 programs), with no real people, sessions or tokens. `database/database.sqlite` stays untracked and ignored. See the README for how to use and regenerate it.
+- An earlier upload had force-added `database/database.sqlite` to `main`. It was removed from tracking: it was local state on an out-of-date schema.
+
 ### Operational notes
 - Run `php artisan migrate` for the escalation columns.
 - Restart `npm run dev` after pulling, since the font configuration in `vite.config.ts` changed.
