@@ -1,13 +1,13 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { ArrowRight, Lock, UserRound } from 'lucide-react';
+import { IconInput } from '@/components/icon-input';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -43,19 +43,20 @@ function AccountDeactivatedNotice({ message }: { message: string }) {
 export default function Login({ status, error, canResetPassword }: Props) {
     return (
         <>
-            <Head title="Resident Portal Login" />
+            <Head title="Log in" />
 
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-5"
             >
                 {({ processing, errors }) => (
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Resident ID or Email</Label>
-                                <Input
+                                <IconInput
+                                    icon={<UserRound />}
                                     id="email"
                                     type="text"
                                     name="email"
@@ -84,6 +85,7 @@ export default function Login({ status, error, canResetPassword }: Props) {
                                     )}
                                 </div>
                                 <PasswordInput
+                                    icon={<Lock />}
                                     id="password"
                                     name="password"
                                     required
@@ -110,17 +112,12 @@ export default function Login({ status, error, canResetPassword }: Props) {
                                 disabled={processing}
                                 data-test="login-button"
                             >
-                                {processing && <Spinner />}
+                                {processing ? <Spinner /> : null}
                                 Log in
+                                {!processing && <ArrowRight className="size-4" />}
                             </Button>
                         </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                Sign up
-                            </TextLink>
-                        </div>
                         {errors.email?.startsWith('Account Deactivated.') && (
                             <AccountDeactivatedNotice message={errors.email} />
                         )}
@@ -141,6 +138,7 @@ export default function Login({ status, error, canResetPassword }: Props) {
 }
 
 Login.layout = {
-    title: 'Welcome to resiTrack',
-    description: 'Resident Portal',
+    title: 'Welcome back',
+    description: 'Log in with your Resident ID or email.',
+    tab: 'login',
 };

@@ -18,4 +18,6 @@ export type AuthLayoutProps = {
     name?: string;
     title?: string;
     description?: string;
+    /** Which side of the Log in / Sign up switch to highlight; omit on other auth pages. */
+    tab?: 'login' | 'register';
 };

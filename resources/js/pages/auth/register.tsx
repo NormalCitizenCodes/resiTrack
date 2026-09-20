@@ -1,13 +1,14 @@
 import { Form, Head } from '@inertiajs/react';
+import { ArrowRight, BadgeCheck, Lock, Mail, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { IconInput } from '@/components/icon-input';
 import InputError from '@/components/input-error';
+import { PasswordChecklist } from '@/components/password-checklist';
 import PasswordInput from '@/components/password-input';
-import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { login } from '@/routes';
 import { store } from '@/routes/register';
 
 type Props = {
@@ -16,22 +17,32 @@ type Props = {
 };
 
 export default function Register({ passwordRules, barangays }: Props) {
+    const [password, setPassword] = useState('');
+    const [confirmation, setConfirmation] = useState('');
+
     return (
         <>
-            <Head title="Register" />
+            <Head title="Sign up" />
             <Form
                 {...store.form()}
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-5"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
+                        <p className="flex items-start gap-2.5 rounded-lg border border-info/40 bg-info/10 p-3 text-sm leading-5">
+                            <BadgeCheck className="mt-0.5 size-4 shrink-0 text-info-text" aria-hidden="true" />
+                            <span>
+                                After you sign up, finish verification in person at the Barangay Hall with a valid ID.
+                            </span>
+                        </p>
+
+                        <div className="grid gap-5">
                             <div className="grid gap-2">
                                 <Label htmlFor="barangay_id">Barangay</Label>
                                 <Select name="barangay_id" required>
-                                    <SelectTrigger id="barangay_id">
+                                    <SelectTrigger id="barangay_id" className="w-full">
                                         <SelectValue placeholder="Select your barangay" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -46,8 +57,9 @@ export default function Register({ passwordRules, barangays }: Props) {
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
+                                <Label htmlFor="name">Full name</Label>
+                                <IconInput
+                                    icon={<UserRound />}
                                     id="name"
                                     type="text"
                                     required
@@ -55,17 +67,15 @@ export default function Register({ passwordRules, barangays }: Props) {
                                     tabIndex={1}
                                     autoComplete="name"
                                     name="name"
-                                    placeholder="Full name"
+                                    placeholder="Juan Dela Cruz"
                                 />
-                                <InputError
-                                    message={errors.name}
-                                    className="mt-2"
-                                />
+                                <InputError message={errors.name} className="mt-2" />
                             </div>
 
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email address</Label>
-                                <Input
+                                <IconInput
+                                    icon={<Mail />}
                                     id="email"
                                     type="email"
                                     required
@@ -80,51 +90,47 @@ export default function Register({ passwordRules, barangays }: Props) {
                             <div className="grid gap-2">
                                 <Label htmlFor="password">Password</Label>
                                 <PasswordInput
+                                    icon={<Lock />}
                                     id="password"
                                     required
                                     tabIndex={3}
                                     autoComplete="new-password"
                                     name="password"
-                                    placeholder="Password"
+                                    placeholder="Create a password"
                                     passwordrules={passwordRules}
+                                    onChange={(event) => setPassword(event.target.value)}
                                 />
                                 <InputError message={errors.password} />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password_confirmation">
-                                    Confirm password
-                                </Label>
+                                <Label htmlFor="password_confirmation">Confirm password</Label>
                                 <PasswordInput
+                                    icon={<Lock />}
                                     id="password_confirmation"
                                     required
                                     tabIndex={4}
                                     autoComplete="new-password"
                                     name="password_confirmation"
-                                    placeholder="Confirm password"
+                                    placeholder="Type it again"
                                     passwordrules={passwordRules}
+                                    onChange={(event) => setConfirmation(event.target.value)}
                                 />
-                                <InputError
-                                    message={errors.password_confirmation}
-                                />
+                                <InputError message={errors.password_confirmation} />
                             </div>
+
+                            <PasswordChecklist rules={passwordRules} password={password} confirmation={confirmation} />
 
                             <Button
                                 type="submit"
-                                className="mt-2 w-full"
+                                className="w-full"
                                 tabIndex={5}
                                 data-test="register-user-button"
                             >
-                                {processing && <Spinner />}
+                                {processing ? <Spinner /> : null}
                                 Create account
+                                {!processing && <ArrowRight className="size-4" />}
                             </Button>
-                        </div>
-
-                        <div className="text-center text-sm text-muted-foreground">
-                            Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={6}>
-                                Log in
-                            </TextLink>
                         </div>
                     </>
                 )}
@@ -134,6 +140,7 @@ export default function Register({ passwordRules, barangays }: Props) {
 }
 
 Register.layout = {
-    title: 'Create an account',
-    description: 'Enter your details below to create your account',
+    title: 'Create your account',
+    description: 'Register online, then verify at your Barangay Hall.',
+    tab: 'register',
 };
