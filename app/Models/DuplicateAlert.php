@@ -32,6 +32,7 @@ class DuplicateAlert extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function escalator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'escalated_by');

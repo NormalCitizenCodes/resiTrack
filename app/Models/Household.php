@@ -60,6 +60,7 @@ class Household extends Model
         return $this->hasMany(HouseholdWellbeingAssessment::class);
     }
 
+    /** @return HasOne<HouseholdWellbeingAssessment, $this> */
     public function currentWellbeing(): HasOne
     {
         return $this->hasOne(HouseholdWellbeingAssessment::class)->latestOfMany(['assessment_date', 'id']);
