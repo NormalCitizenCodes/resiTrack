@@ -71,10 +71,10 @@ export default function MyApplications({
                                             </Link>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
-                                            {application.program?.agency?.agency_type ?? '—'}
+                                            {application.program?.agency?.agency_type ?? '-'}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
-                                            {application.applied_at?.substring(0, 10) ?? '—'}
+                                            {application.applied_at?.substring(0, 10) ?? '-'}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={STATUS_VARIANT[application.status] ?? 'outline'}>

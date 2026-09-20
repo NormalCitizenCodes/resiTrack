@@ -181,14 +181,14 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        {resident.age ?? '—'}
-                                        <span className="text-muted-foreground"> / {resident.sex ?? '—'}</span>
+                                        {resident.age ?? '-'}
+                                        <span className="text-muted-foreground"> / {resident.sex ?? '-'}</span>
                                     </TableCell>
                                     {isSuperAdmin && (
-                                        <TableCell className="text-muted-foreground">{resident.barangay?.name ?? '—'}</TableCell>
+                                        <TableCell className="text-muted-foreground">{resident.barangay?.name ?? '-'}</TableCell>
                                     )}
                                     <TableCell className="text-muted-foreground">
-                                        {resident.household?.household_number ?? '—'}
+                                        {resident.household?.household_number ?? '-'}
                                     </TableCell>
                                     <TableCell>
                                         <SectorBadges sectors={resident.sectors} />

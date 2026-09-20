@@ -18,7 +18,7 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
     return (
         <div>
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="text-sm font-medium">{value !== null && value !== undefined && value !== '' ? value : '—'}</dd>
+            <dd className="text-sm font-medium">{value !== null && value !== undefined && value !== '' ? value : '-'}</dd>
         </div>
     );
 }

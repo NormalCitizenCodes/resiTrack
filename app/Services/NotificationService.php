@@ -14,7 +14,7 @@ use App\Models\User;
  * rather than via Eloquent events.
  *
  * Notification types (see the app_notifications enum): program_match, announcement,
- * duplicate_alert, system. Only program_match and announcement are wired today —
+ * duplicate_alert, system. Only program_match and announcement are wired today -
  * duplicate_alert and system remain valid for future use (no resident-facing
  * duplicate UI / admin broadcast UI exists yet).
  */
@@ -60,7 +60,7 @@ class NotificationService
             ->where('barangay_id', $registration->barangay_id)
             ->get(['id']);
 
-        $email = $registration->email ?: '—';
+        $email = $registration->email ?: '-';
         $message = implode("\n", [
             'A new resident account has been created and is waiting for verification and profiling.',
             '',

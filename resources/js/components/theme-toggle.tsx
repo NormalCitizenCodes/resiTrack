@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 /**
  * Compact light/dark switch (as opposed to appearance-tabs.tsx's 3-way
  * light/dark/system segmented control, which is too wide for a header).
- * Toggling out of "system" is intentional here — a landing-page header
+ * Toggling out of "system" is intentional here - a landing-page header
  * switch should reflect a direct choice, not the OS preference.
  */
 export function ThemeToggle({ className }: { className?: string }) {

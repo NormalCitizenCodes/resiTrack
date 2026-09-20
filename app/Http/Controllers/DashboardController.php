@@ -40,7 +40,7 @@ class DashboardController extends Controller
 
     /**
      * A resident's own dashboard: a feed (their notifications, richer than the
-     * bell dropdown) plus a profile-completeness nudge and sector breakdown —
+     * bell dropdown) plus a profile-completeness nudge and sector breakdown -
      * distinct from the staff aggregate-stats view above.
      */
     private function residentDashboard(User $user): Response

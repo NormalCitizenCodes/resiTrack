@@ -77,7 +77,7 @@ class SectorClassificationService
     }
 
     /**
-     * Plain-English reasons for each sector a resident currently belongs to —
+     * Plain-English reasons for each sector a resident currently belongs to -
      * surfaced on the resident's own dashboard so classification isn't an
      * invisible backend rule. Only covers sectors the resident is already in
      * (mirrors the pivot populated by classify()), not a re-evaluation.

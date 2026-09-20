@@ -115,15 +115,15 @@ export default function ProgramShow(props: Props) {
                 <Card>
                     <CardContent className="grid gap-4 md:grid-cols-4">
                         <div className="md:col-span-3">
-                            <p className="text-sm">{program.description ?? '—'}</p>
+                            <p className="text-sm">{program.description ?? '-'}</p>
                             {program.eligibility_criteria && (
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     <span className="font-medium">Eligibility:</span> {program.eligibility_criteria}
                                 </p>
                             )}
                             <p className="mt-2 text-xs text-muted-foreground">
-                                {program.start_date?.substring(0, 10) ?? '—'} to{' '}
-                                {program.end_date?.substring(0, 10) ?? '—'}
+                                {program.start_date?.substring(0, 10) ?? '-'} to{' '}
+                                {program.end_date?.substring(0, 10) ?? '-'}
                             </p>
                         </div>
                         <div className="rounded-lg border p-3 text-center">
@@ -205,7 +205,7 @@ export default function ProgramShow(props: Props) {
                                                 {application.resident?.full_name ?? `Resident #${application.resident_id}`}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {application.resident?.barangay?.name ?? '—'}
+                                                {application.resident?.barangay?.name ?? '-'}
                                             </TableCell>
                                             <TableCell>
                                                 <StatusBadge status={application.status} />

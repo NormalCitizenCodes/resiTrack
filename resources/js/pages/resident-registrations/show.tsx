@@ -36,11 +36,11 @@ export default function ResidentRegistrationShow({ registration }: { registratio
                         </div>
                         <div>
                             <dt className="text-xs text-muted-foreground">Email</dt>
-                            <dd className="text-sm font-medium">{registration.email ?? '—'}</dd>
+                            <dd className="text-sm font-medium">{registration.email ?? '-'}</dd>
                         </div>
                         <div>
                             <dt className="text-xs text-muted-foreground">Barangay</dt>
-                            <dd className="text-sm font-medium">{registration.barangay?.name ?? '—'}</dd>
+                            <dd className="text-sm font-medium">{registration.barangay?.name ?? '-'}</dd>
                         </div>
                         <div>
                             <dt className="text-xs text-muted-foreground">Account created</dt>

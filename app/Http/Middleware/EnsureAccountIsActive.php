@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Deactivating a staff account (see StaffController) must actually end their
- * access, not just block new logins — this catches an already-open session
+ * access, not just block new logins - this catches an already-open session
  * the moment their next request comes in.
  */
 class EnsureAccountIsActive

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
  * dashboard can surface an activity trail (records updated, registrations,
  * alerts resolved, applications, report generation) for LGU compliance.
  *
- * Called explicitly from controllers — consistent with the codebase's other
+ * Called explicitly from controllers - consistent with the codebase's other
  * services (SectorClassificationService, DuplicateDetectionService) rather than
  * Eloquent observers, keeping the trigger points visible and intentional.
  */

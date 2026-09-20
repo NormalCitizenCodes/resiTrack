@@ -137,15 +137,15 @@ it('forbids residents from posting announcements', function () {
 });
 
 it('only shows residents announcements for their barangay and a sector they belong to', function () {
-    // Broadcast in this barangay (no sectors attached) — visible.
+    // Broadcast in this barangay (no sectors attached) - visible.
     Announcement::create(['posted_by' => $this->staff->id, 'barangay_id' => $this->barangay->id, 'title' => 'Broadcast', 'content' => 'a', 'posted_at' => now()]);
-    // Another barangay — hidden.
+    // Another barangay - hidden.
     Announcement::create(['posted_by' => $this->staff->id, 'barangay_id' => $this->otherBarangay->id, 'title' => 'Other brgy', 'content' => 'b', 'posted_at' => now()]);
-    // Targeted at a sector the resident is NOT in — hidden.
+    // Targeted at a sector the resident is NOT in - hidden.
     $pwd = VulnerabilitySector::where('code', 'PWD')->first();
     $pwdOnly = Announcement::create(['posted_by' => $this->staff->id, 'barangay_id' => $this->barangay->id, 'title' => 'PWD only', 'content' => 'c', 'posted_at' => now()]);
     $pwdOnly->sectors()->attach($pwd->id);
-    // Targeted at multiple sectors, one of which the resident IS in — visible.
+    // Targeted at multiple sectors, one of which the resident IS in - visible.
     $multi = Announcement::create(['posted_by' => $this->staff->id, 'barangay_id' => $this->barangay->id, 'title' => 'Senior + PWD', 'content' => 'd', 'posted_at' => now()]);
     $multi->sectors()->attach([$pwd->id, $this->seniorSector->id]);
 
@@ -161,7 +161,7 @@ it('notifies sector-matching residents when a program is published', function ()
     $agency = PartnerAgency::where('agency_type', 'DSWD')->first();
     $agencyUser = User::factory()->create(['role' => User::ROLE_PARTNER_AGENCY, 'agency_id' => $agency->id]);
 
-    // A resident NOT in the senior sector — should not be notified.
+    // A resident NOT in the senior sector - should not be notified.
     $nonSenior = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
     User::factory()->create(['role' => User::ROLE_RESIDENT, 'resident_id' => $nonSenior->id]);
 

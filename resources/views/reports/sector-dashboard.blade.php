@@ -19,7 +19,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>resiTrack — Sector Dashboard Report</h1>
+        <h1>resiTrack - Sector Dashboard Report</h1>
         <p class="muted">
             {{ $scope }} &bull; Cagayan de Oro City<br>
             Generated {{ $generatedAt->format('F j, Y g:i A') }} by {{ $generatedBy }}

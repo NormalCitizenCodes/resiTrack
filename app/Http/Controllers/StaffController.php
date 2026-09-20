@@ -13,7 +13,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Staff account management — creating and deactivating bhw (and, for a
+ * Staff account management - creating and deactivating bhw (and, for a
  * super admin, barangay_admin) logins. Deliberately excluded from bhw: this
  * is the one capability that actually distinguishes barangay_admin from bhw,
  * since every other route in the app treats the two roles identically.

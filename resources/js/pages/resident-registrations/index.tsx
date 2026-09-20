@@ -84,7 +84,7 @@ export default function ResidentRegistrations({
                                 {registrations.map((registration) => (
                                     <TableRow key={registration.id}>
                                         <TableCell className="font-medium">{registration.name}</TableCell>
-                                        <TableCell className="text-muted-foreground">{registration.email ?? '—'}</TableCell>
+                                        <TableCell className="text-muted-foreground">{registration.email ?? '-'}</TableCell>
                                         <TableCell><Badge variant="outline">Pending Profiling</Badge></TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">

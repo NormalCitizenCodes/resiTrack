@@ -214,7 +214,7 @@ export function ResidentForm({
                                 <SelectItem value={NONE}>Unassigned</SelectItem>
                                 {households.map((h) => (
                                     <SelectItem key={h.id} value={String(h.id)}>
-                                        {[h.household_number ?? `Household #${h.id}`, h.family_name, h.address].filter(Boolean).join(' — ')}
+                                        {[h.household_number ?? `Household #${h.id}`, h.family_name, h.address].filter(Boolean).join(' - ')}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

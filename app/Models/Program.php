@@ -37,7 +37,7 @@ class Program extends Model
     }
 
     /**
-     * Null means city-wide — open to residents of every barangay.
+     * Null means city-wide - open to residents of every barangay.
      */
     public function barangay(): BelongsTo
     {

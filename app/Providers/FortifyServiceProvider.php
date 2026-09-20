@@ -47,7 +47,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
 
-        // Default Fortify auth only checks email/password — deactivated staff
+        // Default Fortify auth only checks email/password - deactivated staff
         // (see StaffController) must be rejected here too, not just once logged in.
         Fortify::authenticateUsing(function (Request $request) {
             $identifier = trim((string) $request->input(Fortify::username()));

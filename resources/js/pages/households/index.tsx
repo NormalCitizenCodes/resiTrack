@@ -191,21 +191,21 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
                                         </Link>
                                     </TableCell>
                                     {isSuperAdmin && (
-                                        <TableCell className="text-muted-foreground">{household.barangay?.name ?? '—'}</TableCell>
+                                        <TableCell className="text-muted-foreground">{household.barangay?.name ?? '-'}</TableCell>
                                     )}
                                     <TableCell className="max-w-xs truncate text-muted-foreground">
-                                        {household.address ?? '—'}
+                                        {household.address ?? '-'}
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground">{household.zone?.zone_name ?? '—'}</TableCell>
+                                    <TableCell className="text-muted-foreground">{household.zone?.zone_name ?? '-'}</TableCell>
                                     <TableCell>{household.residents_count}</TableCell>
                                     <TableCell className="text-muted-foreground">
-                                        {household.current_wellbeing?.level?.label ?? '—'}
+                                        {household.current_wellbeing?.level?.label ?? '-'}
                                     </TableCell>
                                     <TableCell>
                                         {household.is_4ps_beneficiary ? (
                                             <Badge variant="secondary">4Ps</Badge>
                                         ) : (
-                                            <span className="text-muted-foreground">—</span>
+                                            <span className="text-muted-foreground">-</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">

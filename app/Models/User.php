@@ -51,7 +51,7 @@ class User extends Authenticatable implements PasskeyUser
     public const ROLE_RESIDENT = 'resident';
 
     /**
-     * The DB column defaults to true, but that only takes effect on INSERT —
+     * The DB column defaults to true, but that only takes effect on INSERT -
      * an in-memory instance (e.g. the object CreateNewUser::create() hands
      * straight to Auth::login() during self-registration) never sees it
      * unless it's also set here, or EnsureAccountIsActive would immediately

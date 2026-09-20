@@ -21,7 +21,7 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
     return (
         <div>
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="text-sm font-medium">{value !== null && value !== undefined && value !== '' ? value : '—'}</dd>
+            <dd className="text-sm font-medium">{value !== null && value !== undefined && value !== '' ? value : '-'}</dd>
         </div>
     );
 }
@@ -109,12 +109,12 @@ function WellbeingCard({
                         <TableBody>
                             {assessments.map((assessment) => (
                                 <TableRow key={assessment.id}>
-                                    <TableCell>{assessment.assessment_date?.substring(0, 10) ?? '—'}</TableCell>
-                                    <TableCell>{assessment.level?.label ?? '—'}</TableCell>
+                                    <TableCell>{assessment.assessment_date?.substring(0, 10) ?? '-'}</TableCell>
+                                    <TableCell>{assessment.level?.label ?? '-'}</TableCell>
                                     <TableCell className="text-muted-foreground">
-                                        {assessment.assessor?.name ?? '—'}
+                                        {assessment.assessor?.name ?? '-'}
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground">{assessment.remarks ?? '—'}</TableCell>
+                                    <TableCell className="text-muted-foreground">{assessment.remarks ?? '-'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -193,8 +193,8 @@ export default function HouseholdShow({
                                     <TableRow key={member.id}>
                                         <TableCell className="font-medium">{member.full_name}</TableCell>
                                         <TableCell>
-                                            {member.age ?? '—'}
-                                            <span className="text-muted-foreground"> / {member.sex ?? '—'}</span>
+                                            {member.age ?? '-'}
+                                            <span className="text-muted-foreground"> / {member.sex ?? '-'}</span>
                                         </TableCell>
                                         <TableCell>
                                             <SectorBadges sectors={member.sectors} />

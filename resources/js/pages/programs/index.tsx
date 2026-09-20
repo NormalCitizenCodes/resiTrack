@@ -116,7 +116,7 @@ export default function ProgramsIndex({
                                 </CardHeader>
                                 <CardContent className="flex flex-1 flex-col gap-3">
                                     <p className="line-clamp-2 text-sm text-muted-foreground">
-                                        {program.description ?? '—'}
+                                        {program.description ?? '-'}
                                     </p>
                                     <SectorBadges sectors={program.sectors} />
                                     <p className="text-xs text-muted-foreground">{t('programs.deadline', { date: program.end_date?.substring(0, 10) ?? t('programs.notSpecified') })}</p>
