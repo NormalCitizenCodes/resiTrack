@@ -1,6 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { AlertTriangle, Home, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 
 type SectorCount = { code: string; name: string; count: number };
@@ -15,11 +16,11 @@ type Stats = {
 };
 
 const SECTOR_BAR: Record<string, string> = {
-    SENIOR: 'bg-amber-500',
-    PWD: 'bg-blue-500',
-    OSY: 'bg-purple-500',
-    SOLO_PARENT: 'bg-rose-500',
-    PREGNANT: 'bg-pink-500',
+    SENIOR: 'bg-chart-5',
+    PWD: 'bg-chart-1',
+    OSY: 'bg-chart-2',
+    SOLO_PARENT: 'bg-chart-4',
+    PREGNANT: 'bg-chart-3',
 };
 
 function StatCard({
@@ -27,29 +28,31 @@ function StatCard({
     value,
     icon: Icon,
     href,
-    accent,
 }: {
     label: string;
     value: number;
     icon: typeof Users;
     href?: string;
-    accent?: string;
 }) {
     const body = (
-        <Card className="transition-colors hover:border-primary/40">
-            <CardContent className="flex items-center justify-between">
+        <Card className={cn('h-full', href && 'transition-colors hover:border-primary/50')}>
+            <CardContent className="flex items-start justify-between gap-4">
                 <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="mt-1 text-3xl font-semibold tracking-tight">{value.toLocaleString()}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                    <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{value.toLocaleString()}</p>
                 </div>
-                <div className={`rounded-xl p-3 ${accent ?? 'bg-muted'}`}>
-                    <Icon className="size-6" />
-                </div>
+                <Icon className="size-5 shrink-0 text-muted-foreground" />
             </CardContent>
         </Card>
     );
 
-    return href ? <Link href={href}>{body}</Link> : body;
+    return href ? (
+        <Link href={href} className="rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+            {body}
+        </Link>
+    ) : (
+        body
+    );
 }
 
 type BarangaySummary = { id: number; name: string; residents: number; households: number; pending_duplicates: number };
@@ -77,21 +80,18 @@ export default function Dashboard({ stats, scope, barangays }: { stats: Stats; s
                         value={stats.total_residents}
                         icon={Users}
                         href={isStaff ? '/residents' : undefined}
-                        accent="bg-primary/10 text-primary"
                     />
                     <StatCard
                         label="Total Households"
                         value={stats.total_households}
                         icon={Home}
                         href={isStaff ? '/households' : undefined}
-                        accent="bg-emerald-500/10 text-emerald-600"
                     />
                     <StatCard
                         label="Pending Duplicate Alerts"
                         value={stats.pending_duplicates}
                         icon={AlertTriangle}
                         href={isStaff ? '/duplicate-alerts' : undefined}
-                        accent="bg-amber-500/10 text-amber-600"
                     />
                 </div>
 

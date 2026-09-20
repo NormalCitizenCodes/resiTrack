@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import AppLogoIcon from '@/components/app-logo-icon';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 
@@ -9,36 +10,36 @@ export default function AuthSimpleLayout({
 }: AuthLayoutProps) {
     return (
         <div className="grid min-h-svh bg-background lg:grid-cols-[minmax(280px,0.82fr)_minmax(420px,1fr)]">
-            <aside className="relative hidden overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
-                <div className="absolute -right-24 -top-24 size-72 rounded-full border-[32px] border-sidebar-primary/10" />
+            <aside className="relative hidden overflow-hidden bg-brand-navy p-10 text-white lg:flex lg:flex-col lg:justify-between">
+                <BrandPath />
                 <div className="relative">
                     <Link href={home()} className="inline-flex items-center gap-3">
-                        <span className="flex size-10 items-center justify-center rounded-md bg-sidebar-primary text-sm font-bold tracking-tight text-sidebar-primary-foreground">
-                            RT
-                        </span>
-                        <span className="text-lg font-semibold tracking-tight">ResiTrack</span>
+                        <AppLogoIcon className="size-10 rounded-md bg-white/95 p-1" />
+                        <span className="text-lg font-semibold tracking-tight">resiTrack</span>
                     </Link>
                     <div className="mt-24 max-w-sm">
-                        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-sidebar-primary">
+                        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-brand-cyan">
                             Barangay information system
                         </p>
-                        <h2 className="text-4xl font-semibold leading-tight tracking-tight">
-                            Better records. Better reach.
+                        <h2 className="text-4xl font-bold leading-tight tracking-tight">
+                            Track today.
+                            <br />
+                            Brighter tomorrows.
                         </h2>
-                        <p className="mt-5 max-w-xs text-sm leading-6 text-sidebar-foreground/65">
+                        <p className="mt-5 max-w-xs text-sm leading-6 text-white/70">
                             A clear, shared view of residents, households, and services for the people who serve them.
                         </p>
                     </div>
                 </div>
-                <p className="relative text-xs text-sidebar-foreground/45">Cagayan de Oro City · Community services</p>
+                <p className="relative text-xs text-white/50">Cagayan de Oro City · Community services</p>
             </aside>
 
             <main className="flex items-center justify-center px-6 py-12 sm:px-10">
                 <div className="w-full max-w-md">
                     <div className="mb-10 lg:hidden">
                         <Link href={home()} className="inline-flex items-center gap-3 text-lg font-semibold tracking-tight">
-                            <span className="flex size-10 items-center justify-center rounded-md bg-primary text-sm font-bold tracking-tight text-primary-foreground">RT</span>
-                            ResiTrack
+                            <AppLogoIcon className="size-10" />
+                            resiTrack
                         </Link>
                     </div>
                     <div className="mb-8 space-y-2">
@@ -48,6 +49,24 @@ export default function AuthSimpleLayout({
                     {children}
                 </div>
             </main>
-            </div>
+        </div>
+    );
+}
+
+/**
+ * The logo's path motif as a background graphic — brand spec §28 allows it on
+ * login/landing surfaces, kept subtle and never inside the app itself.
+ */
+function BrandPath() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 400 600"
+            preserveAspectRatio="xMidYMax slice"
+            className="pointer-events-none absolute inset-0 size-full opacity-[0.16]"
+        >
+            <path d="M-40 250 C 120 250, 240 360, 300 640" fill="none" stroke="var(--color-brand-cyan)" strokeWidth="26" strokeLinecap="round" />
+            <path d="M-40 250 C 160 270, 300 400, 420 620" fill="none" stroke="var(--color-brand-green)" strokeWidth="18" strokeLinecap="round" />
+        </svg>
     );
 }

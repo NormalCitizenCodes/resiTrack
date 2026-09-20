@@ -1,6 +1,8 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { CopyCheck, LayoutDashboard, Layers, ShieldCheck, Users } from 'lucide-react';
+import { CopyCheck, LayoutDashboard, Layers, Users } from 'lucide-react';
+import AppLogoIcon from '@/components/app-logo-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Button } from '@/components/ui/button';
 import { login, register } from '@/routes';
 
 const features = [
@@ -39,30 +41,22 @@ export default function Welcome() {
             <div className="min-h-screen bg-background text-foreground">
                 <header className="mx-auto flex w-full max-w-6xl items-center justify-between p-6">
                     <div className="flex items-center gap-2">
-                        <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                            <ShieldCheck className="size-5" />
-                        </span>
+                        <AppLogoIcon className="size-9" />
                         <span className="text-lg font-semibold tracking-tight">resiTrack</span>
                     </div>
-                    <nav className="flex items-center gap-3">
-                        <Link href="/programs" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">
-                            Programs
-                        </Link>
+                    <nav className="flex items-center gap-2">
+                        <Button asChild variant="ghost" size="sm">
+                            <Link href="/programs">Programs</Link>
+                        </Button>
                         <ThemeToggle />
                         {!auth.user && (
                             <>
-                                <Link
-                                    href={login()}
-                                    className="rounded-md px-5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                                >
-                                    Log in
-                                </Link>
-                                <Link
-                                    href={register()}
-                                    className="rounded-md border border-border px-5 py-2 text-sm font-medium hover:border-foreground/40"
-                                >
-                                    Register
-                                </Link>
+                                <Button asChild variant="ghost" size="sm">
+                                    <Link href={login()}>Log in</Link>
+                                </Button>
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={register()}>Register</Link>
+                                </Button>
                             </>
                         )}
                     </nav>
@@ -73,34 +67,31 @@ export default function Welcome() {
                         <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
                             Barangay 22 · Cagayan de Oro City
                         </span>
-                        <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-bold tracking-tight md:text-6xl">
-                            Resident profiling for{' '}
-                            <span className="text-primary">equitable social services</span>
+                        <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-bold uppercase leading-[1.1] tracking-tight md:text-6xl">
+                            Track today.
+                            <br />
+                            <span className="text-primary">Brighter tomorrows.</span>
                         </h1>
-                        <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">
-                            A web- and mobile-based system that profiles vulnerable residents, detects duplicate and
-                            transferred records, and turns barangay data into fair, data-driven decisions.
+                        <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
+                            A smarter way to understand communities, track services, and turn local data into
+                            meaningful action — for every resident, in every barangay.
                         </p>
-                        <div className="mt-8 flex justify-center gap-3">
-                            <Link
-                                href={auth.user ? '/programs' : login()}
-                                className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                            >
-                                {auth.user ? 'View Programs' : 'Get Started'}
-                            </Link>
-                            <a
-                                href="#features"
-                                className="rounded-md border border-border px-6 py-2.5 text-sm font-medium hover:border-foreground/40"
-                            >
-                                Learn more
-                            </a>
+                        <div className="mt-9 flex flex-wrap justify-center gap-3">
+                            <Button asChild size="lg">
+                                <Link href={auth.user ? '/programs' : login()}>
+                                    {auth.user ? 'View Programs' : 'Access System'}
+                                </Link>
+                            </Button>
+                            <Button asChild size="lg" variant="outline">
+                                <a href="#features">Learn more</a>
+                            </Button>
                         </div>
                     </section>
 
                     <section id="features" className="grid gap-4 pb-24 md:grid-cols-2">
                         {features.map((feature) => (
-                            <div key={feature.title} className="rounded-xl border border-border bg-card/50 p-6">
-                                <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <div key={feature.title} className="rounded-lg border border-border bg-card p-6">
+                                <span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                                     <feature.icon className="size-5" />
                                 </span>
                                 <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
