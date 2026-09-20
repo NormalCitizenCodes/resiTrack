@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Barangay;
 use App\Models\DuplicateAlert;
 use App\Models\Household;
 use App\Models\Resident;
@@ -93,6 +94,26 @@ class DashboardStatsService
                     'count' => $count,
                 ];
             })
+            ->all();
+    }
+
+    /**
+     * Per-barangay headline counts for the city-wide (super admin) overview.
+     *
+     * @return array<int, array{id: int, name: string, residents: int, households: int, pending_duplicates: int}>
+     */
+    public function barangaySummaries(): array
+    {
+        return Barangay::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Barangay $barangay) => [
+                'id' => $barangay->id,
+                'name' => $barangay->name,
+                'residents' => Resident::query()->where('is_active', true)->where('barangay_id', $barangay->id)->count(),
+                'households' => Household::query()->where('barangay_id', $barangay->id)->count(),
+                'pending_duplicates' => $this->pendingDuplicates($barangay->id),
+            ])
             ->all();
     }
 

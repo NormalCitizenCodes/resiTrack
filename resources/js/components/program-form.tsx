@@ -58,7 +58,7 @@ export function ProgramForm({
     });
 
     // The CITYWIDE sentinel is a UI-only affordance for "no barangay selected"
-    // — the backend expects a real id or an empty value, never that string.
+    // - the backend expects a real id or an empty value, never that string.
     transform((formData) => ({
         ...formData,
         barangay_id: formData.barangay_id === CITYWIDE ? '' : formData.barangay_id,

@@ -15,8 +15,17 @@ declare module '@inertiajs/core' {
             flash: {
                 success: string | null;
                 error: string | null;
+                residentRegistration?: {
+                    residentId: string;
+                    name: string;
+                    householdId: string | number | null;
+                    accountCreated: boolean;
+                    accountLinked?: boolean;
+                    emailLoginAvailable: boolean;
+                } | null;
             };
             unreadNotifications: number;
+            navCounts?: { duplicates?: number; registrations?: number };
             sidebarOpen: boolean;
             language: 'en' | 'fil' | 'ceb';
             [key: string]: unknown;

@@ -98,7 +98,7 @@ it('deactivating a staff account blocks their next login attempt', function () {
     $this->actingAs($this->admin)->post("/staff/{$this->bhw->id}/toggle")->assertRedirect();
     expect($this->bhw->fresh()->is_active)->toBeFalse();
 
-    // Fortify's login route sits behind the `guest` middleware — still being
+    // Fortify's login route sits behind the `guest` middleware - still being
     // acting-as admin from the toggle request above would short-circuit it
     // before our authenticateUsing callback ever runs.
     $this->app['auth']->forgetGuards();

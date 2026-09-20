@@ -1,5 +1,6 @@
 import { Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import type { MouseEventHandler } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/hooks/use-translation';
 
@@ -11,15 +12,23 @@ const SPEECH_LANG: Record<string, string> = {
     ceb: 'ceb-PH',
 };
 
+const subscribeNever = () => () => {};
+const detectSpeech = () => 'speechSynthesis' in window;
+const noSpeechOnServer = () => false;
+
 /**
- * Text-to-speech via the browser's built-in Web Speech API — free, no
+ * Text-to-speech via the browser's built-in Web Speech API - free, no
  * backend, degrades to hidden if unsupported. Aimed at residents who can't
  * read at all, which a language toggle alone doesn't solve.
  */
-export function ReadAloudButton({ text }: { text: string }) {
+export function ReadAloudButton({ text, onClick }: { text: string; onClick?: MouseEventHandler<HTMLButtonElement> }) {
     const { language, t } = useTranslation();
     const [speaking, setSpeaking] = useState(false);
-    const supported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+    // Feature detection has to wait until after hydration: the server can never
+    // see speechSynthesis, so testing it during render made the server output
+    // (no button) differ from the browser's (button) on every page that lists
+    // items, forcing React to throw the server HTML away.
+    const supported = useSyncExternalStore(subscribeNever, detectSpeech, noSpeechOnServer);
 
     useEffect(() => {
         if (!supported) return;
@@ -56,7 +65,11 @@ export function ReadAloudButton({ text }: { text: string }) {
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
-            onClick={toggle}
+            onClick={(event) => {
+                event.stopPropagation();
+                onClick?.(event);
+                toggle();
+            }}
             aria-label={speaking ? t('common.stopReading') : t('common.readAloud')}
         >
             {speaking ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import PasswordInput from '@/components/password-input';
 import {
     Select,
     SelectContent,
@@ -39,6 +40,10 @@ type ResidentFormData = {
     is_pwd: boolean;
     is_solo_parent: boolean;
     is_pregnant: boolean;
+    create_account: boolean;
+    password: string;
+    password_confirmation: string;
+    linked_user_id: string;
     [key: string]: string | boolean;
 };
 
@@ -67,6 +72,10 @@ function toInitial(resident?: Resident): ResidentFormData {
         is_pwd: resident?.is_pwd ?? false,
         is_solo_parent: resident?.is_solo_parent ?? false,
         is_pregnant: resident?.is_pregnant ?? false,
+        create_account: false,
+        password: '',
+        password_confirmation: '',
+        linked_user_id: '',
     };
 }
 
@@ -78,14 +87,19 @@ export function ResidentForm({
     households,
     resident,
     submitLabel,
+    linkedUserId,
 }: {
     mode: 'create' | 'edit';
     action: string;
     households: Household[];
     resident?: Resident;
     submitLabel: string;
+    linkedUserId?: number;
 }) {
-    const { data, setData, post, put, processing, errors } = useForm<ResidentFormData>(toInitial(resident));
+    const { data, setData, post, put, processing, errors } = useForm<ResidentFormData>({
+        ...toInitial(resident),
+        linked_user_id: linkedUserId ? String(linkedUserId) : '',
+    });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -96,8 +110,15 @@ export function ResidentForm({
         }
     };
 
-    return (
-        <form onSubmit={submit} className="space-y-4">
+        return (
+            <form onSubmit={submit} className="space-y-4">
+            {linkedUserId ? (
+                <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="py-4 text-sm">
+                        This profile will be linked to the existing resident account. An official Resident ID will be assigned after you submit. Do not create a second login.
+                    </CardContent>
+                </Card>
+            ) : null}
             <Card>
                 <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
@@ -159,6 +180,17 @@ export function ResidentForm({
                 </CardContent>
             </Card>
 
+            {mode === 'create' && !linkedUserId && (
+                <Card>
+                    <CardHeader><CardTitle>Resident Portal Account</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">Ask the resident to enter their own password. The password will be hidden and cannot be viewed by the BHW.</p>
+                        <div className="flex items-center gap-3"><Checkbox id="create_account" checked={data.create_account} onCheckedChange={(checked) => setData('create_account', checked === true)} /><Label htmlFor="create_account">Create Resident Portal Account</Label></div>
+                        {data.create_account && <div className="grid gap-4 md:grid-cols-2"><Field label="Password" required error={errors.password}><PasswordInput value={data.password} onChange={(e) => setData('password', e.target.value)} autoComplete="new-password" /></Field><Field label="Confirm Password" required error={errors.password_confirmation}><PasswordInput value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} autoComplete="new-password" /></Field></div>}
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>Contact &amp; Socio-economic</CardTitle>
@@ -167,7 +199,7 @@ export function ResidentForm({
                     <Field label="Contact Number" error={errors.contact_number}>
                         <Input value={data.contact_number} onChange={(e) => setData('contact_number', e.target.value)} placeholder="09XXXXXXXXX" />
                     </Field>
-                    <Field label="Email" error={errors.email}>
+                        <Field label={data.create_account && !linkedUserId ? 'Email' : 'Email (optional)'} required={data.create_account && !linkedUserId} error={errors.email}>
                         <Input type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} />
                     </Field>
                     <Field label="Household" error={errors.household_id}>
@@ -182,8 +214,7 @@ export function ResidentForm({
                                 <SelectItem value={NONE}>Unassigned</SelectItem>
                                 {households.map((h) => (
                                     <SelectItem key={h.id} value={String(h.id)}>
-                                        {h.household_number ?? `Household #${h.id}`}
-                                        {h.address ? ` — ${h.address}` : ''}
+                                        {[h.household_number ?? `Household #${h.id}`, h.family_name, h.address].filter(Boolean).join(' - ')}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

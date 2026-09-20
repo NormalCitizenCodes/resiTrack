@@ -19,7 +19,7 @@ class ProgramEligibilityService
      * is open to all residents). Residents who already applied are excluded.
      *
      * Returns empty if the program targets a different barangay than the one
-     * asked for — a Barangay-22-only relief program has no eligible residents
+     * asked for - a Barangay-22-only relief program has no eligible residents
      * from Barangay 24's point of view, full stop.
      *
      * @return Collection<int, Resident>

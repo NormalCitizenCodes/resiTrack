@@ -5,6 +5,7 @@ namespace App\Actions\Fortify;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -21,13 +22,25 @@ class CreateNewUser implements CreatesNewUsers
     {
         Validator::make($input, [
             ...$this->profileRules(),
+            'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
             'password' => $this->passwordRules(),
+        ], [
+            'email.unique' => 'An account with this email already exists. Please log in with your email and password.',
         ])->validate();
 
-        return User::create([
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'barangay_id' => $input['barangay_id'],
         ]);
+
+        $user->update([
+            'registration_id' => 'REG-'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
+        ]);
+
+        NotificationService::notifyNewResidentRegistration($user);
+
+        return $user;
     }
 }

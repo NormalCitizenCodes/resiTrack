@@ -13,6 +13,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $barangay = Barangay::where('name', 'Barangay 22')->first();
+        $barangay23 = Barangay::where('name', 'Barangay 23')->first();
         $dswd = PartnerAgency::where('agency_type', 'DSWD')->first();
 
         $users = [
@@ -40,20 +41,28 @@ class UserSeeder extends Seeder
                 'barangay_id' => $barangay?->id,
             ],
             [
+                'name' => 'Barangay 23 Secretary',
+                'email' => 'secretary.b23@resitrack.test',
+                'role' => User::ROLE_BARANGAY_ADMIN,
+                'first_name' => 'Ana',
+                'last_name' => 'Garcia',
+                'barangay_id' => $barangay23?->id,
+            ],
+            [
+                'name' => 'Barangay 23 Health Worker',
+                'email' => 'bhw.b23@resitrack.test',
+                'role' => User::ROLE_BHW,
+                'first_name' => 'Pedro',
+                'last_name' => 'Garcia',
+                'barangay_id' => $barangay23?->id,
+            ],
+            [
                 'name' => 'DSWD Officer',
                 'email' => 'agency@resitrack.test',
                 'role' => User::ROLE_PARTNER_AGENCY,
                 'first_name' => 'Ramon',
                 'last_name' => 'Cruz',
                 'agency_id' => $dswd?->id,
-            ],
-            [
-                'name' => 'Resident User',
-                'email' => 'resident@resitrack.test',
-                'role' => User::ROLE_RESIDENT,
-                'first_name' => 'Juan',
-                'last_name' => 'Dela Cruz',
-                'barangay_id' => $barangay?->id,
             ],
         ];
 
@@ -62,7 +71,7 @@ class UserSeeder extends Seeder
                 ['email' => $data['email']],
                 [
                     ...$data,
-                    'password' => Hash::make('password'),
+                    'password' => Hash::make($data['email']),
                     'email_verified_at' => now(),
                     'is_active' => true,
                 ]

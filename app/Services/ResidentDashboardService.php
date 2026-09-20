@@ -16,7 +16,7 @@ class ResidentDashboardService
 
     /**
      * Fields a resident can self-service (see MyProfileController) that also
-     * feed eligibility — filling these in is what the completeness nudge is
+     * feed eligibility - filling these in is what the completeness nudge is
      * pushing toward, not just cosmetic profile fill-out.
      */
     private const COMPLETENESS_FIELDS = [

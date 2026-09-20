@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class Resident extends Model
 {
@@ -16,6 +18,7 @@ class Resident extends Model
 
     protected $fillable = [
         'household_id',
+        'resident_id',
         'barangay_id',
         'philsys_card_no',
         'last_name',
@@ -47,6 +50,8 @@ class Resident extends Model
         'transfer_date',
         'transfer_status',
         'registered_at',
+        'profiled_by_user_id',
+        'profiled_at',
     ];
 
     protected function casts(): array
@@ -55,6 +60,7 @@ class Resident extends Model
             'date_of_birth' => 'date',
             'transfer_date' => 'date',
             'registered_at' => 'datetime',
+            'profiled_at' => 'datetime',
             'monthly_income' => 'decimal:2',
             'is_pwd' => 'boolean',
             'is_solo_parent' => 'boolean',
@@ -98,6 +104,30 @@ class Resident extends Model
     public function barangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class);
+    }
+
+    public function portalAccount(): HasOne
+    {
+        return $this->hasOne(User::class, 'resident_id');
+    }
+
+    public function profiledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'profiled_by_user_id');
+    }
+
+    public static function makeOfficialId(int $id, Carbon|string|null $at = null): string
+    {
+        $year = Carbon::parse($at ?? now())->year;
+
+        return sprintf('RES-%d-%06d', $year, $id);
+    }
+
+    public function assignOfficialId(): void
+    {
+        $this->update([
+            'resident_id' => self::makeOfficialId($this->id, $this->registered_at ?? $this->created_at),
+        ]);
     }
 
     public function transferBarangay(): BelongsTo

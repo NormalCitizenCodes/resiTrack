@@ -3,6 +3,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
     SidebarMenu,
+    SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
@@ -22,12 +23,18 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             asChild
                             isActive={isCurrentUrl(item.href)}
                             tooltip={{ children: item.title }}
+                            className="data-[active=true]:[&>svg]:text-sidebar-primary"
                         >
                             <Link href={item.href} prefetch>
                                 {item.icon && <item.icon />}
                                 <span>{item.title}</span>
                             </Link>
                         </SidebarMenuButton>
+                        {item.badge ? (
+                            <SidebarMenuBadge className="rounded-full bg-white/15 px-1.5 text-sidebar-accent-foreground">
+                                {item.badge > 99 ? '99+' : item.badge}
+                            </SidebarMenuBadge>
+                        ) : null}
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>

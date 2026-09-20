@@ -1,13 +1,16 @@
-import { Head, Link } from '@inertiajs/react';
-import { Building2, MapPin, Plus, Users } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Building2, MapPin, Plus, Search, Users } from 'lucide-react';
+import { useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from '@/hooks/use-translation';
 import { dashboard } from '@/routes';
-import type { Paginated, Program, Role } from '@/types';
+import type { Paginated, Program, Role, VulnerabilitySector } from '@/types';
 
 const STATUS_VARIANT: Record<string, 'secondary' | 'outline' | 'destructive'> = {
     active: 'secondary',
@@ -19,13 +22,21 @@ export default function ProgramsIndex({
     programs,
     canManage,
     viewerRole,
+    sectors,
+    filters,
 }: {
     programs: Paginated<Program>;
     canManage: boolean;
-    viewerRole: Role;
+    viewerRole?: Role | null;
+    sectors: VulnerabilitySector[];
+    filters: { search?: string; sector?: string };
 }) {
     const { t } = useTranslation();
     const isResident = viewerRole === 'resident';
+    const [search, setSearch] = useState(filters.search ?? '');
+    const applyFilter = (key: 'search' | 'sector', value: string) => {
+        router.get('/programs', { ...filters, [key]: value || undefined }, { preserveState: true, preserveScroll: true, replace: true });
+    };
 
     return (
         <>
@@ -49,6 +60,17 @@ export default function ProgramsIndex({
                     )}
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                    <div className="relative min-w-[220px] flex-1">
+                        <Search className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && applyFilter('search', search)} placeholder={t('programs.search')} className="pl-8" />
+                    </div>
+                    <Select value={filters.sector || 'all'} onValueChange={(value) => applyFilter('sector', value === 'all' ? '' : value)}>
+                        <SelectTrigger className="w-[220px]"><SelectValue placeholder={t('programs.allSectors')} /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">{t('programs.allSectors')}</SelectItem>{sectors.map((sector) => <SelectItem key={sector.id} value={sector.code}>{sector.sector_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+
                 {programs.data.length === 0 && (
                     <Card>
                         <CardContent className="py-12 text-center text-muted-foreground">
@@ -64,6 +86,7 @@ export default function ProgramsIndex({
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {programs.data.map((program) => {
                         const remaining = Math.max(0, program.slots_available - program.slots_filled);
+
                         return (
                             <Card key={program.id} className="flex flex-col">
                                 <CardHeader>
@@ -75,7 +98,7 @@ export default function ProgramsIndex({
                                             {program.title}
                                         </Link>
                                         <Badge variant={STATUS_VARIANT[program.status] ?? 'outline'}>
-                                            {program.status}
+                                            {program.status === 'active' ? t('programs.open') : t('programs.closed')}
                                         </Badge>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -93,9 +116,10 @@ export default function ProgramsIndex({
                                 </CardHeader>
                                 <CardContent className="flex flex-1 flex-col gap-3">
                                     <p className="line-clamp-2 text-sm text-muted-foreground">
-                                        {program.description ?? '—'}
+                                        {program.description ?? '-'}
                                     </p>
                                     <SectorBadges sectors={program.sectors} />
+                                    <p className="text-xs text-muted-foreground">{t('programs.deadline', { date: program.end_date?.substring(0, 10) ?? t('programs.notSpecified') })}</p>
                                     <div className="mt-auto flex items-center justify-between text-sm">
                                         <span className="flex items-center gap-1 text-muted-foreground">
                                             <Users className="size-4" />

@@ -9,8 +9,12 @@ export type UseAppearanceReturn = {
     readonly updateAppearance: (mode: Appearance) => void;
 };
 
+// Light is the default (brand spec: keep the UI predominantly light). "system"
+// remains available as an explicit choice in Settings > Appearance.
+const DEFAULT_APPEARANCE: Appearance = 'light';
+
 const listeners = new Set<() => void>();
-let currentAppearance: Appearance = 'system';
+let currentAppearance: Appearance = DEFAULT_APPEARANCE;
 
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
@@ -31,10 +35,10 @@ const setCookie = (name: string, value: string, days = 365): void => {
 
 const getStoredAppearance = (): Appearance => {
     if (typeof window === 'undefined') {
-        return 'system';
+        return DEFAULT_APPEARANCE;
     }
 
-    return (localStorage.getItem('appearance') as Appearance) || 'system';
+    return (localStorage.getItem('appearance') as Appearance) || DEFAULT_APPEARANCE;
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
@@ -75,9 +79,21 @@ export function initializeTheme(): void {
         return;
     }
 
-    if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
+    // Earlier builds wrote "system" into storage on every first visit, so it is
+    // indistinguishable from a deliberate choice. Reset it to the new default
+    // once; explicit "light" / "dark" choices are kept.
+    const stored = localStorage.getItem('appearance');
+
+    if (!localStorage.getItem('appearance_default_v2')) {
+        localStorage.setItem('appearance_default_v2', '1');
+
+        if (!stored || stored === 'system') {
+            localStorage.setItem('appearance', DEFAULT_APPEARANCE);
+            setCookie('appearance', DEFAULT_APPEARANCE);
+        }
+    } else if (!stored) {
+        localStorage.setItem('appearance', DEFAULT_APPEARANCE);
+        setCookie('appearance', DEFAULT_APPEARANCE);
     }
 
     currentAppearance = getStoredAppearance();
@@ -91,7 +107,7 @@ export function useAppearance(): UseAppearanceReturn {
     const appearance: Appearance = useSyncExternalStore(
         subscribe,
         () => currentAppearance,
-        () => 'system',
+        () => DEFAULT_APPEARANCE,
     );
 
     const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)

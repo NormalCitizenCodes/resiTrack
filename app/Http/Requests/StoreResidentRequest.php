@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,8 +22,31 @@ class StoreResidentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $pendingAccount = $this->pendingAccountToLink();
+        $emailRules = [
+            Rule::requiredIf(fn () => $this->boolean('create_account') && $pendingAccount === null),
+            'nullable',
+            'email',
+            'max:150',
+        ];
+
+        if ($this->boolean('create_account') && $pendingAccount === null) {
+            $emailRules[] = Rule::unique('users', 'email');
+        } elseif ($pendingAccount !== null) {
+            $emailRules[] = Rule::unique('users', 'email')->ignore($pendingAccount->id);
+        }
+
         return [
             'household_id' => ['nullable', 'integer', 'exists:households,id'],
+            'create_account' => ['boolean'],
+            'linked_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'password' => [
+                'nullable',
+                'string',
+                'min:8',
+                'confirmed',
+                Rule::requiredIf(fn () => $this->boolean('create_account') && $this->pendingAccountToLink() === null),
+            ],
             'philsys_card_no' => ['nullable', 'string', 'max:32', 'regex:/^[0-9\- ]+$/'],
             'last_name' => ['required', 'string', 'max:100'],
             'first_name' => ['required', 'string', 'max:100'],
@@ -35,7 +59,7 @@ class StoreResidentRequest extends FormRequest
             'religion' => ['nullable', 'string', 'max:100'],
             'citizenship' => ['nullable', 'string', 'max:100'],
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\- ]+$/'],
-            'email' => ['nullable', 'email', 'max:150'],
+            'email' => $emailRules,
             'address' => ['nullable', 'string', 'max:255'],
             'occupation' => ['nullable', 'string', 'max:150'],
             'employment_status' => ['nullable', Rule::in(['employed', 'unemployed', 'self_employed'])],
@@ -48,6 +72,30 @@ class StoreResidentRequest extends FormRequest
             'is_solo_parent' => ['boolean'],
             'is_pregnant' => ['boolean'],
         ];
+    }
+
+    public function pendingAccountToLink(): ?User
+    {
+        $staff = $this->user();
+        $query = User::query()
+            ->where('role', User::ROLE_RESIDENT)
+            ->whereNull('resident_id')
+            ->whereNotNull('registration_id')
+            ->when($staff && ! $staff->isSuperAdmin(), fn ($pending) => $pending->where('barangay_id', $staff->barangay_id));
+
+        if ($this->filled('linked_user_id')) {
+            $account = (clone $query)->whereKey($this->integer('linked_user_id'))->first();
+            if ($account) {
+                return $account;
+            }
+        }
+
+        $email = $this->string('email')->trim()->value();
+        if ($email === '') {
+            return null;
+        }
+
+        return $query->where('email', $email)->first();
     }
 
     protected function prepareForValidation(): void

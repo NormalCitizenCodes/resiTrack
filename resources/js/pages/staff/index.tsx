@@ -80,7 +80,7 @@ export default function StaffIndex({ staff, isSuperAdmin }: { staff: Staff[]; is
                                         </TableCell>
                                         {isSuperAdmin && (
                                             <TableCell className="text-muted-foreground">
-                                                {member.barangay?.name ?? '—'}
+                                                {member.barangay?.name ?? '-'}
                                             </TableCell>
                                         )}
                                         <TableCell>

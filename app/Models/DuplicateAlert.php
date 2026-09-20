@@ -17,6 +17,9 @@ class DuplicateAlert extends Model
         'resolved_by',
         'detected_at',
         'resolved_at',
+        'escalated_at',
+        'escalated_by',
+        'escalation_note',
     ];
 
     protected function casts(): array
@@ -25,7 +28,14 @@ class DuplicateAlert extends Model
             'similarity_score' => 'float',
             'detected_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'escalated_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function escalator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'escalated_by');
     }
 
     public function residentOne(): BelongsTo

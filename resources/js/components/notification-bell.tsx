@@ -1,5 +1,6 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
+import { useEffect } from 'react';
 
 /**
  * Header bell linking to the notifications page, with an unread-count badge fed
@@ -7,6 +8,14 @@ import { Bell } from 'lucide-react';
  */
 export function NotificationBell() {
     const unread = usePage().props.unreadNotifications ?? 0;
+
+    useEffect(() => {
+        const refreshUnreadCount = window.setInterval(() => {
+            router.reload({ only: ['unreadNotifications'] });
+        }, 15000);
+
+        return () => window.clearInterval(refreshUnreadCount);
+    }, []);
 
     return (
         <Link

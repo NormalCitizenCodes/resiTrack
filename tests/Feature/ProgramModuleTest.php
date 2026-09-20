@@ -52,6 +52,31 @@ function seniorProgram(User $owner, PartnerAgency $agency, VulnerabilitySector $
     return $program;
 }
 
+it('allows guests to browse active public programs and view details', function () {
+    $program = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);
+
+    $this->get('/programs')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('programs/index')
+            ->where('programs.data.0.id', $program->id)
+            ->where('viewerRole', null));
+
+    $this->get("/programs/{$program->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('programs/show')
+            ->where('program.id', $program->id)
+            ->where('viewerRole', null));
+});
+
+it('requires authentication before a visitor can apply to a program', function () {
+    $program = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);
+
+    $this->post("/programs/{$program->id}/apply")
+        ->assertRedirect('/login');
+});
+
 it('lets an agency publish a program targeting sectors', function () {
     $this->actingAs($this->agencyUser)->post('/programs', [
         'title' => 'AICS Assistance',

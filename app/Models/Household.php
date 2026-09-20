@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Household extends Model
 {
@@ -13,6 +14,7 @@ class Household extends Model
     use HasFactory;
 
     protected $fillable = [
+        'household_id',
         'barangay_id',
         'zone_id',
         'household_number',
@@ -56,5 +58,11 @@ class Household extends Model
     public function wellbeingAssessments(): HasMany
     {
         return $this->hasMany(HouseholdWellbeingAssessment::class);
+    }
+
+    /** @return HasOne<HouseholdWellbeingAssessment, $this> */
+    public function currentWellbeing(): HasOne
+    {
+        return $this->hasOne(HouseholdWellbeingAssessment::class)->latestOfMany(['assessment_date', 'id']);
     }
 }

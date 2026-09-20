@@ -15,6 +15,7 @@ export type User = {
     barangay_id: number | null;
     agency_id: number | null;
     resident_id: number | null;
+    registration_id: string | null;
     is_active: boolean;
     avatar?: string;
     email_verified_at: string | null;

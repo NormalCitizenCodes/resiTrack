@@ -2,7 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { translate, type Language } from '@/lib/translations';
 
-const COOKIE_NAME = 'resident_lang';
+const COOKIE_NAME = 'app_lang';
 
 function persistCookie(value: Language): void {
     document.cookie = `${COOKIE_NAME}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
@@ -17,9 +17,8 @@ type TranslationContextValue = {
 const TranslationContext = createContext<TranslationContextValue | null>(null);
 
 /**
- * Mounted once around every authenticated page (see AppSidebarLayout). Cheap
- * to mount globally — only residents ever see the switcher that changes it,
- * so every other role just gets English via the default.
+ * Mounted once around every authenticated page so residents and barangay
+ * officials share the same persisted language preference.
  */
 export function LanguageProvider({ children }: { children: ReactNode }) {
     const initialLanguage = (usePage().props.language as Language | undefined) ?? 'en';

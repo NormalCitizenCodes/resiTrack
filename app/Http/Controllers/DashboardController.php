@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppNotification;
+use App\Models\AccountDeletionRequest;
 use App\Models\ProgramApplication;
 use App\Models\Resident;
 use App\Models\User;
@@ -33,12 +34,13 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'stats' => $this->stats->forBarangay($barangayId),
             'scope' => $user->isSuperAdmin() ? 'City-wide' : ($user->barangay?->name ?? 'Barangay'),
+            'barangays' => $user->isSuperAdmin() ? $this->stats->barangaySummaries() : [],
         ]);
     }
 
     /**
      * A resident's own dashboard: a feed (their notifications, richer than the
-     * bell dropdown) plus a profile-completeness nudge and sector breakdown —
+     * bell dropdown) plus a profile-completeness nudge and sector breakdown -
      * distinct from the staff aggregate-stats view above.
      */
     private function residentDashboard(User $user): Response
@@ -61,6 +63,7 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(15)
                 ->get(),
+            'deletionRequest' => AccountDeletionRequest::where('user_id', $user->id)->latest()->first(),
         ]);
     }
 }

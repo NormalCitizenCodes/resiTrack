@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Null barangay_id means city-wide (the previous, only behavior) — same
+ * Null barangay_id means city-wide (the previous, only behavior) - same
  * "absence = broadcast" convention already used for announcement_sectors.
  * Without this, a program meant for one barangay's relief fund shows up as
  * "eligible" to every other barangay too, which undercuts the equitable

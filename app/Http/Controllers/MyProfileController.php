@@ -52,7 +52,7 @@ class MyProfileController extends Controller
         $resident->save();
 
         // Socio-economic edits (education/employment status) can change which
-        // sectors this resident belongs to, e.g. OSY — same as staff updates.
+        // sectors this resident belongs to, e.g. OSY - same as staff updates.
         $this->classifier->classify($resident);
 
         AuditLogger::record('update', 'residents', $resident->id, null, [

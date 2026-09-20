@@ -40,7 +40,7 @@ export default function AnnouncementsIndex({
         <>
             <Head title="Announcements" />
             <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight">
                             {canManage ? 'Announcements' : t('announcements.title')}

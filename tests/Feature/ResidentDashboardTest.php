@@ -63,6 +63,15 @@ it('handles a resident-role user with no linked resident record without crashing
         ->assertInertia(fn ($page) => $page->component('dashboard-resident')->where('resident', null));
 });
 
+it('shows a verified resident their official resident ID after profiling', function () {
+    $this->actingAs($this->residentUser)
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard-resident')
+            ->where('resident.resident_id', $this->resident->resident_id));
+});
+
 it('computes profile completeness from filled contact/socio-economic fields', function () {
     $this->resident->update([
         'contact_number' => '09171234567',

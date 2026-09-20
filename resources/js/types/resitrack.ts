@@ -20,6 +20,7 @@ export type Household = {
     barangay_id: number;
     zone_id: number | null;
     household_number: string | null;
+    family_name?: string | null;
     address: string | null;
     house_materials: string | null;
     house_ownership: string | null;
@@ -58,6 +59,7 @@ export type HouseholdWellbeingAssessment = {
 
 export type Resident = {
     id: number;
+    resident_id: string | null;
     household_id: number | null;
     barangay_id: number;
     philsys_card_no: string | null;
@@ -92,6 +94,8 @@ export type Resident = {
     transfer_date: string | null;
     transfer_status: string | null;
     registered_at: string | null;
+    profiled_at?: string | null;
+    profiled_by?: { id: number; name: string } | null;
     barangay?: Barangay;
     household?: Household;
     sectors?: VulnerabilitySector[];
@@ -176,10 +180,13 @@ export type AppNotification = {
     id: number;
     user_id: number | null;
     resident_id: number | null;
+    related_user_id?: number | null;
     title: string;
     message: string | null;
     type: string;
+    action_url?: string | null;
     is_read: boolean;
+    read_at?: string | null;
     created_at: string | null;
 };
 

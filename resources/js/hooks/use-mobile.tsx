@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from 'react';
 
-const MOBILE_BREAKPOINT = 768;
+// "Mobile" here means phone AND tablet: below this width the sidebar becomes a
+// slide-out drawer rather than a persistent rail. Keep in sync with the `lg:`
+// classes on the desktop sidebar markup in components/ui/sidebar.tsx.
+const MOBILE_BREAKPOINT = 1024;
 
 const mql =
     typeof window === 'undefined'

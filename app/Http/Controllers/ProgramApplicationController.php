@@ -22,7 +22,7 @@ class ProgramApplicationController extends Controller
     public function __construct(private readonly ProgramEligibilityService $eligibility) {}
 
     /**
-     * Apply to a program — a resident for themselves, or barangay staff endorsing
+     * Apply to a program - a resident for themselves, or barangay staff endorsing
      * a resident from their barangay.
      */
     public function store(Request $request, Program $program): RedirectResponse

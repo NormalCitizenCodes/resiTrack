@@ -66,7 +66,7 @@ class CommunityFeaturesSeeder extends Seeder
         ]);
         NotificationService::notifyAnnouncement($broadcast);
 
-        // Targeted at senior citizens and PWDs — demonstrates multi-sector targeting.
+        // Targeted at senior citizens and PWDs - demonstrates multi-sector targeting.
         $senior = VulnerabilitySector::where('code', 'SENIOR')->first();
         $pwd = VulnerabilitySector::where('code', 'PWD')->first();
         if ($senior) {

@@ -27,7 +27,7 @@ class NotificationController extends Controller
     {
         abort_unless($notification->user_id === $request->user()->id, 403);
 
-        $notification->update(['is_read' => true]);
+        $notification->update(['is_read' => true, 'read_at' => $notification->read_at ?? now()]);
 
         return back();
     }
@@ -36,7 +36,7 @@ class NotificationController extends Controller
     {
         AppNotification::where('user_id', $request->user()->id)
             ->where('is_read', false)
-            ->update(['is_read' => true]);
+            ->update(['is_read' => true, 'read_at' => now()]);
 
         return back()->with('success', 'All notifications marked as read.');
     }

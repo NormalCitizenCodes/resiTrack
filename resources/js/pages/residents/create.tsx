@@ -1,21 +1,51 @@
 import { Head } from '@inertiajs/react';
 import { ResidentForm } from '@/components/resident-form';
 import { dashboard } from '@/routes';
-import type { Household } from '@/types';
+import type { Household, Resident } from '@/types';
 
-export default function ResidentCreate({ households }: { households: Household[] }) {
+export default function ResidentCreate({
+    households,
+    linkedAccount,
+}: {
+    households: Household[];
+    linkedAccount?: {
+        id: number;
+        name: string;
+        email: string | null;
+        first_name: string;
+        last_name: string;
+    } | null;
+}) {
+    const prefill = linkedAccount
+        ? ({
+              first_name: linkedAccount.first_name,
+              last_name: linkedAccount.last_name,
+              email: linkedAccount.email,
+          } as Resident)
+        : undefined;
+
     return (
         <>
-            <Head title="Register Resident" />
+            <Head title={linkedAccount ? `Profile ${linkedAccount.name}` : 'Register Resident'} />
             <div className="mx-auto w-full max-w-5xl flex-1 p-4">
                 <div className="mb-4">
-                    <h1 className="text-xl font-semibold tracking-tight">Register Resident (RBI Form B)</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        {linkedAccount ? 'Complete Official Resident Profile' : 'Register Resident (RBI Form B)'}
+                    </h1>
                     <p className="text-sm text-muted-foreground">
-                        Add an individual to the Record of Barangay Inhabitants. Vulnerability sectors are
-                        classified automatically on save.
+                        {linkedAccount
+                            ? `Verify ${linkedAccount.name} in person, then complete all required resident information. The existing account will be linked and an official Resident ID will be assigned on save.`
+                            : 'Add an individual to the Record of Barangay Inhabitants. Vulnerability sectors are classified automatically on save.'}
                     </p>
                 </div>
-                <ResidentForm mode="create" action="/residents" households={households} submitLabel="Save Resident" />
+                <ResidentForm
+                    mode="create"
+                    action="/residents"
+                    households={households}
+                    resident={prefill}
+                    linkedUserId={linkedAccount?.id}
+                    submitLabel={linkedAccount ? 'Complete profiling' : 'Save Resident'}
+                />
             </div>
         </>
     );

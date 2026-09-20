@@ -152,10 +152,10 @@ export default function ReportsIndex({
                                                 {format && <Badge variant="outline">{format.toUpperCase()}</Badge>}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {entry.user?.name ?? '—'}
+                                                {entry.user?.name ?? '-'}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
-                                                {entry.performed_at?.substring(0, 10) ?? '—'}
+                                                {entry.performed_at?.substring(0, 10) ?? '-'}
                                             </TableCell>
                                         </TableRow>
                                     );

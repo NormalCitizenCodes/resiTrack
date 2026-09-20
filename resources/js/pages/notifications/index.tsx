@@ -25,6 +25,13 @@ export default function NotificationsIndex({
         router.post(`/notifications/${id}/read`, {}, { preserveScroll: true });
     };
 
+    const markReadAndVisit = (id: number, url: string) => {
+        router.post(`/notifications/${id}/read`, {}, {
+            preserveScroll: true,
+            onSuccess: () => router.visit(url),
+        });
+    };
+
     const markAllRead = () => {
         router.post('/notifications/read-all', {}, { preserveScroll: true });
     };
@@ -60,29 +67,42 @@ export default function NotificationsIndex({
                     {notifications.data.map((notification) => (
                         <Card
                             key={notification.id}
+                            role={notification.action_url ? 'link' : undefined}
+                            tabIndex={notification.action_url ? 0 : undefined}
+                            onClick={() => notification.action_url && markReadAndVisit(notification.id, notification.action_url)}
+                            onKeyDown={(event) => {
+                                if (notification.action_url && (event.key === 'Enter' || event.key === ' ')) {
+                                    event.preventDefault();
+                                    markReadAndVisit(notification.id, notification.action_url);
+                                }
+                            }}
                             className={cn(
                                 'transition-colors',
+                                notification.action_url && 'cursor-pointer hover:border-primary/60',
                                 !notification.is_read && 'border-primary/40 bg-primary/5',
                             )}
                         >
                             <CardContent className="flex items-start justify-between gap-3 py-4">
+                                <div className="min-w-0 flex-1 space-y-1">
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant="outline">{t(`notifications.type.${notification.type}`)}</Badge>
                                         <span className="font-medium">{notification.title}</span>
                                         {!notification.is_read && <span className="size-2 rounded-full bg-primary" />}
                                     </div>
-                                    {notification.message && (
-                                        <p className="text-sm text-muted-foreground">{notification.message}</p>
-                                    )}
+                    {notification.message && (
+                        <p className="whitespace-pre-line text-sm text-muted-foreground">{notification.message}</p>
+                    )}
                                     <p className="text-xs text-muted-foreground">{formatDate(notification.created_at)}</p>
+                                </div>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-1">
                                     <ReadAloudButton
+                                        onClick={(event) => event.stopPropagation()}
                                         text={[notification.title, notification.message].filter(Boolean).join('. ')}
                                     />
                                     {!notification.is_read && (
-                                        <Button variant="ghost" size="sm" onClick={() => markRead(notification.id)}>
+                                        <Button variant="ghost" size="sm" onClick={(event) => { event.stopPropagation(); markRead(notification.id); }}>
                                             {t('notifications.markRead')}
                                         </Button>
                                     )}
