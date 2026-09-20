@@ -34,8 +34,9 @@ class ResidentController extends Controller
         $user = $request->user();
 
         $residents = Resident::query()
-            ->with(['sectors:id,code,sector_name', 'household:id,household_number'])
+            ->with(['sectors:id,code,sector_name', 'household:id,household_number', 'barangay:id,name'])
             ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
+            ->when($user->isSuperAdmin() ? $request->integer('barangay_id') : null, fn ($q, $barangayId) => $q->where('barangay_id', $barangayId))
             ->when($request->string('search')->trim()->value(), function ($q, $search) {
                 $q->where(function ($inner) use ($search) {
                     $inner->where('first_name', 'like', "%{$search}%")
@@ -59,7 +60,8 @@ class ResidentController extends Controller
         return Inertia::render('residents/index', [
             'residents' => $residents,
             'sectors' => VulnerabilitySector::orderBy('id')->get(['id', 'code', 'sector_name']),
-            'filters' => $request->only(['search', 'sector', 'status']),
+            'filters' => $request->only(['search', 'sector', 'status', 'barangay_id']),
+            'barangays' => $user->isSuperAdmin() ? Barangay::orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
 
@@ -282,7 +284,20 @@ class ResidentController extends Controller
             'households' => Household::query()
                 ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
                 ->orderBy('household_number')
-                ->get(['id', 'household_number', 'address']),
+                ->with('residents:id,household_id,last_name')
+                ->get(['id', 'household_number', 'address'])
+                ->map(fn (Household $household) => [
+                    'id' => $household->id,
+                    'household_number' => $household->household_number,
+                    'address' => $household->address,
+                    'family_name' => $household->residents
+                        ->pluck('last_name')
+                        ->countBy()
+                        ->sortDesc()
+                        ->keys()
+                        ->first(),
+                ])
+                ->values(),
             'barangays' => $user->isSuperAdmin()
                 ? Barangay::orderBy('name')->get(['id', 'name'])
                 : [],
@@ -304,9 +319,9 @@ class ResidentController extends Controller
     private function authorizeStatusManagement(Request $request): void
     {
         abort_unless(
-            $request->user()->hasRole(User::ROLE_SUPER_ADMIN, User::ROLE_BARANGAY_ADMIN),
+            $request->user()->hasRole(User::ROLE_BARANGAY_ADMIN),
             403,
-            'Only a Super Admin or Barangay Admin can change resident status.',
+            'Only a Barangay Admin can change resident status.',
         );
     }
 

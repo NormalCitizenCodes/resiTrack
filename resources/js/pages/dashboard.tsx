@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { AlertTriangle, Home, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
@@ -52,7 +52,11 @@ function StatCard({
     return href ? <Link href={href}>{body}</Link> : body;
 }
 
-export default function Dashboard({ stats, scope }: { stats: Stats; scope: string }) {
+type BarangaySummary = { id: number; name: string; residents: number; households: number; pending_duplicates: number };
+
+export default function Dashboard({ stats, scope, barangays }: { stats: Stats; scope: string; barangays: BarangaySummary[] }) {
+    const role = usePage().props.auth?.user?.role;
+    const isStaff = role === 'super_admin' || role === 'barangay_admin' || role === 'bhw';
     const totalPop = stats.age_distribution.reduce((sum, b) => sum + b.count, 0) || 1;
     const maxSector = Math.max(1, ...stats.sector_counts.map((s) => s.count));
 
@@ -72,24 +76,58 @@ export default function Dashboard({ stats, scope }: { stats: Stats; scope: strin
                         label="Total Residents"
                         value={stats.total_residents}
                         icon={Users}
-                        href="/residents"
+                        href={isStaff ? '/residents' : undefined}
                         accent="bg-primary/10 text-primary"
                     />
                     <StatCard
                         label="Total Households"
                         value={stats.total_households}
                         icon={Home}
-                        href="/households"
+                        href={isStaff ? '/households' : undefined}
                         accent="bg-emerald-500/10 text-emerald-600"
                     />
                     <StatCard
                         label="Pending Duplicate Alerts"
                         value={stats.pending_duplicates}
                         icon={AlertTriangle}
-                        href="/duplicate-alerts"
+                        href={isStaff ? '/duplicate-alerts' : undefined}
                         accent="bg-amber-500/10 text-amber-600"
                     />
                 </div>
+
+                {barangays.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">By Barangay</CardTitle>
+                        </CardHeader>
+                        <CardContent className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-muted-foreground">
+                                        <th className="pb-2 font-medium">Barangay</th>
+                                        <th className="pb-2 font-medium">Residents</th>
+                                        <th className="pb-2 font-medium">Households</th>
+                                        <th className="pb-2 font-medium">Pending Alerts</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {barangays.map((barangay) => (
+                                        <tr key={barangay.id} className="border-t">
+                                            <td className="py-2 font-medium">
+                                                <Link href={`/residents?barangay_id=${barangay.id}`} className="hover:underline">
+                                                    {barangay.name}
+                                                </Link>
+                                            </td>
+                                            <td className="py-2">{barangay.residents}</td>
+                                            <td className="py-2">{barangay.households}</td>
+                                            <td className="py-2">{barangay.pending_duplicates}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-2">
                     <Card>

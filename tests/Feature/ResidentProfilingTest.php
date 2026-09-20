@@ -188,6 +188,7 @@ it('creates an optional resident portal account with a generated resident ID', f
         'sex' => 'female',
         'civil_status' => 'single',
         'create_account' => true,
+        'email' => 'ana.reyes@example.test',
         'password' => 'resident-secret',
         'password_confirmation' => 'resident-secret',
     ])->assertRedirect();
@@ -196,7 +197,7 @@ it('creates an optional resident portal account with a generated resident ID', f
     $account = User::where('resident_id', $resident->id)->firstOrFail();
 
     expect($resident->resident_id)->toBe('RES-'.now()->year.'-'.str_pad((string) $resident->id, 6, '0', STR_PAD_LEFT))
-        ->and($account->email)->toBeNull()
+        ->and($account->email)->toBe('ana.reyes@example.test')
         ->and(password_verify('resident-secret', $account->password))->toBeTrue()
         ->and(User::whereHas('resident', fn ($query) => $query->where('resident_id', $resident->resident_id))->whereKey($account->id)->exists())->toBeTrue();
 
@@ -208,6 +209,19 @@ it('creates an optional resident portal account with a generated resident ID', f
     ])->assertRedirect();
 
     $this->assertAuthenticatedAs($account);
+});
+
+it('requires an email when a portal account is created during profiling', function () {
+    $this->actingAs($this->staff)->post('/residents', [
+        'first_name' => 'Ana',
+        'last_name' => 'Reyes',
+        'date_of_birth' => now()->subYears(30)->format('Y-m-d'),
+        'sex' => 'female',
+        'civil_status' => 'single',
+        'create_account' => true,
+        'password' => 'resident-secret',
+        'password_confirmation' => 'resident-secret',
+    ])->assertSessionHasErrors('email');
 });
 
 it('allows staff to deactivate and restore a resident record', function () {
@@ -377,4 +391,119 @@ it('rejects a resident record with invalid data', function () {
         'sex' => 'invalid',
         'civil_status' => 'married',
     ])->assertSessionHasErrors(['first_name', 'date_of_birth', 'sex']);
+});
+
+it('gives the super admin a read-only, city-wide view of residents and households', function () {
+    $other = Barangay::where('name', 'Barangay 23')->first();
+    $superAdmin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'barangay_id' => null]);
+    $mine = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $theirs = Resident::factory()->create(['barangay_id' => $other->id]);
+
+    $ids = fn (string $query) => collect(
+        $this->actingAs($superAdmin)->get('/residents'.$query)->viewData('page')['props']['residents']['data']
+    )->pluck('id')->all();
+
+    expect($ids(''))->toContain($mine->id)->toContain($theirs->id)
+        ->and($ids('?barangay_id='.$other->id))->toBe([$theirs->id]);
+
+    $this->actingAs($superAdmin)->get("/residents/{$mine->id}")->assertOk();
+    $this->actingAs($superAdmin)->get('/households')->assertOk();
+
+    $this->actingAs($superAdmin)->get('/residents/create')->assertForbidden();
+    $this->actingAs($superAdmin)->post('/residents', ['first_name' => 'X'])->assertForbidden();
+    $this->actingAs($superAdmin)->get("/residents/{$mine->id}/edit")->assertForbidden();
+    $this->actingAs($superAdmin)->put("/residents/{$mine->id}", ['first_name' => 'X'])->assertForbidden();
+    $this->actingAs($superAdmin)->post("/residents/{$mine->id}/toggle")->assertForbidden();
+    $this->actingAs($superAdmin)->get('/households/create')->assertForbidden();
+    $this->actingAs($superAdmin)->post('/households', ['household_number' => 'HH-X'])->assertForbidden();
+});
+
+it('shows the super admin a per-barangay summary on the dashboard', function () {
+    $superAdmin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'barangay_id' => null]);
+    Resident::factory()->count(2)->create(['barangay_id' => $this->barangay->id, 'is_active' => true]);
+
+    $this->actingAs($superAdmin)->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard')
+            ->has('barangays', Barangay::count())
+            ->where('barangays', fn ($rows) => collect($rows)->firstWhere('id', $this->barangay->id)['residents'] === 2));
+
+    $this->actingAs($this->staff)->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('barangays', []));
+});
+
+it('keeps duplicate alerts view-only for the super admin', function () {
+    $superAdmin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'barangay_id' => null]);
+    $a = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $b = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $alert = DuplicateAlert::create([
+        'resident_id_1' => $a->id,
+        'resident_id_2' => $b->id,
+        'match_basis' => 'philsys_match',
+        'similarity_score' => 1,
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($superAdmin)->get('/duplicate-alerts')->assertOk();
+    $this->actingAs($superAdmin)->post("/duplicate-alerts/{$alert->id}/dismiss")->assertForbidden();
+    $this->actingAs($superAdmin)->post("/duplicate-alerts/{$alert->id}/resolve", ['keep_resident_id' => $a->id])->assertForbidden();
+
+    $this->actingAs($this->staff)->post("/duplicate-alerts/{$alert->id}/dismiss")->assertRedirect();
+    expect($alert->fresh()->status)->toBe('dismissed');
+});
+
+it('lets a BHW escalate an alert so only the barangay admin can settle it', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_BARANGAY_ADMIN, 'barangay_id' => $this->barangay->id]);
+    $otherBarangay = Barangay::where('name', 'Barangay 23')->first();
+    $otherBhw = User::factory()->create(['role' => User::ROLE_BHW, 'barangay_id' => $otherBarangay->id]);
+    $a = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $b = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $alert = DuplicateAlert::create([
+        'resident_id_1' => $a->id,
+        'resident_id_2' => $b->id,
+        'match_basis' => 'philsys_match',
+        'similarity_score' => 1,
+        'status' => 'pending',
+    ]);
+
+    // A BHW from another barangay cannot touch it at all.
+    $this->actingAs($otherBhw)->post("/duplicate-alerts/{$alert->id}/escalate")->assertForbidden();
+    $this->actingAs($otherBhw)->post("/duplicate-alerts/{$alert->id}/dismiss")->assertForbidden();
+
+    $this->actingAs($this->staff)
+        ->post("/duplicate-alerts/{$alert->id}/escalate", ['note' => 'Cannot verify in person'])
+        ->assertRedirect();
+
+    $alert->refresh();
+    expect($alert->escalated_at)->not->toBeNull()
+        ->and($alert->escalated_by)->toBe($this->staff->id)
+        ->and($alert->status)->toBe('pending')
+        ->and(App\Models\AppNotification::where('user_id', $admin->id)->where('type', 'duplicate_alert')->count())->toBe(1);
+
+    // Already escalated: no second escalation, and the BHW can no longer settle it.
+    $this->actingAs($this->staff)->post("/duplicate-alerts/{$alert->id}/escalate")->assertStatus(422);
+    $this->actingAs($this->staff)->post("/duplicate-alerts/{$alert->id}/dismiss")->assertForbidden();
+
+    $this->actingAs($admin)->get('/duplicate-alerts?status=escalated')
+        ->assertInertia(fn ($page) => $page->has('alerts.data', 1)->where('counts.escalated', 1));
+
+    $this->actingAs($admin)->post("/duplicate-alerts/{$alert->id}/dismiss")->assertRedirect();
+    expect($alert->fresh()->status)->toBe('dismissed');
+});
+
+it('does not let admins or the super admin escalate alerts', function () {
+    $admin = User::factory()->create(['role' => User::ROLE_BARANGAY_ADMIN, 'barangay_id' => $this->barangay->id]);
+    $superAdmin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN, 'barangay_id' => null]);
+    $a = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $b = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $alert = DuplicateAlert::create([
+        'resident_id_1' => $a->id,
+        'resident_id_2' => $b->id,
+        'match_basis' => 'philsys_match',
+        'similarity_score' => 1,
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($admin)->post("/duplicate-alerts/{$alert->id}/escalate")->assertForbidden();
+    $this->actingAs($superAdmin)->post("/duplicate-alerts/{$alert->id}/escalate")->assertForbidden();
 });

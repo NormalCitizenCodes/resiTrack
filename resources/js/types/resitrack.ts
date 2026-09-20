@@ -20,6 +20,7 @@ export type Household = {
     barangay_id: number;
     zone_id: number | null;
     household_number: string | null;
+    family_name?: string | null;
     address: string | null;
     house_materials: string | null;
     house_ownership: string | null;

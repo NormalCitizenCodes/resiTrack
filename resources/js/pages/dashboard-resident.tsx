@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Bell, Gift, Megaphone, Sparkles } from 'lucide-react';
+import { Bell, Gift, Megaphone } from 'lucide-react';
 import { ReadAloudButton } from '@/components/read-aloud-button';
 import { SectorBadge } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +52,6 @@ function ProfileCompletenessCard({
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-primary" />
                     {t('dashboard.profile.title')}
                 </CardTitle>
             </CardHeader>
@@ -326,7 +325,7 @@ export default function ResidentDashboard({
                         <Card className="border-primary/30 bg-primary/5">
                             <CardContent className="space-y-2 py-6 text-center">
                                 <p className="font-medium">
-                                    ✅ Your resident profile has been successfully completed and verified.
+                                    Your resident profile has been successfully completed and verified.
                                 </p>
                                 <p className="text-sm">
                                     Resident ID: <strong>{resident.resident_id}</strong>

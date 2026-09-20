@@ -199,7 +199,7 @@ export function ResidentForm({
                     <Field label="Contact Number" error={errors.contact_number}>
                         <Input value={data.contact_number} onChange={(e) => setData('contact_number', e.target.value)} placeholder="09XXXXXXXXX" />
                     </Field>
-                        <Field label="Email (optional)" error={errors.email}>
+                        <Field label={data.create_account && !linkedUserId ? 'Email' : 'Email (optional)'} required={data.create_account && !linkedUserId} error={errors.email}>
                         <Input type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} />
                     </Field>
                     <Field label="Household" error={errors.household_id}>
@@ -214,8 +214,7 @@ export function ResidentForm({
                                 <SelectItem value={NONE}>Unassigned</SelectItem>
                                 {households.map((h) => (
                                     <SelectItem key={h.id} value={String(h.id)}>
-                                        {h.household_number ?? `Household #${h.id}`}
-                                        {h.address ? ` — ${h.address}` : ''}
+                                        {[h.household_number ?? `Household #${h.id}`, h.family_name, h.address].filter(Boolean).join(' — ')}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

@@ -68,10 +68,14 @@ it('forbids assessing a household in another barangay', function () {
 
 // --- Announcements ---
 
-it('lets staff post an announcement targeting multiple sectors and notifies matching residents', function () {
+it('lets a barangay admin post an announcement targeting multiple sectors and notifies matching residents', function () {
     $pwd = VulnerabilitySector::where('code', 'PWD')->first();
+    $admin = User::factory()->create([
+        'role' => User::ROLE_BARANGAY_ADMIN,
+        'barangay_id' => $this->barangay->id,
+    ]);
 
-    $this->actingAs($this->staff)->post('/announcements', [
+    $this->actingAs($admin)->post('/announcements', [
         'title' => 'Senior payout',
         'content' => 'Claim your pension.',
         'sector_ids' => [$this->seniorSector->id, $pwd->id],
@@ -82,6 +86,47 @@ it('lets staff post an announcement targeting multiple sectors and notifies matc
     expect($announcement)->not->toBeNull()
         ->and($announcement->sectors->pluck('code'))->toContain('SENIOR')->toContain('PWD')
         ->and(AppNotification::where('user_id', $this->residentUser->id)->where('type', 'announcement')->count())->toBe(1);
+});
+
+it('forbids BHWs from viewing or posting announcements', function () {
+    $this->actingAs($this->staff)->get('/announcements')->assertForbidden();
+    $this->actingAs($this->staff)->get('/announcements/create')->assertForbidden();
+    $this->actingAs($this->staff)->post('/announcements', [
+        'title' => 'x',
+        'content' => 'y',
+    ])->assertForbidden();
+});
+
+it('filters households by purok, current wellbeing level and 4Ps status', function () {
+    $level = WellbeingLevel::first();
+    $other = WellbeingLevel::where('id', '!=', $level->id)->first();
+
+    $assessed = Household::factory()->create(['barangay_id' => $this->barangay->id, 'is_4ps_beneficiary' => true]);
+    $unassessed = Household::factory()->create(['barangay_id' => $this->barangay->id, 'is_4ps_beneficiary' => false]);
+
+    HouseholdWellbeingAssessment::create([
+        'household_id' => $assessed->id,
+        'level_id' => $other->id,
+        'assessed_by' => $this->staff->id,
+        'assessment_date' => now()->subDay(),
+    ]);
+    HouseholdWellbeingAssessment::create([
+        'household_id' => $assessed->id,
+        'level_id' => $level->id,
+        'assessed_by' => $this->staff->id,
+        'assessment_date' => now(),
+    ]);
+
+    $ids = fn (array $query) => collect(
+        $this->actingAs($this->staff)->get('/households?'.http_build_query($query))
+            ->viewData('page')['props']['households']['data']
+    )->pluck('id')->all();
+
+    expect($ids(['wellbeing' => $level->id]))->toBe([$assessed->id])
+        ->and($ids(['wellbeing' => $other->id]))->toBe([])
+        ->and($ids(['wellbeing' => 'none']))->toBe([$unassessed->id])
+        ->and($ids(['is_4ps' => 'yes']))->toBe([$assessed->id])
+        ->and($ids(['is_4ps' => 'no']))->toBe([$unassessed->id]);
 });
 
 it('forbids residents from posting announcements', function () {

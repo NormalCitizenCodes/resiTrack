@@ -26,7 +26,8 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
 export default function ResidentShow({ resident, alerts }: { resident: Resident; alerts: DuplicateAlert[] }) {
     const { flash } = usePage().props;
     const role = usePage().props.auth.user.role;
-    const canManageStatus = ['super_admin', 'barangay_admin'].includes(role);
+    const canEdit = role !== 'super_admin';
+    const canManageStatus = role === 'barangay_admin';
     const canPermanentlyDelete = role === 'super_admin';
     const toggleActive = () => {
         const action = resident.is_active ? 'deactivate' : 'restore';
@@ -74,11 +75,13 @@ export default function ResidentShow({ resident, alerts }: { resident: Resident;
                         <SectorBadges sectors={resident.sectors} />
                     </div>
                     <div className="flex gap-2">
-                        <Button asChild variant="outline">
-                            <Link href={`/residents/${resident.id}/edit`}>
-                                <Pencil className="size-4" /> Edit
-                            </Link>
-                        </Button>
+                        {canEdit && (
+                            <Button asChild variant="outline">
+                                <Link href={`/residents/${resident.id}/edit`}>
+                                    <Pencil className="size-4" /> Edit
+                                </Link>
+                            </Button>
+                        )}
                         {canManageStatus && (
                             <Button variant={resident.is_active ? 'destructive' : 'secondary'} onClick={toggleActive}>
                                 {resident.is_active ? 'Deactivate' : 'Activate / Restore'}

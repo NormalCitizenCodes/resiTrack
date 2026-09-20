@@ -31,20 +31,29 @@ Route::post('account-reactivation/request', [AccountReactivationRequestControlle
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Barangay resident-profiling module (barangay staff + super admin).
-    Route::middleware('role:super_admin,barangay_admin,bhw')->group(function () {
-        Route::resource('residents', ResidentController::class);
-        Route::get('resident-registrations', [ResidentRegistrationController::class, 'index'])->name('resident-registrations.index');
-        Route::get('resident-registrations/{registration}', [ResidentRegistrationController::class, 'show'])->name('resident-registrations.show');
+    // Writing resident/household records is barangay-level work; the super admin
+    // has read-only, city-wide oversight. Registered before the read routes so
+    // 'residents/create' is not captured by 'residents/{resident}'.
+    Route::middleware('role:barangay_admin,bhw')->group(function () {
+        Route::resource('residents', ResidentController::class)->except(['index', 'show']);
         Route::post('residents/{resident}/toggle', [ResidentController::class, 'toggleActive'])->name('residents.toggle');
-        Route::delete('residents/{resident}/permanent', [ResidentController::class, 'forceDestroy'])->middleware('role:super_admin')->name('residents.force-destroy');
-        Route::resource('households', HouseholdController::class)->except(['edit', 'update', 'destroy']);
-        Route::post('households/{household}/wellbeing-assessments', [HouseholdWellbeingAssessmentController::class, 'store'])
-            ->name('households.wellbeing-assessments.store');
-
-        Route::get('duplicate-alerts', [DuplicateAlertController::class, 'index'])->name('duplicate-alerts.index');
         Route::post('duplicate-alerts/{alert}/resolve', [DuplicateAlertController::class, 'resolve'])->name('duplicate-alerts.resolve');
         Route::post('duplicate-alerts/{alert}/dismiss', [DuplicateAlertController::class, 'dismiss'])->name('duplicate-alerts.dismiss');
+        Route::post('duplicate-alerts/{alert}/escalate', [DuplicateAlertController::class, 'escalate'])->middleware('role:bhw')->name('duplicate-alerts.escalate');
+        Route::resource('households', HouseholdController::class)->only(['create', 'store']);
+        Route::post('households/{household}/wellbeing-assessments', [HouseholdWellbeingAssessmentController::class, 'store'])
+            ->name('households.wellbeing-assessments.store');
+    });
+
+    // Barangay resident-profiling module (barangay staff + super admin).
+    Route::middleware('role:super_admin,barangay_admin,bhw')->group(function () {
+        Route::resource('residents', ResidentController::class)->only(['index', 'show']);
+        Route::get('resident-registrations', [ResidentRegistrationController::class, 'index'])->name('resident-registrations.index');
+        Route::get('resident-registrations/{registration}', [ResidentRegistrationController::class, 'show'])->name('resident-registrations.show');
+        Route::delete('residents/{resident}/permanent', [ResidentController::class, 'forceDestroy'])->middleware('role:super_admin')->name('residents.force-destroy');
+        Route::resource('households', HouseholdController::class)->only(['index', 'show']);
+
+        Route::get('duplicate-alerts', [DuplicateAlertController::class, 'index'])->name('duplicate-alerts.index');
 
         // Reporting & visualization module (Objective 3).
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
@@ -91,9 +100,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('programs/{program}/apply', [ProgramApplicationController::class, 'store'])->name('programs.apply');
 
-    // Announcements — browsing open to all roles; posting/deleting restricted to staff.
-    Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
-    Route::middleware('role:super_admin,barangay_admin,bhw')->group(function () {
+    // Announcements — BHWs have no access; posting/deleting restricted to admins.
+    Route::get('announcements', [AnnouncementController::class, 'index'])
+        ->middleware('role:super_admin,barangay_admin,partner_agency,resident')
+        ->name('announcements.index');
+    Route::middleware('role:super_admin,barangay_admin')->group(function () {
         Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
         Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
         Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');

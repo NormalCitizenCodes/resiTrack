@@ -20,14 +20,16 @@ import type { Paginated, Resident, VulnerabilitySector } from '@/types';
 type Props = {
     residents: Paginated<Resident>;
     sectors: VulnerabilitySector[];
-    filters: { search?: string; sector?: string; status?: string };
+    filters: { search?: string; sector?: string; status?: string; barangay_id?: string };
+    barangays: { id: number; name: string }[];
 };
 
 const ALL = 'all';
 
-export default function ResidentsIndex({ residents, sectors, filters }: Props) {
+export default function ResidentsIndex({ residents, sectors, filters, barangays }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const role = usePage().props.auth.user.role;
+    const isSuperAdmin = role === 'super_admin';
 
     const restore = (resident: Resident) => {
         if (confirm(`Activate / Restore ${resident.full_name}?`)) {
@@ -53,7 +55,7 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
         return () => clearTimeout(handler);
     }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const applyFilter = (key: 'sector' | 'status', value: string) => {
+    const applyFilter = (key: 'sector' | 'status' | 'barangay_id', value: string) => {
         router.get('/residents', cleanQuery({ ...filters, [key]: value === ALL ? '' : value }), {
             preserveState: true,
             preserveScroll: true,
@@ -73,11 +75,15 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                             {residents.total === 1 ? '' : 's'}
                         </p>
                     </div>
-                    <Button asChild>
-                        <Link href="/residents/create">
-                            <Plus className="size-4" /> Add Resident
-                        </Link>
-                    </Button>
+                    {isSuperAdmin ? (
+                        <Badge variant="outline">Read-only view</Badge>
+                    ) : (
+                        <Button asChild>
+                            <Link href="/residents/create">
+                                <Plus className="size-4" /> Add Resident
+                            </Link>
+                        </Button>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -90,6 +96,21 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                             className="pl-8"
                         />
                     </div>
+                    {isSuperAdmin && (
+                        <Select value={filters.barangay_id || ALL} onValueChange={(v) => applyFilter('barangay_id', v)}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="All barangays" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL}>All barangays</SelectItem>
+                                {barangays.map((b) => (
+                                    <SelectItem key={b.id} value={String(b.id)}>
+                                        {b.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                     <Select value={filters.sector || ALL} onValueChange={(v) => applyFilter('sector', v)}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="All sectors" />
@@ -122,6 +143,7 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Age / Sex</TableHead>
+                                {isSuperAdmin && <TableHead>Barangay</TableHead>}
                                 <TableHead>Household</TableHead>
                                 <TableHead>Vulnerability Sectors</TableHead>
                                 <TableHead>Status</TableHead>
@@ -131,7 +153,7 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                         <TableBody>
                             {residents.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                                    <TableCell colSpan={isSuperAdmin ? 7 : 6} className="py-10 text-center text-muted-foreground">
                                         No residents found.
                                     </TableCell>
                                 </TableRow>
@@ -162,6 +184,9 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                                         {resident.age ?? '—'}
                                         <span className="text-muted-foreground"> / {resident.sex ?? '—'}</span>
                                     </TableCell>
+                                    {isSuperAdmin && (
+                                        <TableCell className="text-muted-foreground">{resident.barangay?.name ?? '—'}</TableCell>
+                                    )}
                                     <TableCell className="text-muted-foreground">
                                         {resident.household?.household_number ?? '—'}
                                     </TableCell>
@@ -182,7 +207,7 @@ export default function ResidentsIndex({ residents, sectors, filters }: Props) {
                                             <Button asChild variant="outline" size="sm">
                                                 <Link href={`/residents/${resident.id}`}>View</Link>
                                             </Button>
-                                            {!resident.is_active && role !== 'bhw' && (
+                                            {!resident.is_active && role === 'barangay_admin' && (
                                                 <Button variant="secondary" size="sm" onClick={() => restore(resident)}>
                                                     Activate / Restore
                                                 </Button>

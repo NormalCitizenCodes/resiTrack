@@ -1,12 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
-import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { dashboard } from '@/routes';
 
 type Account = { name: string; email: string | null; barangay: string | null; identifier: string };
 
@@ -14,10 +12,7 @@ export default function CreateReactivation({ account, pending }: { account: Acco
     return (
         <>
             <Head title="Request Account Reactivation" />
-            <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 p-4">
-                <div>
-                    <Heading title="Request Account Reactivation" description="Ask a Barangay Administrator to review your deactivated Resident Account." />
-                </div>
+            <div className="flex flex-col gap-6">
                 <Card>
                     <CardContent className="space-y-5 p-6">
                         {pending && <div className="flex gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm"><AlertTriangle className="size-5 shrink-0" /><p>You already have a pending account reactivation request. Please visit your Barangay Hall and wait for the barangay staff to review your request.</p></div>}
@@ -42,4 +37,7 @@ export default function CreateReactivation({ account, pending }: { account: Acco
     );
 }
 
-CreateReactivation.layout = { breadcrumbs: [{ title: 'Dashboard', href: dashboard() }, { title: 'Account Reactivation', href: '/account-reactivation/request' }] };
+CreateReactivation.layout = {
+    title: 'Request Account Reactivation',
+    description: 'Ask a Barangay Administrator to review your deactivated Resident Account.',
+};

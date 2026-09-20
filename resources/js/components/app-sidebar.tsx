@@ -35,7 +35,7 @@ function navItemsForRole(role: Role | undefined, t: (key: string) => string): Na
                 { title: t('nav.duplicateAlerts'), href: '/duplicate-alerts', icon: CopyCheck },
                 { title: t('nav.programs'), href: '/programs', icon: HandHeart },
                 { title: t('nav.reports'), href: '/reports', icon: BarChart3 },
-                { title: t('nav.announcements'), href: '/announcements', icon: Megaphone },
+                ...(role !== 'bhw' ? [{ title: t('nav.announcements'), href: '/announcements', icon: Megaphone }] : []),
             ];
 
             // Staff account management is the one thing that actually

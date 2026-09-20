@@ -34,6 +34,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'stats' => $this->stats->forBarangay($barangayId),
             'scope' => $user->isSuperAdmin() ? 'City-wide' : ($user->barangay?->name ?? 'Barangay'),
+            'barangays' => $user->isSuperAdmin() ? $this->stats->barangaySummaries() : [],
         ]);
     }
 

@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeftRight, Copy } from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +10,14 @@ import type { DuplicateAlert, Paginated, Resident } from '@/types';
 type AlertRow = DuplicateAlert & {
     resident_one?: Resident & { barangay?: { name: string } };
     resident_two?: Resident & { barangay?: { name: string } };
+    escalated_at: string | null;
+    escalation_note: string | null;
+    escalator?: { name: string } | null;
 };
 
 type Props = {
     alerts: Paginated<AlertRow>;
-    counts: { pending: number; resolved: number; dismissed: number };
+    counts: { pending: number; escalated: number; resolved: number; dismissed: number };
     filters: { status: string };
 };
 
@@ -61,6 +64,8 @@ function ResidentCard({
 }
 
 export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props) {
+    const role = usePage().props.auth.user?.role;
+
     const setStatus = (status: string) => {
         router.get('/duplicate-alerts', { status }, { preserveState: true, preserveScroll: true, replace: true });
     };
@@ -77,10 +82,21 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
         }
     };
 
-    const isPending = filters.status === 'pending';
+    const isPending = filters.status === 'pending' || filters.status === 'escalated';
+
+    const escalate = (alert: AlertRow) => {
+        const note = window.prompt('Add a note for the barangay admin (optional):');
+
+        if (note === null) {
+            return;
+        }
+
+        router.post(`/duplicate-alerts/${alert.id}/escalate`, { note }, { preserveScroll: true });
+    };
 
     const tabs: { key: string; label: string; count: number }[] = [
         { key: 'pending', label: 'Pending', count: counts.pending },
+        { key: 'escalated', label: 'Escalated', count: counts.escalated },
         { key: 'resolved', label: 'Resolved', count: counts.resolved },
         { key: 'dismissed', label: 'Dismissed', count: counts.dismissed },
     ];
@@ -123,6 +139,9 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                 <div className="space-y-3">
                     {alerts.data.map((alert) => {
                         const isTransfer = alert.match_basis === 'cross_barangay_transfer';
+                        const isEscalated = alert.escalated_at !== null;
+                        const canReview = role !== 'super_admin' && !(isEscalated && role === 'bhw');
+
                         return (
                             <Card key={alert.id}>
                                 <CardContent className="space-y-3">
@@ -135,15 +154,26 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                                             )}
                                             {MATCH_LABEL[alert.match_basis] ?? alert.match_basis}
                                         </div>
-                                        <Badge variant={isTransfer ? 'default' : 'destructive'}>
-                                            {Math.round(alert.similarity_score * 100)}% match
-                                        </Badge>
+                                        <div className="flex items-center gap-2">
+                                            {isEscalated && isPending && <Badge variant="outline">Escalated to admin</Badge>}
+                                            <Badge variant={isTransfer ? 'default' : 'destructive'}>
+                                                {Math.round(alert.similarity_score * 100)}% match
+                                            </Badge>
+                                        </div>
                                     </div>
+
+                                    {isEscalated && isPending && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Escalated by {alert.escalator?.name ?? 'a BHW'}
+                                            {alert.escalation_note ? `: "${alert.escalation_note}"` : '.'}
+                                            {role === 'bhw' && ' Waiting for the barangay admin to review.'}
+                                        </p>
+                                    )}
 
                                     <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
                                         <ResidentCard
                                             resident={alert.resident_one}
-                                            canAct={isPending}
+                                            canAct={isPending && canReview}
                                             onKeep={() => resolve(alert, alert.resident_id_1)}
                                         />
                                         <div className="flex items-center justify-center text-xs font-medium text-muted-foreground">
@@ -151,13 +181,18 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                                         </div>
                                         <ResidentCard
                                             resident={alert.resident_two}
-                                            canAct={isPending}
+                                            canAct={isPending && canReview}
                                             onKeep={() => resolve(alert, alert.resident_id_2)}
                                         />
                                     </div>
 
-                                    {isPending && (
-                                        <div className="flex justify-end">
+                                    {isPending && canReview && (
+                                        <div className="flex justify-end gap-2">
+                                            {role === 'bhw' && !isEscalated && (
+                                                <Button variant="outline" size="sm" onClick={() => escalate(alert)}>
+                                                    Escalate to admin
+                                                </Button>
+                                            )}
                                             <Button variant="ghost" size="sm" onClick={() => dismiss(alert)}>
                                                 Not a duplicate — dismiss
                                             </Button>

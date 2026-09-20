@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,7 @@ function WellbeingCard({
     assessments: HouseholdWellbeingAssessment[];
 }) {
     const current = assessments[0];
+    const readOnly = usePage().props.auth.user?.role === 'super_admin';
     const { data, setData, post, processing, errors, reset } = useForm({
         level_id: '',
         assessment_date: '',
@@ -59,7 +60,7 @@ function WellbeingCard({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
+                {!readOnly && <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
                     <div className="md:col-span-1">
                         <Label className="mb-1.5 block">Level</Label>
                         <Select value={data.level_id} onValueChange={(v) => setData('level_id', v)}>
@@ -93,7 +94,7 @@ function WellbeingCard({
                         </Button>
                     </div>
                     {errors.level_id && <p className="text-sm text-red-600 md:col-span-4">{errors.level_id}</p>}
-                </form>
+                </form>}
 
                 {assessments.length > 0 && (
                     <Table>

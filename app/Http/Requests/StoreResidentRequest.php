@@ -22,8 +22,13 @@ class StoreResidentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $emailRules = ['nullable', 'email', 'max:150'];
         $pendingAccount = $this->pendingAccountToLink();
+        $emailRules = [
+            Rule::requiredIf(fn () => $this->boolean('create_account') && $pendingAccount === null),
+            'nullable',
+            'email',
+            'max:150',
+        ];
 
         if ($this->boolean('create_account') && $pendingAccount === null) {
             $emailRules[] = Rule::unique('users', 'email');
