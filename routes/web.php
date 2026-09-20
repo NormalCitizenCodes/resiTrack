@@ -6,6 +6,7 @@ use App\Http\Controllers\AccountReactivationRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DuplicateAlertController;
 use App\Http\Controllers\HouseholdController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\HouseholdWellbeingAssessmentController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
@@ -19,7 +20,10 @@ use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', LandingController::class)->name('home');
+Route::inertia('privacy', 'legal/privacy')->name('privacy');
+Route::inertia('terms', 'legal/terms')->name('terms');
+Route::inertia('faq', 'legal/faq')->name('faq');
 
 Route::post('forgot-password', [PasswordRecoveryController::class, 'store'])
     ->middleware('guest')
@@ -61,7 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
     });
 
-    // Staff account management — admin-only (excludes bhw). The one route
+    // Staff account management - admin-only (excludes bhw). The one route
     // group where barangay_admin and bhw actually differ.
     Route::middleware('role:super_admin,barangay_admin')->group(function () {
         Route::get('staff', [StaffController::class, 'index'])->name('staff.index');
@@ -100,7 +104,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('programs/{program}/apply', [ProgramApplicationController::class, 'store'])->name('programs.apply');
 
-    // Announcements — BHWs have no access; posting/deleting restricted to admins.
+    // Announcements - BHWs have no access; posting/deleting restricted to admins.
     Route::get('announcements', [AnnouncementController::class, 'index'])
         ->middleware('role:super_admin,barangay_admin,partner_agency,resident')
         ->name('announcements.index');
@@ -110,7 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
     });
 
-    // In-app notifications — personal to the authenticated user.
+    // In-app notifications - personal to the authenticated user.
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
@@ -129,7 +133,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('account-reactivation-requests/{reactivationRequest}/reject', [AccountReactivationRequestController::class, 'reject'])->name('account-reactivation-requests.reject');
     });
 
-    // Self-service profile editing — personal to whichever resident record the
+    // Self-service profile editing - personal to whichever resident record the
     // acting user is linked to (not role-gated; scoped inside the controller).
     Route::get('my-profile', [MyProfileController::class, 'edit'])->name('my-profile.edit');
     Route::put('my-profile', [MyProfileController::class, 'update'])->name('my-profile.update');
