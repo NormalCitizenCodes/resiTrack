@@ -7,7 +7,7 @@ import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import ProgramsLayout from '@/layouts/programs-layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'ResiTrack';
+const appName = import.meta.env.VITE_APP_NAME || 'resiTrack';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

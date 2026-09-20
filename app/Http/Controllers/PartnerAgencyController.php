@@ -84,7 +84,7 @@ class PartnerAgencyController extends Controller
         $agency = PartnerAgency::findOrFail($account->agency_id);
         AuditLogger::record('partner_agency_account_created', 'users', $account->id, null, ['agency_id' => $agency->id, 'barangay_id' => $barangayId]);
         AuditLogger::record('partner_agency_barangay_assigned', 'users', $account->id, null, ['agency_id' => $agency->id, 'barangay_id' => $barangayId]);
-        NotificationService::notify($account->id, null, 'system', 'Partner Agency Account Created', "Your Partner Agency account has been created for {$agency->agency_name}. Barangay: {$account->barangay?->name}. You may now log in to ResiTrack.", $actor->id, route('programs.index'));
+        NotificationService::notify($account->id, null, 'system', 'Partner Agency Account Created', "Your Partner Agency account has been created for {$agency->agency_name}. Barangay: {$account->barangay?->name}. You may now log in to resiTrack.", $actor->id, route('programs.index'));
 
         return back()->with('success', "Partner agency account {$account->name} was created.");
     }
