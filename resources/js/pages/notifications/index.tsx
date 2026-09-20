@@ -85,7 +85,7 @@ export default function NotificationsIndex({
                             <CardContent className="flex items-start justify-between gap-3 py-4">
                                 <div className="min-w-0 flex-1 space-y-1">
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant="outline">{t(`notifications.type.${notification.type}`)}</Badge>
                                         <span className="font-medium">{notification.title}</span>
                                         {!notification.is_read && <span className="size-2 rounded-full bg-primary" />}

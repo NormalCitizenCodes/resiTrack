@@ -1,6 +1,6 @@
 // Translations for shared UI chrome (labels, buttons, status
 // words, instructional copy). Deliberately NOT translated: program titles,
-// resident names, sector names, and auto-generated classification reasons —
+// resident names, sector names, and auto-generated classification reasons -
 // those are user/system-generated content, a different (bigger) problem than
 // translating fixed UI text, and out of scope for this pass.
 //
@@ -8,7 +8,7 @@
 // Barangay 22 is in Cagayan de Oro (Region X), where Cebuano is the language
 // most residents actually think in, even though Filipino is taught in school.
 //
-// Machine-authored — worth a native-speaker proofread pass before a live
+// Machine-authored - worth a native-speaker proofread pass before a live
 // defense, especially the Cebuano strings.
 
 export type Language = 'en' | 'fil' | 'ceb';
@@ -27,6 +27,8 @@ const en: Dictionary = {
     'nav.myApplications': 'My Applications',
     'nav.announcements': 'Announcements',
     'nav.myProfile': 'My Profile',
+    'nav.darkMode': 'Dark mode',
+    'nav.lightMode': 'Light mode',
     'nav.residents': 'Residents',
     'nav.pendingResidentAccounts': 'Pending Resident Accounts',
     'nav.households': 'Households',
@@ -59,9 +61,9 @@ const en: Dictionary = {
     'dashboard.profile.complete': 'Your profile is complete. Nice work.',
     'dashboard.profile.update': 'Update Profile',
     'dashboard.sectors.title': 'You Qualify As',
-    'dashboard.sectors.empty': "None yet — you'll still see programs open to everyone in your feed.",
+    'dashboard.sectors.empty': "None yet - you'll still see programs open to everyone in your feed.",
     'dashboard.feed.title': 'Feed',
-    'dashboard.feed.empty': 'Nothing yet — programs and barangay announcements will show up here.',
+    'dashboard.feed.empty': 'Nothing yet - programs and barangay announcements will show up here.',
     'dashboard.feed.markRead': 'Mark read',
     'dashboard.feed.viewAll': 'View all notifications',
     'dashboard.applications.title': 'My Applications',
@@ -80,7 +82,7 @@ const en: Dictionary = {
     'field.monthly_income': 'Monthly income',
 
     'profile.title': 'My Profile',
-    'profile.subtitle': "Keep this up to date — it's what we use to match you to programs you may qualify for.",
+    'profile.subtitle': "Keep this up to date - it's what we use to match you to programs you may qualify for.",
     'profile.save': 'Save Changes',
 
     'option.single': 'Single',
@@ -152,6 +154,8 @@ const fil: Dictionary = {
     'nav.myApplications': 'Aking mga Aplikasyon',
     'nav.announcements': 'Mga Anunsyo',
     'nav.myProfile': 'Aking Impormasyon',
+    'nav.darkMode': 'Madilim na tema',
+    'nav.lightMode': 'Maliwanag na tema',
     'nav.residents': 'Mga Residente',
     'nav.pendingResidentAccounts': 'Mga Pending nga Account sa Residente',
     'nav.households': 'Mga Panimalay',
@@ -184,9 +188,9 @@ const fil: Dictionary = {
     'dashboard.profile.complete': 'Kumpleto na ang iyong impormasyon. Magaling!',
     'dashboard.profile.update': 'I-update ang Impormasyon',
     'dashboard.sectors.title': 'Kwalipikado Ka Bilang',
-    'dashboard.sectors.empty': 'Wala pa sa ngayon — makikita mo pa rin ang mga programang bukas sa lahat sa iyong feed.',
+    'dashboard.sectors.empty': 'Wala pa sa ngayon - makikita mo pa rin ang mga programang bukas sa lahat sa iyong feed.',
     'dashboard.feed.title': 'Mga Balita',
-    'dashboard.feed.empty': 'Wala pang laman — dito lalabas ang mga programa at anunsyo mula sa barangay.',
+    'dashboard.feed.empty': 'Wala pang laman - dito lalabas ang mga programa at anunsyo mula sa barangay.',
     'dashboard.feed.markRead': 'Nabasa na',
     'dashboard.feed.viewAll': 'Tingnan lahat ng abiso',
     'dashboard.applications.title': 'Aking mga Aplikasyon',
@@ -205,7 +209,7 @@ const fil: Dictionary = {
     'field.monthly_income': 'Buwanang Kita',
 
     'profile.title': 'Aking Impormasyon',
-    'profile.subtitle': 'Panatilihing updated ito — ito ang ginagamit namin para itugma ka sa mga programang maaaring makatulong sa iyo.',
+    'profile.subtitle': 'Panatilihing updated ito - ito ang ginagamit namin para itugma ka sa mga programang maaaring makatulong sa iyo.',
     'profile.save': 'I-save ang mga Pagbabago',
 
     'option.single': 'Walang Asawa',
@@ -274,6 +278,8 @@ const ceb: Dictionary = {
     'nav.myApplications': 'Akong mga Aplikasyon',
     'nav.announcements': 'Mga Pahibalo',
     'nav.myProfile': 'Akong Impormasyon',
+    'nav.darkMode': 'Ngitngit nga tema',
+    'nav.lightMode': 'Hayag nga tema',
     'nav.accountReactivationRequests': 'Mga Request sa Pag-reactivate sa Account',
     'nav.partnerAgencies': 'Mga Partner Agency',
     'nav.residents': 'Mga Residente',
@@ -306,9 +312,9 @@ const ceb: Dictionary = {
     'dashboard.profile.complete': 'Kompleto na ang imong impormasyon. Maayo kaayo!',
     'dashboard.profile.update': 'I-update ang Impormasyon',
     'dashboard.sectors.title': 'Kwalipikado Ka Isip',
-    'dashboard.sectors.empty': 'Wala pa sa pagkakaron — makita gihapon nimo ang mga programa nga bukas sa tanan sa imong feed.',
+    'dashboard.sectors.empty': 'Wala pa sa pagkakaron - makita gihapon nimo ang mga programa nga bukas sa tanan sa imong feed.',
     'dashboard.feed.title': 'Mga Balita',
-    'dashboard.feed.empty': 'Wala pay sulod — dinhi mogawas ang mga programa ug pahibalo gikan sa barangay.',
+    'dashboard.feed.empty': 'Wala pay sulod - dinhi mogawas ang mga programa ug pahibalo gikan sa barangay.',
     'dashboard.feed.markRead': 'Nabasa na',
     'dashboard.feed.viewAll': 'Tan-awa ang tanang pahibalo',
     'dashboard.applications.title': 'Akong mga Aplikasyon',
@@ -327,7 +333,7 @@ const ceb: Dictionary = {
     'field.monthly_income': 'Buwanang Kita',
 
     'profile.title': 'Akong Impormasyon',
-    'profile.subtitle': 'Ipabag-o kanunay kini — gigamit namo kini aron itugma ka sa mga programa nga mahimo kang makatabang.',
+    'profile.subtitle': 'Ipabag-o kanunay kini - gigamit namo kini aron itugma ka sa mga programa nga mahimo kang makatabang.',
     'profile.save': 'I-save ang mga Kausaban',
 
     'option.single': 'Walay Kapikas',

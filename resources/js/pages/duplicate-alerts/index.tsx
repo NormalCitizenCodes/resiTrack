@@ -50,9 +50,9 @@ function ResidentCard({
                 {!resident.is_active && <Badge variant="outline">Inactive</Badge>}
             </div>
             <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                <div>DOB: {resident.date_of_birth?.substring(0, 10) ?? '—'}</div>
-                <div>PhilSys: {resident.philsys_card_no ?? '—'}</div>
-                <div>Barangay: {resident.barangay?.name ?? '—'}</div>
+                <div>DOB: {resident.date_of_birth?.substring(0, 10) ?? '-'}</div>
+                <div>PhilSys: {resident.philsys_card_no ?? '-'}</div>
+                <div>Barangay: {resident.barangay?.name ?? '-'}</div>
             </dl>
             {canAct && (
                 <Button variant="outline" size="sm" className="mt-3 w-full" onClick={onKeep}>
@@ -112,7 +112,7 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                     </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     {tabs.map((tab) => (
                         <Button
                             key={tab.key}
@@ -187,14 +187,14 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                                     </div>
 
                                     {isPending && canReview && (
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex flex-wrap justify-end gap-2">
                                             {role === 'bhw' && !isEscalated && (
                                                 <Button variant="outline" size="sm" onClick={() => escalate(alert)}>
                                                     Escalate to admin
                                                 </Button>
                                             )}
                                             <Button variant="ghost" size="sm" onClick={() => dismiss(alert)}>
-                                                Not a duplicate — dismiss
+                                                Not a duplicate - dismiss
                                             </Button>
                                         </div>
                                     )}

@@ -25,7 +25,7 @@ export function DataPagination({ meta }: { meta: PaginationMeta }) {
     };
 
     return (
-        <div className="flex items-center justify-between px-1 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 py-2">
             <p className="text-sm text-muted-foreground">
                 Showing <span className="font-medium">{meta.from ?? 0}</span>–
                 <span className="font-medium">{meta.to ?? 0}</span> of{' '}

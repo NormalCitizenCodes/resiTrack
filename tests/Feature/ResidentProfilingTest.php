@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AppNotification;
 use App\Models\Barangay;
 use App\Models\DuplicateAlert;
 use App\Models\Resident;
@@ -478,7 +479,7 @@ it('lets a BHW escalate an alert so only the barangay admin can settle it', func
     expect($alert->escalated_at)->not->toBeNull()
         ->and($alert->escalated_by)->toBe($this->staff->id)
         ->and($alert->status)->toBe('pending')
-        ->and(App\Models\AppNotification::where('user_id', $admin->id)->where('type', 'duplicate_alert')->count())->toBe(1);
+        ->and(AppNotification::where('user_id', $admin->id)->where('type', 'duplicate_alert')->count())->toBe(1);
 
     // Already escalated: no second escalation, and the BHW can no longer settle it.
     $this->actingAs($this->staff)->post("/duplicate-alerts/{$alert->id}/escalate")->assertStatus(422);
@@ -506,4 +507,33 @@ it('does not let admins or the super admin escalate alerts', function () {
 
     $this->actingAs($admin)->post("/duplicate-alerts/{$alert->id}/escalate")->assertForbidden();
     $this->actingAs($superAdmin)->post("/duplicate-alerts/{$alert->id}/escalate")->assertForbidden();
+});
+
+it('shares sidebar badge counts scoped to the staff member\'s own barangay', function () {
+    $other = Barangay::where('name', 'Barangay 23')->first();
+    $mineA = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $mineB = Resident::factory()->create(['barangay_id' => $this->barangay->id]);
+    $theirA = Resident::factory()->create(['barangay_id' => $other->id]);
+    $theirB = Resident::factory()->create(['barangay_id' => $other->id]);
+
+    foreach ([[$mineA, $mineB], [$theirA, $theirB]] as [$one, $two]) {
+        DuplicateAlert::create([
+            'resident_id_1' => $one->id,
+            'resident_id_2' => $two->id,
+            'match_basis' => 'philsys_match',
+            'similarity_score' => 1,
+            'status' => 'pending',
+        ]);
+    }
+
+    User::factory()->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $this->barangay->id, 'resident_id' => null, 'registration_id' => 'REG-000001']);
+    User::factory()->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $other->id, 'resident_id' => null, 'registration_id' => 'REG-000002']);
+
+    $this->actingAs($this->staff)->get('/dashboard')
+        ->assertInertia(fn ($page) => $page
+            ->where('navCounts.duplicates', 1)
+            ->where('navCounts.registrations', 1));
+
+    $this->actingAs($this->resident)->get('/dashboard')
+        ->assertInertia(fn ($page) => $page->where('navCounts', []));
 });

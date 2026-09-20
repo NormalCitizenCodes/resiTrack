@@ -25,6 +25,7 @@ declare module '@inertiajs/core' {
                 } | null;
             };
             unreadNotifications: number;
+            navCounts?: { duplicates?: number; registrations?: number };
             sidebarOpen: boolean;
             language: 'en' | 'fil' | 'ceb';
             [key: string]: unknown;

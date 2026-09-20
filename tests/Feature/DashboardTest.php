@@ -24,4 +24,18 @@ class DashboardTest extends TestCase
         $response = $this->get(route('dashboard'));
         $response->assertOk();
     }
+
+    public function test_the_sidebar_state_is_restored_from_the_sidebar_state_cookie()
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->withUnencryptedCookie('sidebar_state', 'false')->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('sidebarOpen', false));
+
+        $this->actingAs($user)->withUnencryptedCookie('sidebar_state', 'true')->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('sidebarOpen', true));
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('sidebarOpen', true));
+    }
 }

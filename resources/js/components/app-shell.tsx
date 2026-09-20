@@ -8,8 +8,26 @@ type Props = {
     variant?: AppVariant;
 };
 
+/**
+ * The sidebar writes its open/closed choice to a cookie the moment it changes.
+ * That cookie, not the `sidebarOpen` prop, is the source of truth once the app
+ * is running: the prop is computed per request, so a prefetched page carries a
+ * stale copy, and any layout remount (e.g. moving between pages that wrap the
+ * layout differently) would otherwise snap the sidebar back to that stale value.
+ * On the server there is no document, so the prop is used for the first render.
+ */
+function readSidebarCookie(): boolean | null {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+
+    const match = document.cookie.match(/(?:^|;\s*)sidebar_state=(true|false)/);
+
+    return match ? match[1] === 'true' : null;
+}
+
 export function AppShell({ children, variant = 'sidebar' }: Props) {
-    const isOpen = usePage().props.sidebarOpen;
+    const serverOpen = usePage().props.sidebarOpen;
 
     if (variant === 'header') {
         return (
@@ -17,5 +35,9 @@ export function AppShell({ children, variant = 'sidebar' }: Props) {
         );
     }
 
-    return <SidebarProvider defaultOpen={isOpen}>{children}</SidebarProvider>;
+    return (
+        <SidebarProvider defaultOpen={readSidebarCookie() ?? serverOpen}>
+            {children}
+        </SidebarProvider>
+    );
 }

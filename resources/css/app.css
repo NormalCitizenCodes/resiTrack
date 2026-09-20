@@ -17,9 +17,10 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
-    /* Brand marks — decorative use only (logo lockup, motif, report headers).
+    /* Brand marks - decorative use only (logo lockup, motif, report headers).
        Interface colors go through the semantic tokens below. */
     --color-brand-navy: #0b3d91;
+    --color-brand-navy-soft: #1858bd;
     --color-brand-blue: #1e88e5;
     --color-brand-cyan: #18bfe3;
     --color-brand-green: #2eaf7d;
@@ -32,6 +33,12 @@
     --color-warning-foreground: var(--warning-foreground);
     --color-info: var(--info);
     --color-info-foreground: var(--info-foreground);
+
+    /* Darker/lighter variants for status TEXT: the fill colours above are too
+       pale against white (or too dark against navy) to read as body text. */
+    --color-success-text: var(--success-text);
+    --color-warning-text: var(--warning-text);
+    --color-info-text: var(--info-text);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -100,6 +107,9 @@
     --warning-foreground: #3d2a05;
     --info: #1e88e5;
     --info-foreground: #ffffff;
+    --success-text: #17795a;
+    --warning-text: #925a06;
+    --info-text: #0b5fb0;
     --border: #e2e8f0;
     --input: #e2e8f0;
     --ring: #1e88e5;
@@ -109,31 +119,44 @@
     --chart-4: #0b3d91;
     --chart-5: #f59e0b;
     --radius: 0.5rem;
-    --sidebar: #ffffff;
-    --sidebar-foreground: #1f2937;
-    --sidebar-primary: #1e88e5;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e7f0fb;
-    --sidebar-accent-foreground: #0b3d91;
-    --sidebar-border: #e2e8f0;
-    --sidebar-ring: #1e88e5;
+
+    --page-glow: 30%;
+    --page-tint: 9%;
+
+    /* Navy rail in both themes - the brand's authority colour, and the one
+       surface that stays constant when the rest of the UI flips light/dark. */
+    --sidebar: #0b3d91;
+    --sidebar-from: #0e4aac;
+    --sidebar-to: #08307a;
+    --sidebar-foreground: #dce8f8;
+    --sidebar-primary: #18bfe3;
+    --sidebar-primary-foreground: #04283f;
+    --sidebar-accent: #1a54b5;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #1b4ea6;
+    --sidebar-ring: #18bfe3;
 }
 
 .dark {
-    --background: #0d1524;
-    --foreground: #e8eef6;
-    --card: #141d2f;
-    --card-foreground: #e8eef6;
-    --popover: #141d2f;
-    --popover-foreground: #e8eef6;
+    --page-glow: 42%;
+    --page-tint: 14%;
+    /* Deeper page, clearly lighter cards, and borders you can actually see -
+       the previous values sat within a few percent of each other and read as
+       one flat slab. */
+    --background: #0a1120;
+    --foreground: #e9f0fa;
+    --card: #15223c;
+    --card-foreground: #e9f0fa;
+    --popover: #15223c;
+    --popover-foreground: #e9f0fa;
     --primary: #4ba3f0;
-    --primary-foreground: #08111f;
-    --secondary: #1c2740;
-    --secondary-foreground: #e8eef6;
-    --muted: #1a2438;
-    --muted-foreground: #97a6bd;
-    --accent: #1e2c47;
-    --accent-foreground: #e8eef6;
+    --primary-foreground: #06101f;
+    --secondary: #1f3054;
+    --secondary-foreground: #e9f0fa;
+    --muted: #1a2a49;
+    --muted-foreground: #9fb3d1;
+    --accent: #223761;
+    --accent-foreground: #e9f0fa;
     --destructive: #f2555a;
     --destructive-foreground: #1a0708;
     --success: #35c68c;
@@ -141,23 +164,77 @@
     --warning: #fbbf24;
     --warning-foreground: #2a1c03;
     --info: #4ba3f0;
-    --info-foreground: #08111f;
-    --border: #253148;
-    --input: #2b3850;
+    --info-foreground: #06101f;
+    --success-text: #5be3ae;
+    --warning-text: #fcd34d;
+    --info-text: #7cc0ff;
+    --border: #2e4470;
+    --input: #35507f;
     --ring: #4ba3f0;
     --chart-1: #4ba3f0;
     --chart-2: #3fd0ef;
     --chart-3: #35c68c;
     --chart-4: #8ab4f8;
     --chart-5: #fbbf24;
-    --sidebar: #101827;
-    --sidebar-foreground: #e8eef6;
-    --sidebar-primary: #4ba3f0;
-    --sidebar-primary-foreground: #08111f;
-    --sidebar-accent: #1e2c47;
-    --sidebar-accent-foreground: #e8eef6;
-    --sidebar-border: #253148;
-    --sidebar-ring: #4ba3f0;
+    --sidebar: #08224f;
+    --sidebar-from: #0b2d68;
+    --sidebar-to: #061a3d;
+    --sidebar-foreground: #cfe0f6;
+    --sidebar-primary: #3fd0ef;
+    --sidebar-primary-foreground: #04283f;
+    --sidebar-accent: #123472;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #12336b;
+    --sidebar-ring: #3fd0ef;
+}
+
+/*
+ * Brand gradients. Deliberately restrained (brand spec: no "excessive
+ * gradients"): only large flat navy surfaces get one, always a shift of a few
+ * shades within the same hue, never across cards, buttons or tables.
+ */
+@utility bg-sidebar-gradient {
+    background-image: linear-gradient(to bottom, var(--sidebar-from), var(--sidebar-to));
+}
+
+@utility bg-brand-gradient {
+    background-image: linear-gradient(135deg, var(--color-brand-navy), var(--color-brand-navy-soft));
+}
+
+/*
+ * Public pages (landing, privacy, terms, FAQ): a soft blue glow from the top
+ * right that fades into the normal page background, then a faint tint through
+ * the middle. Built from --background so it works in both light and dark mode.
+ */
+@utility bg-page-gradient {
+    background-image:
+        radial-gradient(
+            72rem 40rem at 82% 8rem,
+            color-mix(in oklab, var(--color-brand-blue) var(--page-glow), transparent),
+            transparent 72%
+        ),
+        radial-gradient(
+            50rem 30rem at 0% 46rem,
+            color-mix(in oklab, var(--color-brand-cyan) calc(var(--page-glow) * 0.7), transparent),
+            transparent 72%
+        ),
+        linear-gradient(
+            to bottom,
+            var(--background),
+            color-mix(in oklab, var(--color-brand-blue) var(--page-tint), var(--background)) 55%,
+            var(--background)
+        );
+}
+
+/* Footer: a deeper navy at the top-left opening up to the lighter brand blue, with a cyan glow in the corner. */
+@utility bg-footer-gradient {
+    background-image:
+        radial-gradient(
+            34rem 18rem at 100% 100%,
+            color-mix(in oklab, var(--color-brand-cyan) 22%, transparent),
+            transparent 70%
+        ),
+        linear-gradient(160deg, #082a6b 0%, var(--color-brand-navy) 45%, var(--color-brand-navy-soft) 100%);
 }
 
 @layer base {
@@ -173,7 +250,7 @@
 /*
  * Applied to <html> for resident-role sessions only (see use-comfortable-scale
  * hook). Bumping the root font-size scales every rem-based Tailwind utility
- * proportionally — text, padding, gaps, and icon/button sizing — which is a
+ * proportionally - text, padding, gaps, and icon/button sizing - which is a
  * more robust "make it bigger" than editing each className, and matches what
  * a senior resident would get from increasing their own browser zoom.
  */

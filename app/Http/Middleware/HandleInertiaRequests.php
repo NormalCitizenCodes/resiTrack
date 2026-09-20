@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\AppNotification;
+use App\Models\User;
+use App\Services\DashboardStatsService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -54,10 +56,39 @@ class HandleInertiaRequests extends Middleware
             'unreadNotifications' => $user
                 ? AppNotification::where('user_id', $user->id)->where('is_read', false)->count()
                 : 0,
+            'navCounts' => fn () => $this->navCounts($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'language' => in_array($request->cookie('app_lang') ?? $request->cookie('resident_lang'), ['en', 'fil', 'ceb'], true)
                 ? ($request->cookie('app_lang') ?? $request->cookie('resident_lang'))
                 : 'en',
         ];
+    }
+
+    /**
+     * Badge counts for the staff sidebar, scoped to the user's barangay.
+     * Evaluated lazily, so requests that never render the sidebar skip the queries.
+     *
+     * @return array{duplicates?: int, registrations?: int}
+     */
+    private function navCounts(?User $user): array
+    {
+        if ($user === null || ! $user->isBarangayStaff()) {
+            return [];
+        }
+
+        $barangayId = $user->isSuperAdmin() ? null : $user->barangay_id;
+
+        $counts = ['duplicates' => app(DashboardStatsService::class)->pendingDuplicates($barangayId)];
+
+        if ($user->role === User::ROLE_BHW) {
+            $counts['registrations'] = User::query()
+                ->where('role', User::ROLE_RESIDENT)
+                ->whereNull('resident_id')
+                ->whereNotNull('registration_id')
+                ->where('barangay_id', $barangayId)
+                ->count();
+        }
+
+        return $counts;
     }
 }
