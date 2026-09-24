@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { AlertTriangle, Home, Users } from 'lucide-react';
+import { BarangayHeatmap } from '@/components/barangay-heatmap';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -55,7 +56,14 @@ function StatCard({
     );
 }
 
-type BarangaySummary = { id: number; name: string; residents: number; households: number; pending_duplicates: number };
+type BarangaySummary = {
+    id: number;
+    name: string;
+    residents: number;
+    households: number;
+    pending_duplicates: number;
+    sector_counts: SectorCount[];
+};
 
 export default function Dashboard({ stats, scope, barangays }: { stats: Stats; scope: string; barangays: BarangaySummary[] }) {
     const role = usePage().props.auth?.user?.role;
@@ -100,31 +108,34 @@ export default function Dashboard({ stats, scope, barangays }: { stats: Stats; s
                         <CardHeader>
                             <CardTitle className="text-base">By Barangay</CardTitle>
                         </CardHeader>
-                        <CardContent className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left text-muted-foreground">
-                                        <th className="pb-2 font-medium">Barangay</th>
-                                        <th className="pb-2 font-medium">Residents</th>
-                                        <th className="pb-2 font-medium">Households</th>
-                                        <th className="pb-2 font-medium">Pending Alerts</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {barangays.map((barangay) => (
-                                        <tr key={barangay.id} className="border-t">
-                                            <td className="py-2 font-medium">
-                                                <Link href={`/residents?barangay_id=${barangay.id}`} className="hover:underline">
-                                                    {barangay.name}
-                                                </Link>
-                                            </td>
-                                            <td className="py-2">{barangay.residents}</td>
-                                            <td className="py-2">{barangay.households}</td>
-                                            <td className="py-2">{barangay.pending_duplicates}</td>
+                        <CardContent className="space-y-6">
+                            <BarangayHeatmap barangays={barangays} />
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="text-left text-muted-foreground">
+                                            <th className="pb-2 font-medium">Barangay</th>
+                                            <th className="pb-2 font-medium">Residents</th>
+                                            <th className="pb-2 font-medium">Households</th>
+                                            <th className="pb-2 font-medium">Pending Alerts</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {barangays.map((barangay) => (
+                                            <tr key={barangay.id} className="border-t">
+                                                <td className="py-2 font-medium">
+                                                    <Link href={`/residents?barangay_id=${barangay.id}`} className="hover:underline">
+                                                        {barangay.name}
+                                                    </Link>
+                                                </td>
+                                                <td className="py-2">{barangay.residents}</td>
+                                                <td className="py-2">{barangay.households}</td>
+                                                <td className="py-2">{barangay.pending_duplicates}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </CardContent>
                     </Card>
                 )}
@@ -137,6 +148,7 @@ export default function Dashboard({ stats, scope, barangays }: { stats: Stats; s
                         <CardContent className="space-y-3">
                             {stats.age_distribution.map((bracket) => {
                                 const pct = Math.round((bracket.count / totalPop) * 100);
+
                                 return (
                                     <div key={bracket.label}>
                                         <div className="mb-1 flex justify-between text-sm">
@@ -161,6 +173,7 @@ export default function Dashboard({ stats, scope, barangays }: { stats: Stats; s
                         <CardContent className="space-y-3">
                             {stats.sector_counts.map((sector) => {
                                 const pct = Math.round((sector.count / maxSector) * 100);
+
                                 return (
                                     <div key={sector.code}>
                                         <div className="mb-1 flex justify-between text-sm">

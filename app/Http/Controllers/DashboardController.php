@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppNotification;
 use App\Models\AccountDeletionRequest;
+use App\Models\AppNotification;
 use App\Models\ProgramApplication;
 use App\Models\Resident;
 use App\Models\User;
@@ -28,13 +28,21 @@ class DashboardController extends Controller
             return $this->residentDashboard($user);
         }
 
-        // Barangay staff see their own barangay; a super admin sees the whole city.
+        // A partner agency account is tied to exactly one barangay, same as staff
+        // (see PartnerAgencyController::storeAccount) - its own stat cards below
+        // stay scoped exactly as they already do, this is not a city-wide account.
         $barangayId = $user->isSuperAdmin() ? null : $user->barangay_id;
+
+        // The city-wide "By Barangay" summary (and heatmap) is a separate, additional
+        // view: super admin already sees it; a partner agency now also gets it, to
+        // help decide where to target future programs, without changing the scope
+        // of its own stats above.
+        $showCityWideSummary = $user->isSuperAdmin() || $user->role === User::ROLE_PARTNER_AGENCY;
 
         return Inertia::render('dashboard', [
             'stats' => $this->stats->forBarangay($barangayId),
             'scope' => $user->isSuperAdmin() ? 'City-wide' : ($user->barangay?->name ?? 'Barangay'),
-            'barangays' => $user->isSuperAdmin() ? $this->stats->barangaySummaries() : [],
+            'barangays' => $showCityWideSummary ? $this->stats->barangaySummaries() : [],
         ]);
     }
 

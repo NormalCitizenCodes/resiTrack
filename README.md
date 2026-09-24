@@ -186,7 +186,8 @@ Built after realizing residents who can't use a phone at all already have a safe
 ### Super Admin: Read-only Oversight
 The super admin represents the city or municipality, so the role is deliberately limited to oversight rather than day-to-day record keeping.
 - Residents and households are **read-only** for the super admin (no create, edit, deactivate, wellbeing assessments, or alert actions). Permanent resident deletion remains a super admin action, as before.
-- The Residents and Households lists gain a **Barangay filter and column** for the super admin, and the dashboard gains a **By Barangay** summary (active residents, households, pending alerts).
+- The Residents and Households lists gain a **Barangay filter and column** for the super admin, and the dashboard gains a **By Barangay** summary (active residents, households, pending alerts), plus a city-wide **heatmap** coloring each barangay by resident count or a chosen vulnerability sector. Partner agency accounts see the same city-wide summary and heatmap (their own stat cards stay scoped to their assigned barangay), to help decide where to target future programs.
+  - The heatmap's barangay boundary shapes (`public/data/cdo-barangays.geojson`) are from the Philippine Statistics Authority's official PSGC barangay boundary layer, queried via the [GeoRisk Philippines](https://georisk.gov.ph) ArcGIS service and filtered to Cagayan de Oro's 80 barangays. Only barangays that have actually adopted resiTrack are colored by density; the rest render as "not yet using resiTrack."
 - Write routes live in a `role:barangay_admin,bhw` group in `routes/web.php`, registered before the read routes so `residents/create` is not captured by `residents/{resident}`.
 
 ### Barangay Staff Conveniences

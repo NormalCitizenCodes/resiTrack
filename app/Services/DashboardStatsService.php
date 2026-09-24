@@ -98,9 +98,10 @@ class DashboardStatsService
     }
 
     /**
-     * Per-barangay headline counts for the city-wide (super admin) overview.
+     * Per-barangay headline counts for the city-wide (super admin / partner agency)
+     * overview, including a sector breakdown for the heatmap's density coloring.
      *
-     * @return array<int, array{id: int, name: string, residents: int, households: int, pending_duplicates: int}>
+     * @return array<int, array{id: int, name: string, residents: int, households: int, pending_duplicates: int, sector_counts: array<int, array{code: string, name: string, count: int}>}>
      */
     public function barangaySummaries(): array
     {
@@ -113,6 +114,7 @@ class DashboardStatsService
                 'residents' => Resident::query()->where('is_active', true)->where('barangay_id', $barangay->id)->count(),
                 'households' => Household::query()->where('barangay_id', $barangay->id)->count(),
                 'pending_duplicates' => $this->pendingDuplicates($barangay->id),
+                'sector_counts' => $this->sectorCounts($barangay->id),
             ])
             ->all();
     }
