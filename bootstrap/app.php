@@ -17,6 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render (and most PaaS hosts) terminate HTTPS at their edge and forward
+        // plain HTTP to the container. Without this, Laravel doesn't know the
+        // original request was HTTPS, which breaks asset URLs (mixed content)
+        // and secure cookies. '*' is safe here since the platform's own edge is
+        // the only thing that can reach this container directly.
+        $middleware->trustProxies(at: '*');
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'resident_lang']);
 
         $middleware->web(append: [

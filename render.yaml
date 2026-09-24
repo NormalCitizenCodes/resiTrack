@@ -1,0 +1,55 @@
+# Render Blueprint - lets you deploy via "New > Blueprint" on Render pointed at
+# this repo instead of configuring a Web Service by hand. Values below with
+# `sync: false` are secrets/environment-specific and must be filled in once in
+# Render's dashboard after the first deploy; they are never committed here.
+#
+# Region is Singapore deliberately - that's where this project's Supabase
+# database already lives, keeping the app-to-database hop fast.
+services:
+  - type: web
+    name: resitrack
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: APP_NAME
+        value: resiTrack
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        sync: false # php artisan key:generate --show
+      - key: APP_URL
+        sync: false # the real https://... URL Render assigns this service
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        sync: false # Supabase pooler host, e.g. aws-0-ap-southeast-1.pooler.supabase.com
+      - key: DB_PORT
+        value: 5432
+      - key: DB_DATABASE
+        value: postgres
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: true
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: MAIL_MAILER
+        value: log # switch to `resend` + RESEND_API_KEY once real email delivery is wired up
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false # https://<your-render-url>/auth/google/callback

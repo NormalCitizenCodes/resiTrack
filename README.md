@@ -236,13 +236,40 @@ Feature tests cover role access control, automatic sector classification, compou
 - The sign-in and sign-up copy is English only, so the language switcher is not shown on those pages yet.
 - The Privacy Notice and Terms of Use are drafts awaiting review.
 
+## Deployment
+
+The database is already hosted on Supabase (Postgres). The app itself deploys separately,
+as a Docker container, to [Render](https://render.com)'s free tier, in the Singapore
+region (same region as the Supabase project, to keep the app-to-database hop fast).
+
+One-time setup:
+
+1. On Render, choose **New > Blueprint**, point it at this repo. It reads `render.yaml`
+   and creates the web service automatically.
+2. In the service's Environment tab, fill in the variables marked `sync: false` in
+   `render.yaml`: `APP_KEY` (`php artisan key:generate --show` run locally), `APP_URL`
+   (the `https://...onrender.com` URL Render assigns), the Supabase `DB_HOST`/
+   `DB_USERNAME`/`DB_PASSWORD` (same values as `.env.supabase` locally), and the Google
+   OAuth credentials if "Sign in with Google" is enabled.
+3. Redeploy once those are saved (Render doesn't restart automatically after an env var
+   change made outside the initial blueprint run).
+
+Every deploy (`git push` to the connected branch) rebuilds the Docker image, runs
+`php artisan migrate --force` on boot, then serves the app. On the free plan the
+container spins down after ~15 minutes idle and takes 30-60 seconds to wake on the next
+request, open the URL once before a demo rather than relying on the first click being
+instant.
+
+`MAIL_MAILER` stays `log` (no real email sent) until a real provider is configured;
+`config/services.php` already has a `resend` block ready, set `MAIL_MAILER=resend` and
+`RESEND_API_KEY` when real email delivery is needed.
+
 ## Roadmap
 
 - **Partner agency onboarding:** confirm with city hall or the barangay chairman who may add partner agencies, then decide on a request flow.
-- **Agency applications tab** and a notification when someone applies to a program.
+- **Agency applications tab.** An agency now gets an in-app notification the moment someone applies (`NotificationService::notifyNewApplication`), but there is still no dedicated list view of an agency's applications outside a program's own page.
 - **Resident username login** for residents without an email, with staff-assisted recovery.
-- **BHW offline sync** (table `offline_sync_logs` scaffolded).
-- **Production deployment** to Supabase/PostgreSQL.
-- Native email delivery for account and request notifications.
+- **BHW offline sync.** In progress: a PWA-based offline draft queue for the resident/household intake forms (see the implementation plan), not the full local-database mirror the capstone paper's System Architecture describes.
+- Native email delivery for account and request notifications (currently `MAIL_MAILER=log`; see Deployment below for switching to a real provider).
 - Native-speaker review of Filipino and Bisaya translations, and translated sign-in and sign-up pages.
 - A logo variant for dark backgrounds, and vector (SVG) artwork.
