@@ -58,6 +58,7 @@ class ProgramApplicationController extends Controller
             'program' => $program->title,
             'resident' => $resident->full_name,
         ]);
+        NotificationService::notifyNewApplication($program, $resident);
 
         return back()->with('success', "Application submitted for {$resident->full_name}.");
     }

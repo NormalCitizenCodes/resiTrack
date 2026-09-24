@@ -165,6 +165,30 @@ class NotificationService
     }
 
     /**
+     * Notify the owning agency's accounts that a resident applied to one of their programs.
+     */
+    public static function notifyNewApplication(Program $program, Resident $resident): void
+    {
+        if ($program->agency_id === null) {
+            return;
+        }
+
+        User::query()
+            ->where('role', User::ROLE_PARTNER_AGENCY)
+            ->where('agency_id', $program->agency_id)
+            ->get(['id'])
+            ->each(fn (User $agencyUser) => self::notify(
+                $agencyUser->id,
+                $resident->id,
+                'program_match',
+                'New application received',
+                "{$resident->full_name} applied to {$program->title}.",
+                null,
+                route('programs.show', $program),
+            ));
+    }
+
+    /**
      * Notify a single resident about the outcome of their application.
      */
     public static function notifyApplicationOutcome(int $residentId, string $programTitle, string $status): void

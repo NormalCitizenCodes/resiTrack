@@ -106,6 +106,21 @@ it('shows sector-eligible residents to barangay staff', function () {
             ->where('eligibleResidents.0.id', $this->senior->id));
 });
 
+it('notifies the owning agency when a resident applies', function () {
+    $program = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);
+    $residentUser = User::factory()->create([
+        'role' => User::ROLE_RESIDENT,
+        'barangay_id' => $this->barangay->id,
+        'resident_id' => $this->senior->id,
+    ]);
+
+    $this->actingAs($residentUser)
+        ->post("/programs/{$program->id}/apply")
+        ->assertSessionHas('success');
+
+    expect(AppNotification::where('user_id', $this->agencyUser->id)->where('type', 'program_match')->count())->toBe(1);
+});
+
 it('lets barangay staff endorse an eligible resident', function () {
     $program = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);
 
