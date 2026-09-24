@@ -8,6 +8,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { cn } from '@/lib/utils';
 import type { NavItem } from '@/types';
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
@@ -23,11 +24,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             asChild
                             isActive={isCurrentUrl(item.href)}
                             tooltip={{ children: item.title }}
-                            className="data-[active=true]:[&>svg]:text-sidebar-primary"
+                            className={cn('data-[active=true]:[&>svg]:text-sidebar-primary', item.badge && 'pr-6')}
                         >
                             <Link href={item.href} prefetch>
                                 {item.icon && <item.icon />}
-                                <span>{item.title}</span>
+                                <span className="truncate">{item.title}</span>
                             </Link>
                         </SidebarMenuButton>
                         {item.badge ? (
