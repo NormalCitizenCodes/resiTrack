@@ -31,11 +31,36 @@ it('lets a barangay admin view staff scoped to their own barangay', function () 
     $this->actingAs($this->admin)
         ->get('/staff')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('staff/index')->has('staff', 2));
+        ->assertInertia(fn ($page) => $page->component('staff/index')->has('staff.data', 2));
 });
 
 it('forbids bhw from the staff management page', function () {
     $this->actingAs($this->bhw)->get('/staff')->assertForbidden();
+});
+
+it('lets a super admin search and filter staff by barangay across the whole city', function () {
+    User::factory()->create(['role' => User::ROLE_BHW, 'barangay_id' => $this->otherBarangay->id, 'name' => 'Someone Else']);
+
+    $this->actingAs($this->superAdmin)
+        ->get('/staff')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('staff/index')->has('staff.data', 3));
+
+    $this->actingAs($this->superAdmin)
+        ->get('/staff?barangay_id='.$this->otherBarangay->id)
+        ->assertInertia(fn ($page) => $page->has('staff.data', 1)->where('staff.data.0.name', 'Someone Else'));
+
+    $this->actingAs($this->superAdmin)
+        ->get('/staff?search=Someone')
+        ->assertInertia(fn ($page) => $page->has('staff.data', 1)->where('staff.data.0.name', 'Someone Else'));
+});
+
+it('paginates the staff list', function () {
+    User::factory()->count(20)->create(['role' => User::ROLE_BHW, 'barangay_id' => $this->barangay->id]);
+
+    $this->actingAs($this->superAdmin)
+        ->get('/staff')
+        ->assertInertia(fn ($page) => $page->has('staff.data', 15)->where('staff.total', 22));
 });
 
 it('lets a barangay admin create a bhw account in their own barangay', function () {

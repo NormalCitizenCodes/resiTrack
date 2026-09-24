@@ -1,11 +1,15 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Plus, UserCog } from 'lucide-react';
+import { Plus, Search, UserCog } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { DataPagination } from '@/components/data-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { dashboard } from '@/routes';
-import type { Role } from '@/types';
+import type { Paginated, Role } from '@/types';
 
 type Staff = {
     id: number;
@@ -17,17 +21,54 @@ type Staff = {
     barangay?: { id: number; name: string } | null;
 };
 
+type Props = {
+    staff: Paginated<Staff>;
+    isSuperAdmin: boolean;
+    filters: { search?: string; barangay_id?: string };
+    barangays: { id: number; name: string }[];
+};
+
 const ROLE_LABEL: Record<string, string> = {
     barangay_admin: 'Barangay Admin',
     bhw: 'BHW',
 };
 
-export default function StaffIndex({ staff, isSuperAdmin }: { staff: Staff[]; isSuperAdmin: boolean }) {
+const ALL = 'all';
+
+export default function StaffIndex({ staff, isSuperAdmin, filters, barangays }: Props) {
+    const [search, setSearch] = useState(filters.search ?? '');
+
     const toggle = (member: Staff) => {
         const verb = member.is_active ? 'deactivate' : 'reactivate';
+
         if (confirm(`${verb.charAt(0).toUpperCase() + verb.slice(1)} ${member.name}?`)) {
             router.post(`/staff/${member.id}/toggle`, {}, { preserveScroll: true });
         }
+    };
+
+    // Debounced search so we don't fire a request on every keystroke.
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (search === (filters.search ?? '')) {
+                return;
+            }
+
+            router.get('/staff', cleanQuery({ ...filters, search }), {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
+        }, 350);
+
+        return () => clearTimeout(handler);
+    }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const applyBarangayFilter = (value: string) => {
+        router.get('/staff', cleanQuery({ ...filters, barangay_id: value === ALL ? '' : value }), {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     };
 
     return (
@@ -38,7 +79,8 @@ export default function StaffIndex({ staff, isSuperAdmin }: { staff: Staff[]; is
                     <div>
                         <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
                         <p className="text-sm text-muted-foreground">
-                            Manage barangay staff logins{isSuperAdmin ? ' across every barangay' : ''}.
+                            {staff.total.toLocaleString()} staff account{staff.total === 1 ? '' : 's'}
+                            {isSuperAdmin ? ' across every barangay' : ''}.
                         </p>
                     </div>
                     <Button asChild>
@@ -48,16 +90,43 @@ export default function StaffIndex({ staff, isSuperAdmin }: { staff: Staff[]; is
                     </Button>
                 </div>
 
-                {staff.length === 0 && (
+                <div className="flex flex-wrap gap-2">
+                    <div className="relative min-w-[220px] flex-1">
+                        <Search className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by name or email…"
+                            className="pl-8"
+                        />
+                    </div>
+                    {isSuperAdmin && (
+                        <Select value={filters.barangay_id || ALL} onValueChange={applyBarangayFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="All barangays" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL}>All barangays</SelectItem>
+                                {barangays.map((b) => (
+                                    <SelectItem key={b.id} value={String(b.id)}>
+                                        {b.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                </div>
+
+                {staff.data.length === 0 && (
                     <Card>
                         <CardContent className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
                             <UserCog className="size-8" />
-                            No staff accounts yet.
+                            No staff accounts found.
                         </CardContent>
                     </Card>
                 )}
 
-                {staff.length > 0 && (
+                {staff.data.length > 0 && (
                     <div className="rounded-xl border">
                         <Table>
                             <TableHeader>
@@ -71,7 +140,7 @@ export default function StaffIndex({ staff, isSuperAdmin }: { staff: Staff[]; is
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {staff.map((member) => (
+                                {staff.data.map((member) => (
                                     <TableRow key={member.id}>
                                         <TableCell className="font-medium">{member.name}</TableCell>
                                         <TableCell className="text-muted-foreground">{member.email}</TableCell>
@@ -103,9 +172,17 @@ export default function StaffIndex({ staff, isSuperAdmin }: { staff: Staff[]; is
                         </Table>
                     </div>
                 )}
+
+                <DataPagination meta={staff} />
             </div>
         </>
     );
+}
+
+function cleanQuery(query: Record<string, string | undefined>): Record<string, string> {
+    return Object.fromEntries(
+        Object.entries(query).filter(([, value]) => value !== undefined && value !== ''),
+    ) as Record<string, string>;
 }
 
 StaffIndex.layout = {

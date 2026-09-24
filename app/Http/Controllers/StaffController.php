@@ -28,12 +28,22 @@ class StaffController extends Controller
             ->whereIn('role', [User::ROLE_BARANGAY_ADMIN, User::ROLE_BHW])
             ->with('barangay:id,name')
             ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
+            ->when($user->isSuperAdmin() ? $request->integer('barangay_id') : null, fn ($q, $barangayId) => $q->where('barangay_id', $barangayId))
+            ->when($request->string('search')->trim()->value(), function ($q, $search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'role', 'barangay_id', 'is_active', 'last_login_at']);
+            ->paginate(15, ['id', 'name', 'email', 'role', 'barangay_id', 'is_active', 'last_login_at'])
+            ->withQueryString();
 
         return Inertia::render('staff/index', [
             'staff' => $staff,
             'isSuperAdmin' => $user->isSuperAdmin(),
+            'filters' => $request->only(['search', 'barangay_id']),
+            'barangays' => $user->isSuperAdmin() ? Barangay::orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
 
