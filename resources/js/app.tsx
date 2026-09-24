@@ -19,6 +19,7 @@ createInertiaApp({
                 return null;
             case name.startsWith('auth/'):
             case name === 'account-reactivation/create':
+            case name === 'account-recovery/password':
                 return AuthLayout;
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
