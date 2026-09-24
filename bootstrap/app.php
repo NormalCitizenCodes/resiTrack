@@ -10,6 +10,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -56,5 +58,21 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return back()->with('error', 'Could not send that email right now. Please try again shortly.');
+        });
+
+        // Laravel's own default error pages are plain and unbranded. Render
+        // resiTrack's own error page for the status codes a visitor could
+        // actually hit, leave everything else (like validation's 422) alone.
+        $exceptions->respond(function (Response $response, \Throwable $e, Request $request) {
+            if (! app()->hasDebugModeEnabled()
+                && ! $request->expectsJson()
+                && in_array($response->getStatusCode(), [404, 403, 500, 503], true)
+            ) {
+                return Inertia::render('error', ['status' => $response->getStatusCode()])
+                    ->toResponse($request)
+                    ->setStatusCode($response->getStatusCode());
+            }
+
+            return $response;
         });
     })->create();
