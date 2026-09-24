@@ -91,7 +91,44 @@ class ResidentController extends Controller
         $user = $request->user();
         $linkedAccount = $request->pendingAccountToLink();
 
-        $resident = DB::transaction(function () use ($request, $user, $linkedAccount) {
+        // linked_user_id was submitted but pendingAccountToLink() found no
+        // still-pending match - most likely another BHW already completed this
+        // profiling. The create() page already redirects for this on load, but
+        // a BHW who had the form open before that happened, then submits
+        // without reloading, would otherwise fall through to creating a
+        // second, unlinked resident for the same person.
+        if (! $linkedAccount && $request->filled('linked_user_id')) {
+            $existing = User::find($request->integer('linked_user_id'));
+
+            if ($existing && $existing->resident_id !== null) {
+                return redirect()
+                    ->route('residents.show', $existing->resident_id)
+                    ->with('success', "{$existing->name} has already been profiled by another staff member.");
+            }
+        }
+
+        $alreadyLinkedResidentId = null;
+
+        $resident = DB::transaction(function () use ($request, $user, &$linkedAccount, &$alreadyLinkedResidentId) {
+            if ($linkedAccount) {
+                // pendingAccountToLink() already validated this is still pending,
+                // but that was earlier in the request - two BHWs can both load the
+                // same "complete profiling" link before either submits. Re-check
+                // under a row lock right before writing (held for the rest of this
+                // transaction) so a losing second submission is redirected to the
+                // resident the other one just created, instead of silently
+                // creating a duplicate profile.
+                $fresh = User::whereKey($linkedAccount->id)->lockForUpdate()->first();
+
+                if (! $fresh || $fresh->resident_id !== null) {
+                    $alreadyLinkedResidentId = $fresh?->resident_id;
+
+                    return null;
+                }
+
+                $linkedAccount = $fresh;
+            }
+
             $resident = new Resident($request->safe()->except([
                 'create_account',
                 'password',
@@ -126,6 +163,12 @@ class ResidentController extends Controller
 
             return $resident;
         });
+
+        if ($resident === null) {
+            return redirect()
+                ->route('residents.show', $alreadyLinkedResidentId)
+                ->with('success', "{$linkedAccount->name} has already been profiled by another staff member.");
+        }
 
         // Classify vulnerability sectors, then screen for duplicates/transfers.
         $this->classifier->classify($resident);

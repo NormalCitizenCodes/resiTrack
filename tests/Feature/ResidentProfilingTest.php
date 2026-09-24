@@ -166,6 +166,37 @@ it('redirects to the resident profile instead of 404ing when a profiling link is
         ->assertRedirect(route('residents.show', $resident));
 });
 
+it('does not create a duplicate resident when the same pending account is submitted twice', function () {
+    $registration = User::factory()->create([
+        'name' => 'Race Condition',
+        'email' => 'race-condition@example.com',
+        'role' => User::ROLE_RESIDENT,
+        'barangay_id' => $this->barangay->id,
+        'registration_id' => 'REG-000600',
+        'resident_id' => null,
+    ]);
+
+    $payload = [
+        'linked_user_id' => $registration->id,
+        'first_name' => 'Race',
+        'last_name' => 'Condition',
+        'date_of_birth' => now()->subYears(25)->format('Y-m-d'),
+        'sex' => 'male',
+        'civil_status' => 'single',
+        'email' => 'race-condition@example.com',
+    ];
+
+    // Simulates two BHWs both having loaded the same "complete profiling"
+    // link before either submitted - the second submission arrives after
+    // the account is no longer pending.
+    $this->actingAs($this->staff)->post('/residents', $payload)->assertRedirect();
+    $this->actingAs($this->staff)
+        ->post('/residents', $payload)
+        ->assertRedirect(route('residents.show', Resident::where('email', 'race-condition@example.com')->firstOrFail()));
+
+    expect(Resident::where('email', 'race-condition@example.com')->count())->toBe(1);
+});
+
 it('links a pending account when profiling uses the same email even if create account is checked', function () {
     $registration = User::factory()->create([
         'name' => 'Juan Dela Cruz',
