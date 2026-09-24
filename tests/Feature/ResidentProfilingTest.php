@@ -120,6 +120,11 @@ it('lets a BHW search pending accounts and complete official profiling without c
     ])->assertRedirect();
     $this->assertAuthenticatedAs($registration);
 
+    // A BHW physically verifying and linking the account counts as strong
+    // enough proof of identity that email verification is no longer required.
+    expect($registration->fresh()->hasVerifiedEmail())->toBeTrue();
+    $this->get(route('dashboard'))->assertOk();
+
     Auth::logout();
     $this->flushSession();
 
@@ -128,6 +133,37 @@ it('lets a BHW search pending accounts and complete official profiling without c
         'password' => 'resident-secret',
     ])->assertRedirect();
     $this->assertAuthenticatedAs($registration);
+});
+
+it('redirects to the resident profile instead of 404ing when a profiling link is revisited after completion', function () {
+    $registration = User::factory()->create([
+        'name' => 'Already Done',
+        'email' => 'already-done@example.com',
+        'role' => User::ROLE_RESIDENT,
+        'barangay_id' => $this->barangay->id,
+        'registration_id' => 'REG-000500',
+        'resident_id' => null,
+    ]);
+
+    $this->actingAs($this->staff)
+        ->post('/residents', [
+            'linked_user_id' => $registration->id,
+            'first_name' => 'Already',
+            'last_name' => 'Done',
+            'date_of_birth' => now()->subYears(30)->format('Y-m-d'),
+            'sex' => 'female',
+            'civil_status' => 'single',
+            'email' => 'already-done@example.com',
+        ])
+        ->assertRedirect();
+
+    $resident = Resident::where('email', 'already-done@example.com')->firstOrFail();
+
+    // Revisiting the same "complete profiling" link a second time (e.g. the
+    // BHW clicks the same notification twice) used to 404.
+    $this->actingAs($this->staff)
+        ->get("/residents/create?linked_user={$registration->id}")
+        ->assertRedirect(route('residents.show', $resident));
 });
 
 it('links a pending account when profiling uses the same email even if create account is checked', function () {

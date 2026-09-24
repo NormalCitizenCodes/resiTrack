@@ -409,6 +409,14 @@ class ResidentController extends Controller
             'name' => $resident->full_name,
         ]);
 
+        // A BHW physically checking ID and linking this account to an official
+        // resident record is a stronger identity check than clicking an emailed
+        // link - email_verified_at isn't mass-fillable (see GoogleAuthController
+        // for the same pattern), so it's set directly here rather than above.
+        if (! $account->hasVerifiedEmail()) {
+            $account->forceFill(['email_verified_at' => now()])->save();
+        }
+
         NotificationService::markRegistrationNotificationsComplete($account, $resident);
         NotificationService::notifyResidentProfileVerified($account, $resident);
     }
