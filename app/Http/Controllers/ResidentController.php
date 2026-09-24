@@ -65,8 +65,21 @@ class ResidentController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        // A BHW revisiting a "complete profiling" link (e.g. clicking the same
+        // notification twice) after it's already been completed used to hit a
+        // bare 404. Send them to the resident's actual profile instead.
+        if ($request->filled('linked_user') || $request->filled('account')) {
+            $account = User::find($request->integer('linked_user') ?: $request->integer('account'));
+
+            if ($account && $account->resident_id !== null) {
+                return redirect()
+                    ->route('residents.show', $account->resident_id)
+                    ->with('success', "{$account->name} has already been profiled.");
+            }
+        }
+
         return Inertia::render('residents/create', [
             ...$this->formData($request),
             'linkedAccount' => $this->linkedAccountPayload($request),
