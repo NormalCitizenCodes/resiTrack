@@ -72,7 +72,9 @@ class ProgramApplicationController extends Controller
         $program = $application->program;
 
         $owns = $user->isSuperAdmin()
-            || ($user->role === 'partner_agency' && $program->agency_id === $user->agency_id);
+            || ($user->role === 'partner_agency'
+                && $program->agency_id === $user->agency_id
+                && ($user->barangay_id === null || $program->barangay_id === null || $program->barangay_id === $user->barangay_id));
         abort_unless($owns, 403, 'You can only review applications for your own programs.');
 
         $validated = $request->validate([
@@ -89,6 +91,37 @@ class ProgramApplicationController extends Controller
         NotificationService::notifyApplicationOutcome($application->resident_id, $program->title, 'rejected');
 
         return back()->with('success', 'Application rejected.');
+    }
+
+    /**
+     * A consolidated queue for an agency to review applications across every
+     * program it owns, instead of opening each program's page one at a time.
+     */
+    public function review(Request $request): Response
+    {
+        $user = $request->user();
+        $status = $request->string('status')->value() ?: 'pending';
+
+        $applications = ProgramApplication::query()
+            ->whereHas('program', fn ($q) => $q
+                ->when(! $user->isSuperAdmin(), fn ($q) => $q
+                    ->where('agency_id', $user->agency_id)
+                    ->when($user->barangay_id !== null, fn ($q) => $q
+                        ->where(fn ($inner) => $inner->whereNull('barangay_id')->orWhere('barangay_id', $user->barangay_id)))))
+            ->when($status !== 'all', fn ($q) => $q->where('status', $status))
+            ->with([
+                'program:id,title,agency_id,barangay_id',
+                'resident:id,first_name,last_name,middle_name,barangay_id',
+                'resident.barangay:id,name',
+            ])
+            ->latest('applied_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('programs/applications-review', [
+            'applications' => $applications,
+            'filters' => ['status' => $status],
+        ]);
     }
 
     /**

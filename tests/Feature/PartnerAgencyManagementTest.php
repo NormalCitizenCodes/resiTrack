@@ -2,14 +2,15 @@
 
 use App\Models\Barangay;
 use App\Models\PartnerAgency;
+use App\Models\Program;
 use App\Models\User;
+use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->seed(Database\Seeders\ReferenceDataSeeder::class);
+    $this->seed(ReferenceDataSeeder::class);
     $this->barangay22 = Barangay::where('name', 'Barangay 22')->firstOrFail();
     $this->barangay23 = Barangay::where('name', 'Barangay 23')->firstOrFail();
     $this->agency = PartnerAgency::create(['agency_name' => 'DSWD', 'agency_type' => 'National Government Agency', 'is_active' => true]);
@@ -39,6 +40,18 @@ it('allows a barangay admin to create an agency account only for their barangay'
         'agency_id' => $this->agency->id,
         'barangay_id' => $this->barangay23->id,
     ])->assertSessionHasErrors('barangay_id');
+});
+
+it('lets a barangay admin see every agency org, not just ones already active in their barangay', function () {
+    // $this->agency (DSWD, created fresh in this test's own beforeEach) has zero
+    // accounts anywhere yet - this is exactly the "first agency account for this
+    // barangay" case that used to leave the Partner Agency dropdown with nothing
+    // to select. ReferenceDataSeeder seeds its own agencies too, so this checks
+    // the full roster is present rather than assuming an exact unrelated count.
+    $this->actingAs($this->admin22)->get('/partner-agencies')
+        ->assertInertia(fn ($page) => $page
+            ->has('agencies', PartnerAgency::count())
+            ->where('agencies', fn ($agencies) => collect($agencies)->contains(fn ($a) => $a['id'] === $this->agency->id)));
 });
 
 it('keeps agency accounts isolated by barangay and denies BHW management', function () {
@@ -80,13 +93,45 @@ it('prevents duplicate agency account emails', function () {
     ])->assertSessionHasErrors('email');
 });
 
+it('lets an agency account view and update its own agency profile', function () {
+    $account = User::factory()->create([
+        'role' => User::ROLE_PARTNER_AGENCY,
+        'agency_id' => $this->agency->id,
+        'barangay_id' => $this->barangay22->id,
+    ]);
+
+    $this->actingAs($account)->get('/agency-profile')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('agency.id', $this->agency->id)->where('agency.agency_name', 'DSWD'));
+
+    $this->actingAs($account)->put('/agency-profile', [
+        'agency_name' => 'DSWD',
+        'contact_person' => 'Maria Santos',
+        'contact_number' => '09171234567',
+        'email' => 'dswd.b22@example.com',
+        'address' => 'Barangay 22 Hall',
+    ])->assertRedirect();
+
+    expect($this->agency->fresh())
+        ->contact_person->toBe('Maria Santos')
+        ->contact_number->toBe('09171234567');
+});
+
+it('does not let barangay staff or residents reach another agencys self-service profile page', function () {
+    $this->actingAs($this->admin22)->get('/agency-profile')->assertForbidden();
+    $this->actingAs($this->bhw)->get('/agency-profile')->assertForbidden();
+
+    $resident = User::factory()->create(['role' => User::ROLE_RESIDENT]);
+    $this->actingAs($resident)->get('/agency-profile')->assertForbidden();
+});
+
 it('prevents an agency account from managing another barangays program', function () {
     $account = User::factory()->create([
         'role' => User::ROLE_PARTNER_AGENCY,
         'agency_id' => $this->agency->id,
         'barangay_id' => $this->barangay22->id,
     ]);
-    $program = App\Models\Program::create([
+    $program = Program::create([
         'agency_id' => $this->agency->id,
         'barangay_id' => $this->barangay23->id,
         'posted_by' => $account->id,

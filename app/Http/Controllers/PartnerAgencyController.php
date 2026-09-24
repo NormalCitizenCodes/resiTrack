@@ -26,9 +26,14 @@ class PartnerAgencyController extends Controller
             ->latest()
             ->get(['id', 'name', 'email', 'agency_id', 'barangay_id', 'is_active', 'last_login_at']);
 
+        // Every barangay staff member picks from the full roster of agency orgs
+        // here, not just ones already active in their own barangay - otherwise a
+        // barangay with zero existing agency accounts could never create its
+        // first one (the "Partner Agency" dropdown would have nothing to offer).
+        // Creating a *new* agency org (as opposed to an account for an existing
+        // one) stays super admin only - that's enforced separately in storeAgency().
         $agencies = PartnerAgency::query()
             ->withCount(['users as accounts_count' => fn ($query) => $query->where('role', User::ROLE_PARTNER_AGENCY)])
-            ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereHas('users', fn ($account) => $account->where('role', User::ROLE_PARTNER_AGENCY)->where('barangay_id', $user->barangay_id)))
             ->orderBy('agency_name')
             ->get();
 
@@ -92,18 +97,58 @@ class PartnerAgencyController extends Controller
     public function updateAgency(Request $request, PartnerAgency $agency): RedirectResponse
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
-        $validated = $request->validate([
+        $validated = $request->validate($this->agencyValidationRules($agency));
+        $agency->update($validated);
+        AuditLogger::record('partner_agency_updated', 'partner_agencies', $agency->id, null, $validated);
+
+        return back()->with('success', 'Partner agency information updated.');
+    }
+
+    /**
+     * An agency's own account editing its own org's contact details, as
+     * opposed to updateAgency() above which is super admin managing any
+     * agency. The agency is resolved from the authenticated user, not a
+     * route-bound id, so there is nothing for a request to target but the
+     * caller's own organization.
+     */
+    public function showProfile(Request $request): Response
+    {
+        $agency = $this->ownAgency($request);
+
+        return Inertia::render('partner-agencies/profile', ['agency' => $agency]);
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $agency = $this->ownAgency($request);
+        $validated = $request->validate($this->agencyValidationRules($agency));
+        $agency->update($validated);
+        AuditLogger::record('partner_agency_profile_updated', 'partner_agencies', $agency->id, null, $validated);
+
+        return back()->with('success', 'Agency profile updated.');
+    }
+
+    private function ownAgency(Request $request): PartnerAgency
+    {
+        $agencyId = $request->user()->agency_id;
+        abort_unless($agencyId !== null, 404);
+
+        return PartnerAgency::findOrFail($agencyId);
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function agencyValidationRules(PartnerAgency $agency): array
+    {
+        return [
             'agency_name' => ['required', 'string', 'max:150', Rule::unique('partner_agencies', 'agency_name')->ignore($agency->id)],
             'agency_type' => ['nullable', 'string', 'max:100'],
             'contact_person' => ['nullable', 'string', 'max:150'],
             'contact_number' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:150'],
             'address' => ['nullable', 'string', 'max:255'],
-        ]);
-        $agency->update($validated);
-        AuditLogger::record('partner_agency_updated', 'partner_agencies', $agency->id, null, $validated);
-
-        return back()->with('success', 'Partner agency information updated.');
+        ];
     }
 
     public function updateAccount(Request $request, User $account): RedirectResponse

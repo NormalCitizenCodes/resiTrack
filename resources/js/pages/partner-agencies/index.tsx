@@ -73,23 +73,28 @@ export default function PartnerAgencies({
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
+                            {/* min-w-0 on every cell below: a grid item's width defaults to
+                                its content's natural size (min-width: auto), so w-full alone
+                                on the Select inside doesn't stop a long agency name from
+                                forcing the whole column, and the box inside it, wider than
+                                the card. */}
                             <form onSubmit={submitAccount} className="grid gap-4 sm:grid-cols-2">
-                                <div className="grid gap-2">
+                                <div className="grid min-w-0 gap-2">
                                     <Label>Name</Label>
                                     <Input required value={accountForm.data.name} onChange={(e) => accountForm.setData('name', e.target.value)} />
                                 </div>
-                                <div className="grid gap-2">
+                                <div className="grid min-w-0 gap-2">
                                     <Label>Email</Label>
                                     <Input required type="email" value={accountForm.data.email} onChange={(e) => accountForm.setData('email', e.target.value)} />
                                 </div>
-                                <div className="grid gap-2">
+                                <div className="grid min-w-0 gap-2">
                                     <Label>Temporary Password</Label>
                                     <Input required type="password" value={accountForm.data.password} onChange={(e) => accountForm.setData('password', e.target.value)} />
                                 </div>
-                                <div className="grid gap-2">
+                                <div className="grid min-w-0 gap-2">
                                     <Label>Partner Agency</Label>
                                     <Select value={accountForm.data.agency_id} onValueChange={(value) => accountForm.setData('agency_id', value)}>
-                                        <SelectTrigger className="w-full">
+                                        <SelectTrigger className="w-full overflow-hidden">
                                             <SelectValue placeholder="Select agency" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -101,24 +106,32 @@ export default function PartnerAgencies({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="grid gap-2 sm:col-span-2">
+                                <div className="grid min-w-0 gap-2 sm:col-span-2">
                                     <Label>Barangay</Label>
-                                    <Select
-                                        value={isSuperAdmin ? accountForm.data.barangay_id : String(assignedBarangay?.id ?? '')}
-                                        onValueChange={(value) => accountForm.setData('barangay_id', value)}
-                                        disabled={!isSuperAdmin}
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select barangay" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {(isSuperAdmin ? barangays : assignedBarangay ? [assignedBarangay] : []).map((barangay) => (
-                                                <SelectItem key={barangay.id} value={String(barangay.id)}>
-                                                    {barangay.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    {isSuperAdmin ? (
+                                        <Select value={accountForm.data.barangay_id} onValueChange={(value) => accountForm.setData('barangay_id', value)}>
+                                            <SelectTrigger className="w-full overflow-hidden">
+                                                <SelectValue placeholder="Select barangay" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {barangays.map((barangay) => (
+                                                    <SelectItem key={barangay.id} value={String(barangay.id)}>
+                                                        {barangay.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        // Not an interactive field for a barangay admin: the backend
+                                        // ignores whatever barangay_id a non-super-admin submits and
+                                        // always uses their own barangay_id instead, so this is purely
+                                        // informational. A disabled <Select> here read as blank (its
+                                        // disabled state drops opacity to 50%, unreadable on this dark
+                                        // background) for a value the admin can't change anyway.
+                                        <div className="flex h-10 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">
+                                            {assignedBarangay?.name ?? 'Your barangay'}
+                                        </div>
+                                    )}
                                     <p className="text-xs text-muted-foreground">
                                         {isSuperAdmin ? 'Assign the account to any barangay.' : 'Locked to your assigned barangay.'}
                                     </p>

@@ -1,21 +1,22 @@
 <?php
 
-use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AccountDeletionRequestController;
 use App\Http\Controllers\AccountReactivationRequestController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\BeneficiaryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DuplicateAlertController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HouseholdController;
-use App\Http\Controllers\LandingController;
 use App\Http\Controllers\HouseholdWellbeingAssessmentController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PartnerAgencyController;
+use App\Http\Controllers\PasswordRecoveryController;
 use App\Http\Controllers\ProgramApplicationController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\PasswordRecoveryController;
-use App\Http\Controllers\PartnerAgencyController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\StaffController;
@@ -107,7 +108,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('programs/{program}/edit', [ProgramController::class, 'edit'])->name('programs.edit');
         Route::put('programs/{program}', [ProgramController::class, 'update'])->name('programs.update');
         Route::delete('programs/{program}', [ProgramController::class, 'destroy'])->name('programs.destroy');
+        Route::get('applications/review', [ProgramApplicationController::class, 'review'])->name('applications.review');
         Route::patch('applications/{application}', [ProgramApplicationController::class, 'update'])->name('applications.update');
+        Route::get('beneficiaries', [BeneficiaryController::class, 'index'])->name('beneficiaries.index');
+    });
+
+    // An agency's own org profile - self-service editing of its own contact
+    // details, distinct from partner-agencies.update which is super-admin-only
+    // management of any agency (see PartnerAgencyController::ownAgency()).
+    Route::middleware('role:partner_agency')->group(function () {
+        Route::get('agency-profile', [PartnerAgencyController::class, 'showProfile'])->name('agency-profile.show');
+        Route::put('agency-profile', [PartnerAgencyController::class, 'updateProfile'])->name('agency-profile.update');
     });
 
     Route::post('programs/{program}/apply', [ProgramApplicationController::class, 'store'])->name('programs.apply');

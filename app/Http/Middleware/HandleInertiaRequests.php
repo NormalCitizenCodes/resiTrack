@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\AppNotification;
+use App\Models\ProgramApplication;
 use App\Models\User;
 use App\Services\DashboardStatsService;
 use Illuminate\Http\Request;
@@ -65,30 +66,47 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Badge counts for the staff sidebar, scoped to the user's barangay.
-     * Evaluated lazily, so requests that never render the sidebar skip the queries.
+     * Badge counts for the sidebar, scoped to the user's barangay (staff) or
+     * agency (partner agency). Evaluated lazily, so requests that never render
+     * the sidebar skip the queries.
      *
-     * @return array{duplicates?: int, registrations?: int}
+     * @return array{duplicates?: int, registrations?: int, pendingApplications?: int}
      */
     private function navCounts(?User $user): array
     {
-        if ($user === null || ! $user->isBarangayStaff()) {
+        if ($user === null) {
             return [];
         }
 
-        $barangayId = $user->isSuperAdmin() ? null : $user->barangay_id;
+        if ($user->isBarangayStaff()) {
+            $barangayId = $user->isSuperAdmin() ? null : $user->barangay_id;
 
-        $counts = ['duplicates' => app(DashboardStatsService::class)->pendingDuplicates($barangayId)];
+            $counts = ['duplicates' => app(DashboardStatsService::class)->pendingDuplicates($barangayId)];
 
-        if ($user->role === User::ROLE_BHW) {
-            $counts['registrations'] = User::query()
-                ->where('role', User::ROLE_RESIDENT)
-                ->whereNull('resident_id')
-                ->whereNotNull('registration_id')
-                ->where('barangay_id', $barangayId)
-                ->count();
+            if ($user->role === User::ROLE_BHW) {
+                $counts['registrations'] = User::query()
+                    ->where('role', User::ROLE_RESIDENT)
+                    ->whereNull('resident_id')
+                    ->whereNotNull('registration_id')
+                    ->where('barangay_id', $barangayId)
+                    ->count();
+            }
+
+            return $counts;
         }
 
-        return $counts;
+        if ($user->role === User::ROLE_PARTNER_AGENCY) {
+            return [
+                'pendingApplications' => ProgramApplication::query()
+                    ->whereHas('program', fn ($q) => $q
+                        ->where('agency_id', $user->agency_id)
+                        ->when($user->barangay_id !== null, fn ($q) => $q
+                            ->where(fn ($inner) => $inner->whereNull('barangay_id')->orWhere('barangay_id', $user->barangay_id))))
+                    ->where('status', 'pending')
+                    ->count(),
+            ];
+        }
+
+        return [];
     }
 }

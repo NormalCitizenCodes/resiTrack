@@ -248,6 +248,96 @@ it('shows no eligible residents to staff outside a barangay-targeted program\'s 
         ->assertInertia(fn ($page) => $page->component('programs/show')->has('eligibleResidents', 0));
 });
 
+// --- Applications review queue ---
+
+it('lets an agency review its applications from one consolidated queue', function () {
+    $program = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);
+    $application = ProgramApplication::create([
+        'program_id' => $program->id,
+        'resident_id' => $this->senior->id,
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($this->agencyUser)
+        ->get('/applications/review')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('programs/applications-review')
+            ->has('applications.data', 1)
+            ->where('applications.data.0.id', $application->id));
+});
+
+it('keeps a barangay-scoped agency accounts review queue to its own barangay', function () {
+    $otherBarangay = Barangay::where('name', 'Barangay 23')->first();
+    $scopedAgencyUser = User::factory()->create([
+        'role' => User::ROLE_PARTNER_AGENCY,
+        'agency_id' => $this->agency->id,
+        'barangay_id' => $this->barangay->id,
+    ]);
+
+    $ownProgram = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);
+    $ownProgram->update(['barangay_id' => $this->barangay->id]);
+    $ownApplication = ProgramApplication::create([
+        'program_id' => $ownProgram->id,
+        'resident_id' => $this->senior->id,
+        'status' => 'pending',
+    ]);
+
+    $otherResident = Resident::factory()->create(['barangay_id' => $otherBarangay->id]);
+    $otherProgram = Program::create([
+        'agency_id' => $this->agency->id,
+        'barangay_id' => $otherBarangay->id,
+        'posted_by' => $this->agencyUser->id,
+        'title' => 'Barangay 23 Only Program',
+        'slots_available' => 5,
+        'slots_filled' => 0,
+        'status' => 'active',
+    ]);
+    ProgramApplication::create([
+        'program_id' => $otherProgram->id,
+        'resident_id' => $otherResident->id,
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($scopedAgencyUser)
+        ->get('/applications/review')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('applications.data', 1)
+            ->where('applications.data.0.id', $ownApplication->id));
+});
+
+it('stops a barangay-scoped agency account from reviewing another barangays application under the same agency', function () {
+    $otherBarangay = Barangay::where('name', 'Barangay 23')->first();
+    $scopedAgencyUser = User::factory()->create([
+        'role' => User::ROLE_PARTNER_AGENCY,
+        'agency_id' => $this->agency->id,
+        'barangay_id' => $this->barangay->id,
+    ]);
+
+    $otherResident = Resident::factory()->create(['barangay_id' => $otherBarangay->id]);
+    $otherProgram = Program::create([
+        'agency_id' => $this->agency->id,
+        'barangay_id' => $otherBarangay->id,
+        'posted_by' => $this->agencyUser->id,
+        'title' => 'Barangay 23 Only Program',
+        'slots_available' => 5,
+        'slots_filled' => 0,
+        'status' => 'active',
+    ]);
+    $otherApplication = ProgramApplication::create([
+        'program_id' => $otherProgram->id,
+        'resident_id' => $otherResident->id,
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($scopedAgencyUser)
+        ->patch("/applications/{$otherApplication->id}", ['status' => 'approved'])
+        ->assertForbidden();
+
+    expect($otherApplication->fresh()->status)->toBe('pending');
+});
+
 it('does not let a resident apply to a program targeted at a different barangay', function () {
     $otherBarangay = Barangay::where('name', 'Barangay 23')->first();
     $program = seniorProgram($this->agencyUser, $this->agency, $this->seniorSector);

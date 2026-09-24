@@ -1,6 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
+import { BarChart3, Building2, ClipboardCheck, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, ShieldCheck, UserCircle, UserCog, UserPlus, Users } from 'lucide-react';
 import { useEffect } from 'react';
-import { BarChart3, ClipboardCheck, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, ShieldCheck, UserCircle, UserCog, UserPlus, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavQuickAction } from '@/components/nav-quick-action';
@@ -21,7 +21,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { dashboard } from '@/routes';
 import type { NavItem, Role } from '@/types';
 
-type NavCounts = { duplicates?: number; registrations?: number };
+type NavCounts = { duplicates?: number; registrations?: number; pendingApplications?: number };
 
 // One primary task per role. The super admin is read-only and residents have
 // nothing to "create", so neither gets one. Staff labels stay in English, as
@@ -79,6 +79,12 @@ function navItemsForRole(role: Role | undefined, t: (key: string) => string, cou
             return [
                 { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
                 { title: 'Programs', href: '/programs', icon: HandHeart },
+                { title: 'Applications to Review', href: '/applications/review', icon: ClipboardCheck, badge: counts.pendingApplications },
+                { title: 'Beneficiaries', href: '/beneficiaries', icon: Users },
+                // Agencies already had read access to /announcements (broadcast
+                // posts only, see AnnouncementController::index) but no link to it.
+                { title: t('nav.announcements'), href: '/announcements', icon: Megaphone },
+                { title: 'Agency Profile', href: '/agency-profile', icon: Building2 },
             ];
         default:
             // Residents: browse programs, announcements, and track their applications.
