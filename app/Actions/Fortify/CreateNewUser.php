@@ -6,8 +6,10 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
 use App\Services\NotificationService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
+use Throwable;
 
 class CreateNewUser implements CreatesNewUsers
 {
@@ -40,6 +42,19 @@ class CreateNewUser implements CreatesNewUsers
         ]);
 
         NotificationService::notifyNewResidentRegistration($user);
+
+        // A mail transport failure (e.g. a sandboxed provider rejecting the
+        // recipient) must not take down registration itself - the account
+        // already exists at this point. The resident can still use the
+        // "resend verification email" button once delivery is actually working.
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (Throwable $e) {
+            Log::error('Failed to send the registration verification email.', [
+                'user_id' => $user->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
 
         return $user;
     }

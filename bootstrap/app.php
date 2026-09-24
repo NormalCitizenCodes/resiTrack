@@ -9,6 +9,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -41,4 +43,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // A mail transport failure (misconfigured provider, a sandboxed sender
+        // rejecting the recipient, etc.) should never surface as a raw 500 -
+        // covers built-in flows we don't control the internals of, like
+        // Fortify's "resend verification email" button.
+        $exceptions->render(function (TransportExceptionInterface $e, Request $request) {
+            Log::error('Mail transport failed.', ['exception' => $e->getMessage()]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Could not send that email right now. Please try again shortly.'], 500);
+            }
+
+            return back()->with('error', 'Could not send that email right now. Please try again shortly.');
+        });
     })->create();
