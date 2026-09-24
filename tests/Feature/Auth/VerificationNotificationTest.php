@@ -24,11 +24,20 @@ class VerificationNotificationTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->unverified()->create();
+        // Only a self-registered resident (registration_id set) is actually
+        // gated by verification - see App\Models\User::hasVerifiedEmail().
+        $user = User::factory()->unverified()->create([
+            'role' => User::ROLE_RESIDENT,
+            'registration_id' => 'REG-000001',
+        ]);
 
+        // This falls back to a plain redirect('back') with a flash status (see
+        // Fortify's EmailVerificationNotificationController) - the redirect target
+        // itself depends on the referer header, so the flash status is what
+        // actually confirms the resend happened, not the redirect URL.
         $this->actingAs($user)
             ->post(route('verification.send'))
-            ->assertRedirect(route('home'));
+            ->assertSessionHas('status', 'verification-link-sent');
 
         Notification::assertSentTo($user, VerifyEmail::class);
     }

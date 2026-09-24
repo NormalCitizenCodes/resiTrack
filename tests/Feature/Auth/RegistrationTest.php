@@ -4,7 +4,10 @@ namespace Tests\Feature\Auth;
 
 use App\Models\Barangay;
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -82,5 +85,76 @@ class RegistrationTest extends TestCase
         ])->assertSessionHasErrors([
             'email' => 'An account with this email already exists. Please log in with your email and password.',
         ]);
+    }
+
+    public function test_a_newly_registered_resident_must_verify_email_before_reaching_the_dashboard(): void
+    {
+        $barangay = Barangay::factory()->create();
+
+        $this->post(route('register.store'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'barangay_id' => $barangay->id,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $user = User::where('email', 'test@example.com')->firstOrFail();
+        $this->assertFalse($user->hasVerifiedEmail());
+
+        $this->get(route('dashboard'))->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_registering_queues_a_verification_email(): void
+    {
+        Notification::fake();
+
+        $barangay = Barangay::factory()->create();
+
+        $this->post(route('register.store'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'barangay_id' => $barangay->id,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $user = User::where('email', 'test@example.com')->firstOrFail();
+        Notification::assertSentTo($user, VerifyEmail::class);
+    }
+
+    public function test_clicking_the_verification_link_unlocks_the_dashboard(): void
+    {
+        $barangay = Barangay::factory()->create();
+        $user = User::factory()->create([
+            'role' => User::ROLE_RESIDENT,
+            'barangay_id' => $barangay->id,
+            'registration_id' => 'REG-000123',
+            'email_verified_at' => null,
+        ]);
+
+        $url = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $this->actingAs($user)->get($url)->assertRedirect();
+
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+    }
+
+    public function test_staff_and_agency_accounts_are_not_gated_by_email_verification(): void
+    {
+        $barangay = Barangay::factory()->create();
+        $bhw = User::factory()->create([
+            'role' => User::ROLE_BHW,
+            'barangay_id' => $barangay->id,
+            'email_verified_at' => null,
+        ]);
+
+        $this->assertTrue($bhw->hasVerifiedEmail());
+        $this->actingAs($bhw)->get(route('dashboard'))->assertOk();
     }
 }

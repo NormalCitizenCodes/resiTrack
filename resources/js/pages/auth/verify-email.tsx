@@ -22,13 +22,9 @@ export default function VerifyEmail({ status }: { status?: string }) {
                 {({ processing }) => (
                     <>
                         <p className="text-sm text-muted-foreground">
-                            Your account is not yet linked to a resident record.
-                            Please visit your Barangay Hall and approach a
-                            Barangay Health Worker (BHW) to verify your account
-                            and complete your official resident profile.
-                        </p>
-                        <p className="text-sm font-semibold text-foreground">
-                            Status: Pending Profiling
+                            We sent a verification link to the email address you
+                            signed up with. Click it to activate your account, then
+                            log back in here.
                         </p>
                         <Button disabled={processing} variant="secondary">
                             {processing && <Spinner />}

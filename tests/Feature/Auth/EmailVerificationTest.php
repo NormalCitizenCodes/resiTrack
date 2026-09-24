@@ -21,9 +21,23 @@ class EmailVerificationTest extends TestCase
         $this->skipUnlessFortifyHas(Features::emailVerification());
     }
 
+    /**
+     * Only a self-registered resident (registration_id set - see
+     * App\Models\User::hasVerifiedEmail()) is actually gated by verification;
+     * a plain unverified() factory user with no registration_id is treated as
+     * already verified (matches staff/agency accounts, which never self-register).
+     */
+    private function unverifiedSelfRegisteredResident(): User
+    {
+        return User::factory()->unverified()->create([
+            'role' => User::ROLE_RESIDENT,
+            'registration_id' => 'REG-000001',
+        ]);
+    }
+
     public function test_email_verification_screen_can_be_rendered()
     {
-        $user = User::factory()->unverified()->create();
+        $user = $this->unverifiedSelfRegisteredResident();
 
         $response = $this->actingAs($user)->get(route('verification.notice'));
 
@@ -32,7 +46,7 @@ class EmailVerificationTest extends TestCase
 
     public function test_email_can_be_verified()
     {
-        $user = User::factory()->unverified()->create();
+        $user = $this->unverifiedSelfRegisteredResident();
 
         Event::fake();
 
@@ -52,7 +66,7 @@ class EmailVerificationTest extends TestCase
 
     public function test_email_is_not_verified_with_invalid_hash()
     {
-        $user = User::factory()->unverified()->create();
+        $user = $this->unverifiedSelfRegisteredResident();
 
         Event::fake();
 
@@ -70,7 +84,7 @@ class EmailVerificationTest extends TestCase
 
     public function test_email_is_not_verified_with_invalid_user_id(): void
     {
-        $user = User::factory()->unverified()->create();
+        $user = $this->unverifiedSelfRegisteredResident();
 
         Event::fake();
 

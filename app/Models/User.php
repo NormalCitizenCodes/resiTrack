@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,6 +26,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int|null $agency_id
  * @property int|null $resident_id
  * @property string|null $registration_id
+ * @property string|null $google_id
  * @property bool $is_active
  * @property Carbon|null $deactivated_at
  * @property int|null $deactivated_by
@@ -37,17 +39,21 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'role', 'first_name', 'last_name', 'barangay_id', 'agency_id', 'resident_id', 'registration_id', 'is_active', 'deactivated_at', 'deactivated_by', 'last_login_at'])]
+#[Fillable(['name', 'email', 'password', 'role', 'first_name', 'last_name', 'barangay_id', 'agency_id', 'resident_id', 'registration_id', 'google_id', 'is_active', 'deactivated_at', 'deactivated_by', 'last_login_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, MustVerifyEmailTrait, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     public const ROLE_SUPER_ADMIN = 'super_admin';
+
     public const ROLE_BARANGAY_ADMIN = 'barangay_admin';
+
     public const ROLE_BHW = 'bhw';
+
     public const ROLE_PARTNER_AGENCY = 'partner_agency';
+
     public const ROLE_RESIDENT = 'resident';
 
     /**
@@ -129,5 +135,20 @@ class User extends Authenticatable implements PasskeyUser
         return $this->role === self::ROLE_RESIDENT
             && $this->resident_id === null
             && $this->registration_id !== null;
+    }
+
+    /**
+     * Only accounts from public self-registration (registration_id is set only in
+     * CreateNewUser::create()) need to click the emailed link. Staff-created accounts
+     * (BHW/admin/agency, and resident portal accounts a BHW creates in person) are
+     * already vouched for by the staff member who created them.
+     */
+    public function hasVerifiedEmail(): bool
+    {
+        if ($this->registration_id === null) {
+            return true;
+        }
+
+        return $this->email_verified_at !== null;
     }
 }
