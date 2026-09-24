@@ -5,6 +5,7 @@ use App\Http\Controllers\AccountDeletionRequestController;
 use App\Http\Controllers\AccountReactivationRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DuplicateAlertController;
+use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HouseholdController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\HouseholdWellbeingAssessmentController;
@@ -31,6 +32,13 @@ Route::post('forgot-password', [PasswordRecoveryController::class, 'store'])
 
 Route::get('account-reactivation/request', [AccountReactivationRequestController::class, 'create'])->name('account-reactivation.create');
 Route::post('account-reactivation/request', [AccountReactivationRequestController::class, 'store'])->name('account-reactivation.store');
+
+Route::middleware('guest')->group(function () {
+    Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+    Route::get('auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+    Route::get('register/google/complete', [GoogleAuthController::class, 'create'])->name('register.google-complete');
+    Route::post('register/google/complete', [GoogleAuthController::class, 'complete'])->name('register.google-complete.store');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
