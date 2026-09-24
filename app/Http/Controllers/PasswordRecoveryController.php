@@ -9,7 +9,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,6 +28,10 @@ class PasswordRecoveryController extends Controller
         return Inertia::render('account-recovery/index', [
             'recoveryRequests' => $recoveryRequests,
             'highlight' => $request->integer('highlight') ?: null,
+            // Set for one request right after approve() redirects here, so the
+            // password form can expand inline under that row instead of
+            // navigating to a separate page.
+            'recoveryToken' => $request->session()->get('recoveryToken'),
         ]);
     }
 
@@ -88,7 +91,9 @@ class PasswordRecoveryController extends Controller
             'token_expires_at' => now()->addMinutes(15),
         ]);
 
-        return redirect()->route('account-recovery.password', ['token' => $token]);
+        return redirect()
+            ->route('account-recovery.index', ['highlight' => $recoveryRequest->id])
+            ->with('recoveryToken', $token);
     }
 
     public function reject(Request $request, PasswordRecoveryRequest $recoveryRequest): RedirectResponse

@@ -1,8 +1,12 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { Check, Clock3, X } from 'lucide-react';
+import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { dashboard } from '@/routes';
 
 type RecoveryRequest = {
@@ -14,7 +18,55 @@ type RecoveryRequest = {
     barangay?: { name: string } | null;
 };
 
-export default function AccountRecovery({ recoveryRequests, highlight }: { recoveryRequests: RecoveryRequest[]; highlight?: number | null }) {
+/** Shown inline under a request the moment it's approved, instead of navigating to a separate page. */
+function InlineNewPasswordForm({ token }: { token: string }) {
+    const { data, setData, post, processing, errors } = useForm({ password: '', password_confirmation: '' });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(`/account-recovery/password/${token}`);
+    };
+
+    return (
+        <form onSubmit={submit} className="mt-4 grid gap-4 border-t pt-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <div className="grid gap-2">
+                <Label htmlFor="password">New Password</Label>
+                <PasswordInput
+                    id="password"
+                    value={data.password}
+                    onChange={(e) => setData('password', e.target.value)}
+                    autoFocus
+                    autoComplete="new-password"
+                />
+                <InputError message={errors.password} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="password_confirmation">Confirm Password</Label>
+                <PasswordInput
+                    id="password_confirmation"
+                    value={data.password_confirmation}
+                    onChange={(e) => setData('password_confirmation', e.target.value)}
+                    autoComplete="new-password"
+                />
+                <InputError message={errors.password_confirmation} />
+            </div>
+            <Button type="submit" disabled={processing}>
+                {processing && <Spinner />}
+                Set Password
+            </Button>
+        </form>
+    );
+}
+
+export default function AccountRecovery({
+    recoveryRequests,
+    highlight,
+    recoveryToken,
+}: {
+    recoveryRequests: RecoveryRequest[];
+    highlight?: number | null;
+    recoveryToken?: string | null;
+}) {
     const review = (request: RecoveryRequest, action: 'approve' | 'reject') => {
         router.post(`/account-recovery/${request.id}/${action}`, {}, { preserveScroll: true });
     };
@@ -45,6 +97,15 @@ export default function AccountRecovery({ recoveryRequests, highlight }: { recov
                                         {request.status === 'pending' && <><Button size="sm" onClick={() => review(request, 'approve')}><Check className="size-4" />Approve Recovery</Button><Button size="sm" variant="outline" onClick={() => review(request, 'reject')}><X className="size-4" />Reject Request</Button></>}
                                     </div>
                                 </CardContent>
+                                {request.id === highlight && recoveryToken && request.status === 'approved' && (
+                                    <CardContent className="pt-0">
+                                        <p className="text-xs text-muted-foreground">
+                                            Let {request.resident ? request.resident.first_name : request.user.name} enter their own new password
+                                            below.
+                                        </p>
+                                        <InlineNewPasswordForm token={recoveryToken} />
+                                    </CardContent>
+                                )}
                             </Card>
                         ))}
                     </div>

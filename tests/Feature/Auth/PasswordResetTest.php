@@ -60,13 +60,23 @@ class PasswordResetTest extends TestCase
         expect($recoveryRequest->status)->toBe(PasswordRecoveryRequest::STATUS_PENDING);
         expect(AppNotification::where('user_id', $bhw->id)->where('type', 'password_recovery')->exists())->toBeTrue();
 
+        // Approving redirects back to the requests list (the new password form
+        // shows up inline there) rather than to a separate page - the token is
+        // only ever available via the one-time flashed session value.
         $response = $this->actingAs($bhw)->post(route('account-recovery.approve', $recoveryRequest));
-        $response->assertRedirect();
+        $response->assertRedirect(route('account-recovery.index', ['highlight' => $recoveryRequest->id]));
+        $response->assertSessionHas('recoveryToken');
 
         $recoveryRequest->refresh();
         expect($recoveryRequest->status)->toBe(PasswordRecoveryRequest::STATUS_APPROVED);
 
-        $token = basename(parse_url($response->headers->get('Location'), PHP_URL_PATH));
+        $token = session('recoveryToken');
+
+        $this->actingAs($bhw)
+            ->get(route('account-recovery.index', ['highlight' => $recoveryRequest->id]))
+            ->assertInertia(fn ($page) => $page
+                ->component('account-recovery/index')
+                ->where('recoveryToken', $token));
 
         $this->actingAs($bhw)
             ->post(route('account-recovery.password.update', ['token' => $token]), [
