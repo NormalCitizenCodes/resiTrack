@@ -5,6 +5,7 @@ namespace App\Actions\Fortify;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\Services\GuestFormThrottle;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -22,6 +23,13 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        // Fortify's own /register route has no rate limiting at all by default
+        // (unlike login/2FA/passkeys, which it throttles out of the box). Each
+        // registration fans out real notifications to every BHW in the
+        // barangay and a real email, so an unthrottled script here is a
+        // genuine spam/quota-burn vector, not just a nuisance.
+        GuestFormThrottle::assertNotExceeded('register', 'email');
+
         Validator::make($input, [
             ...$this->profileRules(),
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],

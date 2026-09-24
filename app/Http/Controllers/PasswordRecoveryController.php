@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AppNotification;
 use App\Models\PasswordRecoveryRequest;
 use App\Models\User;
+use App\Services\GuestFormThrottle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -28,15 +29,17 @@ class PasswordRecoveryController extends Controller
         return Inertia::render('account-recovery/index', [
             'recoveryRequests' => $recoveryRequests,
             'highlight' => $request->integer('highlight') ?: null,
-            // Set for one request right after approve() redirects here, so the
-            // password form can expand inline under that row instead of
-            // navigating to a separate page.
-            'recoveryToken' => $request->session()->get('recoveryToken'),
+            // Passed as a query param (not a one-time session flash) so the
+            // inline password form keeps working across a refresh or a tab
+            // switch, not just the single request right after approving.
+            'recoveryToken' => $request->string('token')->value() ?: null,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        GuestFormThrottle::assertNotExceeded('password-recovery', 'email');
+
         $request->validate(['email' => ['required', 'string', 'email']]);
 
         $email = $request->string('email')->toString();
@@ -49,6 +52,13 @@ class PasswordRecoveryController extends Controller
             throw ValidationException::withMessages([
                 'email' => 'No account is registered with this email address. Please visit the Barangay Office or ask a BHW to register for an account.',
             ]);
+        }
+
+        // Repeated submissions for the same account (a resident double-clicking,
+        // or a script probing) used to create a fresh row and re-notify every
+        // BHW each time. One pending request per account is enough.
+        if (PasswordRecoveryRequest::where('user_id', $resident->id)->where('status', PasswordRecoveryRequest::STATUS_PENDING)->exists()) {
+            return back()->with('status', 'Account Found. Please visit the Barangay Office and ask a Barangay Health Worker (BHW) for account recovery assistance. The BHW will verify your identity and approve your password recovery request.');
         }
 
         $recoveryRequest = PasswordRecoveryRequest::create([
@@ -91,9 +101,7 @@ class PasswordRecoveryController extends Controller
             'token_expires_at' => now()->addMinutes(15),
         ]);
 
-        return redirect()
-            ->route('account-recovery.index', ['highlight' => $recoveryRequest->id])
-            ->with('recoveryToken', $token);
+        return redirect()->route('account-recovery.index', ['highlight' => $recoveryRequest->id, 'token' => $token]);
     }
 
     public function reject(Request $request, PasswordRecoveryRequest $recoveryRequest): RedirectResponse

@@ -6,6 +6,7 @@ use App\Models\AccountReactivationRequest;
 use App\Models\AppNotification;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\GuestFormThrottle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,11 @@ class AccountReactivationRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // The existing pending-request check below already stops repeat spam
+        // against one account; this also stops a script probing many
+        // different identifiers.
+        GuestFormThrottle::assertNotExceeded('account-reactivation', 'identifier');
+
         $validated = $request->validate([
             'identifier' => ['required', 'string', 'max:150'],
             'reason' => ['required', 'string', 'max:2000'],
@@ -139,7 +145,9 @@ class AccountReactivationRequestController extends Controller
 
     private function inactiveAccount(string $identifier): ?User
     {
-        if ($identifier === '') return null;
+        if ($identifier === '') {
+            return null;
+        }
         $residentIdentifier = strtoupper($identifier);
 
         return User::query()->with('barangay:id,name')->where('role', User::ROLE_RESIDENT)

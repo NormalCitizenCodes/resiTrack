@@ -61,19 +61,27 @@ class PasswordResetTest extends TestCase
         expect(AppNotification::where('user_id', $bhw->id)->where('type', 'password_recovery')->exists())->toBeTrue();
 
         // Approving redirects back to the requests list (the new password form
-        // shows up inline there) rather than to a separate page - the token is
-        // only ever available via the one-time flashed session value.
+        // shows up inline there) rather than to a separate page. The token is
+        // a query param, not a one-time session flash, so it survives a
+        // refresh or a tab switch instead of vanishing after one request.
         $response = $this->actingAs($bhw)->post(route('account-recovery.approve', $recoveryRequest));
-        $response->assertRedirect(route('account-recovery.index', ['highlight' => $recoveryRequest->id]));
-        $response->assertSessionHas('recoveryToken');
+        $response->assertRedirect();
+        parse_str(parse_url($response->headers->get('Location'), PHP_URL_QUERY) ?? '', $query);
+        $token = $query['token'];
+        expect($token)->not->toBeEmpty();
 
         $recoveryRequest->refresh();
         expect($recoveryRequest->status)->toBe(PasswordRecoveryRequest::STATUS_APPROVED);
 
-        $token = session('recoveryToken');
-
+        // Simulates refreshing the page (or switching tabs and coming back) -
+        // the token must still be there, not just on the immediate next request.
         $this->actingAs($bhw)
-            ->get(route('account-recovery.index', ['highlight' => $recoveryRequest->id]))
+            ->get(route('account-recovery.index', ['highlight' => $recoveryRequest->id, 'token' => $token]))
+            ->assertInertia(fn ($page) => $page
+                ->component('account-recovery/index')
+                ->where('recoveryToken', $token));
+        $this->actingAs($bhw)
+            ->get(route('account-recovery.index', ['highlight' => $recoveryRequest->id, 'token' => $token]))
             ->assertInertia(fn ($page) => $page
                 ->component('account-recovery/index')
                 ->where('recoveryToken', $token));
@@ -87,6 +95,36 @@ class PasswordResetTest extends TestCase
 
         expect(Hash::check('new-password-123', $resident->refresh()->password))->toBeTrue();
         expect($recoveryRequest->refresh()->recovery_token_hash)->toBeNull();
+    }
+
+    public function test_repeated_recovery_requests_for_the_same_account_do_not_spam_bhws(): void
+    {
+        $barangay = Barangay::factory()->create();
+        $bhw = User::factory()->create(['role' => User::ROLE_BHW, 'barangay_id' => $barangay->id]);
+        $resident = User::factory()->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $barangay->id]);
+
+        $this->post(route('password.email'), ['email' => $resident->email]);
+        $this->post(route('password.email'), ['email' => $resident->email]);
+        $this->post(route('password.email'), ['email' => $resident->email]);
+
+        expect(PasswordRecoveryRequest::where('user_id', $resident->id)->count())->toBe(1);
+        expect(AppNotification::where('user_id', $bhw->id)->where('type', 'password_recovery')->count())->toBe(1);
+    }
+
+    public function test_password_recovery_requests_are_rate_limited_per_ip(): void
+    {
+        $barangay = Barangay::factory()->create();
+        $residents = User::factory()->count(6)->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $barangay->id]);
+
+        foreach ($residents->take(5) as $resident) {
+            $this->post(route('password.email'), ['email' => $resident->email])
+                ->assertSessionDoesntHaveErrors('email');
+        }
+
+        $this->post(route('password.email'), ['email' => $residents->last()->email])
+            ->assertSessionHasErrors('email');
+
+        expect(PasswordRecoveryRequest::count())->toBe(5);
     }
 
     public function test_password_cannot_be_reset_with_invalid_token(): void

@@ -157,4 +157,35 @@ class RegistrationTest extends TestCase
         $this->assertTrue($bhw->hasVerifiedEmail());
         $this->actingAs($bhw)->get(route('dashboard'))->assertOk();
     }
+
+    public function test_registration_is_rate_limited_per_ip(): void
+    {
+        $barangay = Barangay::factory()->create();
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->post(route('register.store'), [
+                'name' => "Test User {$i}",
+                'email' => "ratelimit{$i}@example.com",
+                'barangay_id' => $barangay->id,
+                'password' => 'password',
+                'password_confirmation' => 'password',
+            ])->assertSessionDoesntHaveErrors('email');
+
+            // register.store sits behind guest middleware, and registering
+            // auto-logs the new account in - without this, every subsequent
+            // attempt in this loop would just get redirected away before ever
+            // reaching the throttle check.
+            $this->post(route('logout'));
+        }
+
+        $this->post(route('register.store'), [
+            'name' => 'One Too Many',
+            'email' => 'ratelimit-blocked@example.com',
+            'barangay_id' => $barangay->id,
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertDatabaseMissing('users', ['email' => 'ratelimit-blocked@example.com']);
+    }
 }

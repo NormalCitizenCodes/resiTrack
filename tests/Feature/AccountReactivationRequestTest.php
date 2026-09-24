@@ -5,13 +5,14 @@ use App\Models\AppNotification;
 use App\Models\Barangay;
 use App\Models\Resident;
 use App\Models\User;
+use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->seed(Database\Seeders\ReferenceDataSeeder::class);
+    $this->seed(ReferenceDataSeeder::class);
     $this->barangay22 = Barangay::where('name', 'Barangay 22')->firstOrFail();
     $this->barangay23 = Barangay::where('name', 'Barangay 23')->firstOrFail();
     $this->residentRecord = Resident::factory()->create([
@@ -53,6 +54,28 @@ it('allows an inactive resident to submit one reactivation request', function ()
     ])->assertSessionHas('error');
 
     expect(AccountReactivationRequest::count())->toBe(1);
+});
+
+it('rate limits reactivation requests per IP', function () {
+    $inactiveAccounts = User::factory()->count(6)->create([
+        'role' => User::ROLE_RESIDENT,
+        'barangay_id' => $this->barangay22->id,
+        'is_active' => false,
+    ]);
+
+    foreach ($inactiveAccounts->take(5) as $account) {
+        $this->post('/account-reactivation/request', [
+            'identifier' => $account->email,
+            'reason' => 'Please review.',
+        ])->assertSessionDoesntHaveErrors('identifier');
+    }
+
+    $this->post('/account-reactivation/request', [
+        'identifier' => $inactiveAccounts->last()->email,
+        'reason' => 'One too many.',
+    ])->assertSessionHasErrors('identifier');
+
+    expect(AccountReactivationRequest::count())->toBe(5);
 });
 
 it('scopes reactivation requests and approval to the assigned barangay', function () {
