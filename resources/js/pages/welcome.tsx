@@ -17,6 +17,8 @@ import {
 import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { CountUp } from '@/components/count-up';
+import { ScrollReveal } from '@/components/scroll-reveal';
 import { SiteFooter } from '@/components/site-footer';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
@@ -215,7 +217,7 @@ function DeviceMockups() {
 function Screenshot({ src, alt, caption, width, height }: { src: string; alt: string; caption: string; width: number; height: number }) {
     return (
         <figure>
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-brand-navy/10">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-brand-navy/10 transition-transform duration-300 hover:-translate-y-1">
                 <img src={src} alt={alt} width={width} height={height} loading="lazy" className="block w-full" />
             </div>
             <figcaption className="mt-3 text-sm text-muted-foreground">{caption}</figcaption>
@@ -273,19 +275,27 @@ export default function Welcome({ stats }: { stats: Stats }) {
                 <main className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                     <section className="grid items-center gap-12 py-10 lg:grid-cols-[1.05fr_1fr] lg:gap-8 lg:py-20">
                         <div>
-                            <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground">
+                            <span
+                                className="animate-in fade-in-0 slide-in-from-bottom-4 inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground duration-700 motion-reduce:animate-none"
+                            >
                                 Barangay 22 · Cagayan de Oro City
                             </span>
-                            <h1 className="mt-6 text-4xl font-bold uppercase leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+                            <h1
+                                className="animate-in fade-in-0 slide-in-from-bottom-4 mt-6 text-4xl font-bold uppercase leading-[1.08] tracking-tight duration-700 delay-100 fill-mode-both motion-reduce:animate-none sm:text-5xl lg:text-6xl"
+                            >
                                 Track today.
                                 <br />
                                 <span className="text-primary">Brighter tomorrows.</span>
                             </h1>
-                            <p className="mt-6 max-w-lg text-base leading-7 text-muted-foreground md:text-lg">
+                            <p
+                                className="animate-in fade-in-0 slide-in-from-bottom-4 mt-6 max-w-lg text-base leading-7 text-muted-foreground duration-700 delay-200 fill-mode-both motion-reduce:animate-none md:text-lg"
+                            >
                                 A smarter way to understand communities, track services, and turn local data into
                                 meaningful action, for every resident in every barangay.
                             </p>
-                            <div className="mt-8 flex flex-wrap gap-3">
+                            <div
+                                className="animate-in fade-in-0 slide-in-from-bottom-4 mt-8 flex flex-wrap gap-3 duration-700 delay-300 fill-mode-both motion-reduce:animate-none"
+                            >
                                 <Button asChild size="lg">
                                     <Link href={auth.user ? '/programs' : login()}>
                                         {auth.user ? 'View Programs' : 'Access System'}
@@ -297,31 +307,40 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                     </Button>
                                 )}
                             </div>
-                            <p className="mt-8 text-sm text-muted-foreground">
+                            <p
+                                className="animate-in fade-in-0 mt-8 text-sm text-muted-foreground duration-700 delay-500 fill-mode-both motion-reduce:animate-none"
+                            >
                                 Built for barangay staff, residents and partner agencies, on the web and on your phone.
                             </p>
                         </div>
-                        <DeviceMockups />
+                        <div className="animate-in fade-in-0 slide-in-from-bottom-6 duration-1000 delay-150 fill-mode-both motion-reduce:animate-none">
+                            <DeviceMockups />
+                        </div>
                     </section>
 
                     <section aria-label="resiTrack in Barangay 22" className="pb-6">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                            Live in Barangay 22
-                        </p>
-                        <dl className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                            {numbers.map((item) => (
-                                <div key={item.label} className="rounded-lg border border-border bg-card p-5">
-                                    <dd className="text-3xl font-bold tracking-tight tabular-nums">
-                                        {item.value.toLocaleString()}
-                                    </dd>
-                                    <dt className="mt-1 text-sm text-muted-foreground">{item.label}</dt>
-                                </div>
-                            ))}
-                        </dl>
+                        <ScrollReveal>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                Live in Barangay 22
+                            </p>
+                            <dl className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                                {numbers.map((item) => (
+                                    <div
+                                        key={item.label}
+                                        className="rounded-lg border border-border bg-card p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-navy/10"
+                                    >
+                                        <dd className="text-3xl font-bold tracking-tight tabular-nums">
+                                            <CountUp value={item.value} />
+                                        </dd>
+                                        <dt className="mt-1 text-sm text-muted-foreground">{item.label}</dt>
+                                    </div>
+                                ))}
+                            </dl>
+                        </ScrollReveal>
                     </section>
 
                     <section id="partners" className="scroll-mt-6 py-14 md:py-20">
-                        <div className="max-w-2xl">
+                        <ScrollReveal className="max-w-2xl">
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                                 For partner agencies
                             </p>
@@ -332,10 +351,10 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                 resiTrack gives agencies a verified, up to date picture of who needs help, so
                                 programs reach the right households and nobody collects twice.
                             </p>
-                        </div>
+                        </ScrollReveal>
 
                         <div className="mt-10 grid gap-4 md:grid-cols-2">
-                            <div className="rounded-lg border border-border bg-card p-6">
+                            <ScrollReveal className="rounded-lg border border-border bg-card p-6">
                                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                                     Without it
                                 </h3>
@@ -349,8 +368,8 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                         </li>
                                     ))}
                                 </ul>
-                            </div>
-                            <div className="rounded-lg border border-success/40 bg-success/10 p-6">
+                            </ScrollReveal>
+                            <ScrollReveal delay={100} className="rounded-lg border border-success/40 bg-success/10 p-6">
                                 <h3 className="text-sm font-semibold uppercase tracking-wider text-success-text">
                                     With resiTrack
                                 </h3>
@@ -364,58 +383,77 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                         </li>
                                     ))}
                                 </ul>
-                            </div>
+                            </ScrollReveal>
                         </div>
 
                         <div className="mt-14">
-                            <h3 className="text-xl font-bold tracking-tight md:text-2xl">How an agency uses it</h3>
+                            <ScrollReveal>
+                                <h3 className="text-xl font-bold tracking-tight md:text-2xl">How an agency uses it</h3>
+                            </ScrollReveal>
                             <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                 {agencySteps.map((step, index) => (
-                                    <li key={step.title} className="rounded-lg border border-border bg-card p-5">
-                                        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                                            {index + 1}
-                                        </span>
-                                        <h4 className="mt-4 font-semibold">{step.title}</h4>
-                                        <p className="mt-1.5 text-sm text-muted-foreground">{step.description}</p>
+                                    <li key={step.title}>
+                                        <ScrollReveal
+                                            delay={index * 80}
+                                            className="rounded-lg border border-border bg-card p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-navy/10"
+                                        >
+                                            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                                                {index + 1}
+                                            </span>
+                                            <h4 className="mt-4 font-semibold">{step.title}</h4>
+                                            <p className="mt-1.5 text-sm text-muted-foreground">{step.description}</p>
+                                        </ScrollReveal>
                                     </li>
                                 ))}
                             </ol>
                             <div className="mt-8 grid items-start gap-8 lg:grid-cols-2">
-                                <Screenshot
-                                    src="/images/landing/agency-targeting.webp"
-                                    alt="The program form where an agency chooses the target barangay, the vulnerable sectors a program serves, and the number of slots."
-                                    caption="Target a program by barangay and sector. Matching residents are found for you."
-                                    width={1296}
-                                    height={633}
-                                />
-                                <Screenshot
-                                    src="/images/landing/agency-review.webp"
-                                    alt="A program page showing slots filled and a table of applications with Approve and Reject buttons."
-                                    caption="Review applications in one place, and see how many slots are left."
-                                    width={1515}
-                                    height={705}
-                                />
+                                <ScrollReveal>
+                                    <Screenshot
+                                        src="/images/landing/agency-targeting.webp"
+                                        alt="The program form where an agency chooses the target barangay, the vulnerable sectors a program serves, and the number of slots."
+                                        caption="Target a program by barangay and sector. Matching residents are found for you."
+                                        width={1296}
+                                        height={633}
+                                    />
+                                </ScrollReveal>
+                                <ScrollReveal delay={120}>
+                                    <Screenshot
+                                        src="/images/landing/agency-review.webp"
+                                        alt="A program page showing slots filled and a table of applications with Approve and Reject buttons."
+                                        caption="Review applications in one place, and see how many slots are left."
+                                        width={1515}
+                                        height={705}
+                                    />
+                                </ScrollReveal>
                             </div>
                         </div>
 
                         <div className="mt-14">
-                            <h3 className="text-xl font-bold tracking-tight md:text-2xl">
-                                Why you can rely on the data
-                            </h3>
+                            <ScrollReveal>
+                                <h3 className="text-xl font-bold tracking-tight md:text-2xl">
+                                    Why you can rely on the data
+                                </h3>
+                            </ScrollReveal>
                             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                {trust.map((item) => (
-                                    <div key={item.title} className="rounded-lg border border-border bg-card p-5">
+                                {trust.map((item, index) => (
+                                    <ScrollReveal
+                                        key={item.title}
+                                        delay={index * 80}
+                                        className="rounded-lg border border-border bg-card p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-navy/10"
+                                    >
                                         <span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                                             <item.icon className="size-5" aria-hidden="true" />
                                         </span>
                                         <h4 className="mt-4 font-semibold">{item.title}</h4>
                                         <p className="mt-1.5 text-sm text-muted-foreground">{item.description}</p>
-                                    </div>
+                                    </ScrollReveal>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="relative mt-14 overflow-hidden rounded-xl bg-brand-navy bg-brand-gradient p-8 text-white md:p-10">
+                        <ScrollReveal
+                            className="relative mt-14 overflow-hidden rounded-xl bg-brand-navy bg-brand-gradient p-8 text-white md:p-10"
+                        >
                             <ShieldCheck className="absolute -right-6 -bottom-6 size-40 text-white/5" aria-hidden="true" />
                             <div className="relative max-w-2xl">
                                 <h3 className="text-2xl font-bold tracking-tight">Want your agency on resiTrack?</h3>
@@ -429,44 +467,55 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                     </Button>
                                 )}
                             </div>
-                        </div>
+                        </ScrollReveal>
                     </section>
 
                     <section id="how-it-works" className="scroll-mt-6 py-10 md:py-14">
-                        <div className="max-w-xl">
+                        <ScrollReveal className="max-w-xl">
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
                                 For residents
                             </p>
                             <h2 className="mt-3 text-2xl font-bold tracking-tight md:text-3xl">How it works</h2>
                             <p className="mt-2 text-muted-foreground">Getting started takes three steps.</p>
-                        </div>
+                        </ScrollReveal>
                         <ol className="mt-8 grid gap-4 md:grid-cols-3">
                             {residentSteps.map((step, index) => (
-                                <li key={step.title} className="rounded-lg border border-border bg-card p-6">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                                            {index + 1}
-                                        </span>
-                                        <step.icon className="size-5 text-primary" aria-hidden="true" />
-                                    </div>
-                                    <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
-                                    <p className="mt-1.5 text-sm text-muted-foreground">{step.description}</p>
+                                <li key={step.title}>
+                                    <ScrollReveal
+                                        delay={index * 80}
+                                        className="rounded-lg border border-border bg-card p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-navy/10"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                                                {index + 1}
+                                            </span>
+                                            <step.icon className="size-5 text-primary" aria-hidden="true" />
+                                        </div>
+                                        <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
+                                        <p className="mt-1.5 text-sm text-muted-foreground">{step.description}</p>
+                                    </ScrollReveal>
                                 </li>
                             ))}
                         </ol>
                     </section>
 
                     <section id="features" className="scroll-mt-6 pt-6 pb-20">
-                        <h2 className="text-2xl font-bold tracking-tight md:text-3xl">What resiTrack does</h2>
+                        <ScrollReveal>
+                            <h2 className="text-2xl font-bold tracking-tight md:text-3xl">What resiTrack does</h2>
+                        </ScrollReveal>
                         <div className="mt-8 grid gap-4 md:grid-cols-2">
-                            {features.map((feature) => (
-                                <div key={feature.title} className="rounded-lg border border-border bg-card p-6">
+                            {features.map((feature, index) => (
+                                <ScrollReveal
+                                    key={feature.title}
+                                    delay={index * 80}
+                                    className="rounded-lg border border-border bg-card p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-brand-navy/10"
+                                >
                                     <span className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
                                         <feature.icon className="size-5" />
                                     </span>
                                     <h3 className="mt-4 text-lg font-semibold">{feature.title}</h3>
                                     <p className="mt-1.5 text-sm text-muted-foreground">{feature.description}</p>
-                                </div>
+                                </ScrollReveal>
                             ))}
                         </div>
                     </section>
