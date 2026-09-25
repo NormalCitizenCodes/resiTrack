@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
+    ArrowRight,
     BadgeCheck,
     Check,
     CopyCheck,
@@ -18,6 +19,7 @@ import { useState } from 'react';
 import type { MouseEvent } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { CountUp } from '@/components/count-up';
+import { IntroSplash } from '@/components/intro-splash';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { SiteFooter } from '@/components/site-footer';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -239,8 +241,9 @@ export default function Welcome({ stats }: { stats: Stats }) {
         <>
             <Head title="Welcome" />
             <div className="min-h-screen bg-background bg-page-gradient text-foreground">
+                <IntroSplash />
                 <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 p-4 sm:p-6">
-                    <Link href="/" className="flex shrink-0 items-center gap-2">
+                    <Link href="/" id="site-logo" className="flex shrink-0 items-center gap-2">
                         <AppLogoIcon className="size-9" />
                         <span className="text-lg font-semibold tracking-tight">resiTrack</span>
                     </Link>
@@ -276,33 +279,55 @@ export default function Welcome({ stats }: { stats: Stats }) {
                     <section className="grid items-center gap-12 py-10 lg:grid-cols-[1.05fr_1fr] lg:gap-8 lg:py-20">
                         <div>
                             <span
-                                className="animate-in fade-in-0 slide-in-from-bottom-4 inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground duration-700 motion-reduce:animate-none"
+                                className="intro-gate animate-in fade-in-0 slide-in-from-bottom-4 inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground duration-700 motion-reduce:animate-none"
                             >
                                 Barangay 22 · Cagayan de Oro City
                             </span>
-                            <h1
-                                className="animate-in fade-in-0 slide-in-from-bottom-4 mt-6 text-4xl font-bold uppercase leading-[1.08] tracking-tight duration-700 delay-100 fill-mode-both motion-reduce:animate-none sm:text-5xl lg:text-6xl"
-                            >
-                                Track today.
+                            <h1 className="mt-6 text-4xl font-bold uppercase leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+                                {['Track', 'today.'].map((word, i) => (
+                                    <span key={word} className="intro-gate intro-word" style={{ '--intro-delay': `${150 + i * 90}ms` } as React.CSSProperties}>
+                                        {word}
+                                        {' '}
+                                    </span>
+                                ))}
                                 <br />
-                                <span className="text-primary">Brighter tomorrows.</span>
+                                {['Brighter', 'tomorrows.'].map((word, i) => (
+                                    <span
+                                        key={word}
+                                        className="intro-gate intro-word text-primary"
+                                        style={{ '--intro-delay': `${420 + i * 90}ms` } as React.CSSProperties}
+                                    >
+                                        {word}
+                                        {i === 0 ? ' ' : ''}
+                                    </span>
+                                ))}
                             </h1>
                             <p
-                                className="animate-in fade-in-0 slide-in-from-bottom-4 mt-6 max-w-lg text-base leading-7 text-muted-foreground duration-700 delay-200 fill-mode-both motion-reduce:animate-none md:text-lg"
+                                className="intro-gate animate-in fade-in-0 slide-in-from-bottom-4 mt-6 max-w-lg text-base leading-7 text-muted-foreground duration-700 delay-[700ms] fill-mode-both motion-reduce:animate-none md:text-lg"
                             >
                                 A smarter way to understand communities, track services, and turn local data into
                                 meaningful action, for every resident in every barangay.
                             </p>
                             <div
-                                className="animate-in fade-in-0 slide-in-from-bottom-4 mt-8 flex flex-wrap gap-3 duration-700 delay-300 fill-mode-both motion-reduce:animate-none"
+                                className="intro-gate animate-in fade-in-0 slide-in-from-bottom-4 mt-8 flex flex-wrap gap-3 duration-700 delay-[900ms] fill-mode-both motion-reduce:animate-none"
                             >
-                                <Button asChild size="lg">
+                                <Button
+                                    asChild
+                                    size="lg"
+                                    className="group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                                >
                                     <Link href={auth.user ? '/programs' : login()}>
                                         {auth.user ? 'View Programs' : 'Access System'}
+                                        <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                                     </Link>
                                 </Button>
                                 {!auth.user && (
-                                    <Button asChild size="lg" variant="outline">
+                                    <Button
+                                        asChild
+                                        size="lg"
+                                        variant="outline"
+                                        className="transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:text-primary hover:shadow-lg hover:shadow-brand-navy/10 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                                    >
                                         <Link href={register()}>Register as resident</Link>
                                     </Button>
                                 )}
@@ -313,7 +338,7 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                 Built for barangay staff, residents and partner agencies, on the web and on your phone.
                             </p>
                         </div>
-                        <div className="animate-in fade-in-0 slide-in-from-bottom-6 duration-1000 delay-150 fill-mode-both motion-reduce:animate-none">
+                        <div className="intro-gate animate-in fade-in-0 slide-in-from-bottom-6 duration-1000 delay-[500ms] fill-mode-both motion-reduce:animate-none">
                             <DeviceMockups />
                         </div>
                     </section>

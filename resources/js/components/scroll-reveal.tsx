@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { whenIntroDone } from '@/lib/intro';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -26,18 +27,24 @@ export function ScrollReveal({ children, className, delay = 0 }: Props) {
             return;
         }
 
+        let cancelIntroWait = () => {};
+
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    setVisible(true);
                     observer.disconnect();
+                    // Reveal only once the landing splash is gone, so it is seen.
+                    cancelIntroWait = whenIntroDone(() => setVisible(true));
                 }
             },
             { threshold: 0.15, rootMargin: '0px 0px -60px 0px' },
         );
         observer.observe(node);
 
-        return () => observer.disconnect();
+        return () => {
+            observer.disconnect();
+            cancelIntroWait();
+        };
     }, []);
 
     return (

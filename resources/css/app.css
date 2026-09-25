@@ -257,3 +257,69 @@
 html.comfortable-scale {
     font-size: 120%;
 }
+
+/*
+ * Landing intro splash (see components/intro-splash.tsx). The head script adds
+ * html.intro-pending before first paint; the component swaps it for
+ * html.intro-glide while the logo travels to the header, then removes both.
+ */
+[data-intro-overlay] {
+    display: none;
+}
+
+html.intro-pending [data-intro-overlay],
+html.intro-glide [data-intro-overlay] {
+    display: flex;
+}
+
+/* Locked for the whole intro, glide included: scrolling mid-glide would move the
+   header logo out from under the splash logo that is travelling to it. */
+html.intro-pending,
+html.intro-glide {
+    overflow: hidden;
+}
+
+/* Keep the scrollbar's width reserved for the whole intro, so the header does
+   not shift sideways when scrolling comes back and the logo lands off-target. */
+html.intro-pending,
+html.intro-glide {
+    scrollbar-gutter: stable;
+}
+
+html.intro-pending .intro-gate {
+    animation-play-state: paused;
+}
+
+#site-logo {
+    transition: opacity 150ms ease-out;
+}
+
+html.intro-hide-logo #site-logo {
+    opacity: 0;
+}
+
+@keyframes intro-blur-in {
+    from {
+        opacity: 0;
+        filter: blur(10px);
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        filter: blur(0);
+        transform: none;
+    }
+}
+
+.intro-word {
+    display: inline-block;
+    animation: intro-blur-in 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--intro-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .intro-word {
+        animation: none;
+    }
+}

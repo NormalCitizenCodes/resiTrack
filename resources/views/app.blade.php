@@ -19,6 +19,19 @@
             })();
         </script>
 
+        {{-- Landing intro: decide before first paint whether the splash plays (home page only, once per tab session, never with reduced motion) so there is no flash. --}}
+        <script>
+            (function() {
+                try {
+                    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+                    if (location.pathname === '/' && !reduce && (!sessionStorage.getItem('intro_seen') || /[?&]intro=1/.test(location.search))) {
+                        document.documentElement.classList.add('intro-pending');
+                    }
+                } catch (e) {}
+            })();
+        </script>
+
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
