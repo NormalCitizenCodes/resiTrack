@@ -1,4 +1,20 @@
+import { useSyncExternalStore } from 'react';
 import { useTranslation } from '@/hooks/use-translation';
+
+const subscribeNever = () => () => {};
+
+/**
+ * False while the server renders and during the browser's hydration pass, true
+ * afterwards. Dates depend on the viewer's language, time zone and clock, none
+ * of which the server can know, so they are printed in one fixed form until
+ * hydration is done and only then in the viewer's own.
+ */
+function useHydrated(): boolean {
+    return useSyncExternalStore(subscribeNever, () => true, () => false);
+}
+
+/** The same text on the server and in the browser: English, UTC, no clock. */
+const stableDate = (date: Date): string => date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 export const LOCALE: Record<string, string> = {
     en: 'en-US',
@@ -15,20 +31,39 @@ export const LOCALE: Record<string, string> = {
  */
 export function useRelativeDate(): (value: string | null | undefined) => string {
     const { t, language } = useTranslation();
+    const hydrated = useHydrated();
 
     return (value: string | null | undefined): string => {
-        if (!value) return '';
+        if (!value) {
+return '';
+}
 
         const date = new Date(value);
+
+        if (!hydrated) {
+return stableDate(date);
+}
+
         const diffMs = Date.now() - date.getTime();
         const diffMin = Math.floor(diffMs / 60_000);
         const diffHour = Math.floor(diffMin / 60);
         const diffDay = Math.floor(diffHour / 24);
 
-        if (diffMin < 1) return t('time.justNow');
-        if (diffMin < 60) return `${diffMin}m`;
-        if (diffHour < 24) return `${diffHour}h`;
-        if (diffDay < 7) return `${diffDay}d`;
+        if (diffMin < 1) {
+return t('time.justNow');
+}
+
+        if (diffMin < 60) {
+return `${diffMin}m`;
+}
+
+        if (diffHour < 24) {
+return `${diffHour}h`;
+}
+
+        if (diffDay < 7) {
+return `${diffDay}d`;
+}
 
         const locale = LOCALE[language] ?? 'en-US';
         const datePart = date.toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' });
@@ -44,11 +79,19 @@ export function useRelativeDate(): (value: string | null | undefined) => string 
  */
 export function useLongDate(): (value: string | null | undefined) => string {
     const { language } = useTranslation();
+    const hydrated = useHydrated();
 
     return (value: string | null | undefined): string => {
-        if (!value) return '';
+        if (!value) {
+return '';
+}
+
+        if (!hydrated) {
+return stableDate(new Date(value));
+}
 
         const locale = LOCALE[language] ?? 'en-US';
+
         return new Date(value).toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' });
     };
 }
