@@ -172,7 +172,10 @@ export function BarangayHeatmap({ barangays }: { barangays: BarangaySummary[] })
                 </Select>
             </div>
 
-            <div ref={containerRef} className="h-[420px] w-full overflow-hidden rounded-lg border" />
+            {/* isolate: Leaflet's panes and controls use z-index up to 1000 internally.
+                Without their own stacking context they paint over the mobile
+                menu drawer, dialogs and dropdowns. */}
+            <div ref={containerRef} className="isolate h-[420px] w-full overflow-hidden rounded-lg border" />
 
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
