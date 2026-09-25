@@ -102,11 +102,9 @@ export function ResidentTabBar() {
 
     return (
         <>
-            {/* Reserve the bar's height at the bottom of the scrolling area so
-                pages ending in a button (e.g. "Apply") do not get covered.
-                Kept above the lg breakpoint where the sidebar takes over. */}
-            <div aria-hidden="true" className="h-[calc(4rem+env(safe-area-inset-bottom))] lg:hidden" />
-
+            {/* The room this bar covers is reserved by bottom padding on the page
+                content, in app-sidebar-layout.tsx. (A spacer here does not work:
+                it lands beside the content in the sidebar's flex row, not below.) */}
             <nav
                 aria-label="Primary"
                 className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-card/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_2px_rgba(0,0,0,0.04)] lg:hidden"
