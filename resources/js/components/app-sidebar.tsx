@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useTranslation } from '@/hooks/use-translation';
 import { dashboard } from '@/routes';
-import type { NavItem, Role } from '@/types';
+import type { NavGroup, NavItem, Role } from '@/types';
 
 type NavCounts = { duplicates?: number; registrations?: number; pendingApplications?: number };
 
@@ -38,7 +38,7 @@ function quickActionForRole(role: Role | undefined): QuickAction | null {
     }
 }
 
-function navItemsForRole(role: Role | undefined, t: (key: string) => string, counts: NavCounts = {}): NavItem[] {
+function navGroupsForRole(role: Role | undefined, t: (key: string) => string, counts: NavCounts = {}): NavGroup[] {
     const dashboardItem: NavItem = { title: t('nav.dashboard'), href: dashboard(), icon: LayoutGrid };
     const programsItem: NavItem = { title: t('nav.programs'), href: '/programs', icon: HandHeart };
     const announcementsItem: NavItem = { title: t('nav.announcements'), href: '/announcements', icon: Megaphone };
@@ -47,53 +47,69 @@ function navItemsForRole(role: Role | undefined, t: (key: string) => string, cou
         case 'super_admin':
         case 'barangay_admin':
         case 'bhw': {
-            // Resident-profiling module + partner-agency programs. Staff labels
-            // stay in English regardless of language - this branch never reads t().
-            const items = [
-                { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
+            // Staff labels stay in English regardless of language - this branch never reads t().
+            const isBhw = role === 'bhw';
+
+            const records: NavItem[] = [
                 { title: t('nav.residents'), href: '/residents', icon: Users },
-                ...(role === 'bhw' ? [{ title: t('nav.pendingResidentAccounts'), href: '/resident-registrations', icon: ClipboardCheck, badge: counts.registrations }] : []),
+                ...(isBhw ? [{ title: t('nav.pendingResidentAccounts'), href: '/resident-registrations', icon: ClipboardCheck, badge: counts.registrations }] : []),
                 { title: t('nav.households'), href: '/households', icon: Home },
                 { title: t('nav.duplicateAlerts'), href: '/duplicate-alerts', icon: CopyCheck, badge: counts.duplicates },
-                { title: t('nav.programs'), href: '/programs', icon: HandHeart },
                 { title: t('nav.reports'), href: '/reports', icon: BarChart3 },
-                ...(role !== 'bhw' ? [{ title: t('nav.announcements'), href: '/announcements', icon: Megaphone }] : []),
+            ];
+
+            const outreach: NavItem[] = [
+                { title: t('nav.programs'), href: '/programs', icon: HandHeart },
+                ...(!isBhw ? [{ title: t('nav.announcements'), href: '/announcements', icon: Megaphone }] : []),
+                ...(!isBhw ? [{ title: t('nav.partnerAgencies'), href: '/partner-agencies', icon: Building2 }] : []),
             ];
 
             // Staff account management is the one thing that actually
             // distinguishes barangay_admin from bhw - see StaffController.
-            if (role !== 'bhw') {
-                items.push({ title: t('nav.staff'), href: '/staff', icon: UserCog });
-                items.push({ title: t('nav.accountDeletionRequests'), href: '/account-deletion-requests', icon: ShieldCheck });
-                items.push({ title: t('nav.accountReactivationRequests'), href: '/account-reactivation-requests', icon: ShieldCheck });
-                items.push({ title: t('nav.partnerAgencies'), href: '/partner-agencies', icon: HandHeart });
-            }
+            const admin: NavItem[] = isBhw
+                ? [{ title: t('nav.accountRecovery'), href: '/account-recovery', icon: ShieldCheck }]
+                : [
+                      { title: t('nav.staff'), href: '/staff', icon: UserCog },
+                      { title: t('nav.accountDeletionRequests'), href: '/account-deletion-requests', icon: ShieldCheck },
+                      { title: t('nav.accountReactivationRequests'), href: '/account-reactivation-requests', icon: ShieldCheck },
+                  ];
 
-            if (role === 'bhw') {
-                items.push({ title: t('nav.accountRecovery'), href: '/account-recovery', icon: ShieldCheck });
-            }
-
-            return items;
+            return [
+                { items: [{ title: 'Dashboard', href: dashboard(), icon: LayoutGrid }] },
+                { label: 'Records', items: records },
+                { label: 'Outreach', items: outreach },
+                { label: isBhw ? 'Support' : 'Admin', items: admin },
+            ];
         }
         case 'partner_agency':
             return [
-                { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-                { title: 'Programs', href: '/programs', icon: HandHeart },
-                { title: 'Applications to Review', href: '/applications/review', icon: ClipboardCheck, badge: counts.pendingApplications },
-                { title: 'Beneficiaries', href: '/beneficiaries', icon: Users },
-                // Agencies already had read access to /announcements (broadcast
-                // posts only, see AnnouncementController::index) but no link to it.
-                { title: t('nav.announcements'), href: '/announcements', icon: Megaphone },
-                { title: 'Agency Profile', href: '/agency-profile', icon: Building2 },
+                {
+                    label: 'Platform',
+                    items: [
+                        { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
+                        { title: 'Programs', href: '/programs', icon: HandHeart },
+                        { title: 'Applications to Review', href: '/applications/review', icon: ClipboardCheck, badge: counts.pendingApplications },
+                        { title: 'Beneficiaries', href: '/beneficiaries', icon: Users },
+                        // Agencies already had read access to /announcements (broadcast
+                        // posts only, see AnnouncementController::index) but no link to it.
+                        { title: t('nav.announcements'), href: '/announcements', icon: Megaphone },
+                        { title: 'Agency Profile', href: '/agency-profile', icon: Building2 },
+                    ],
+                },
             ];
         default:
             // Residents: browse programs, announcements, and track their applications.
             return [
-                dashboardItem,
-                programsItem,
-                { title: t('nav.myApplications'), href: '/my-applications', icon: FileHeart },
-                announcementsItem,
-                { title: t('nav.myProfile'), href: '/my-profile', icon: UserCircle },
+                {
+                    label: 'Platform',
+                    items: [
+                        dashboardItem,
+                        programsItem,
+                        { title: t('nav.myApplications'), href: '/my-applications', icon: FileHeart },
+                        announcementsItem,
+                        { title: t('nav.myProfile'), href: '/my-profile', icon: UserCircle },
+                    ],
+                },
             ];
     }
 }
@@ -102,7 +118,7 @@ export function AppSidebar() {
     const { auth, navCounts } = usePage().props;
     const role = auth?.user?.role as Role | undefined;
     const { t } = useTranslation();
-    const mainNavItems = navItemsForRole(role, t, navCounts);
+    const navGroups = navGroupsForRole(role, t, navCounts);
     const quickAction = quickActionForRole(role);
     const { setOpenMobile } = useSidebar();
 
@@ -126,7 +142,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain groups={navGroups} />
             </SidebarContent>
 
             <SidebarFooter>

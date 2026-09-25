@@ -1,9 +1,10 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeftRight, Copy } from 'lucide-react';
+import { ArrowLeftRight, Copy, Users } from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { DuplicateAlert, Paginated, Resident } from '@/types';
 
@@ -28,12 +29,72 @@ const MATCH_LABEL: Record<string, string> = {
     cross_barangay_transfer: 'Possible cross-barangay transfer',
 };
 
+type Person = Resident & { barangay?: { name: string } };
+
+type Cluster = { alerts: AlertRow[]; people: Person[] };
+
+/**
+ * Alerts that share a resident are the same story (A matches B, B matches C),
+ * so they are shown together. Groups follow the alerts' own order, and only
+ * cover the alerts on the current page.
+ */
+function clusterAlerts(alerts: AlertRow[]): Cluster[] {
+    const parent = new Map<number, number>();
+    const find = (id: number): number => {
+        const up = parent.get(id) ?? id;
+
+        if (up === id) {
+            return id;
+        }
+
+        const root = find(up);
+        parent.set(id, root);
+
+        return root;
+    };
+
+    alerts.forEach((alert) => {
+        parent.set(find(alert.resident_id_1), find(alert.resident_id_2));
+    });
+
+    const groups = new Map<number, Cluster>();
+
+    alerts.forEach((alert) => {
+        const root = find(alert.resident_id_1);
+        const group = groups.get(root) ?? { alerts: [], people: [] };
+
+        group.alerts.push(alert);
+
+        [alert.resident_one, alert.resident_two].forEach((person) => {
+            if (person && !group.people.some((known) => known.id === person.id)) {
+                group.people.push(person);
+            }
+        });
+
+        groups.set(root, group);
+    });
+
+    return [...groups.values()];
+}
+
+/** Marks a value that differs from the record it is being compared with. */
+function Field({ label, value, differs }: { label: string; value: string; differs: boolean }) {
+    return (
+        <div>
+            {label}:{' '}
+            <span className={cn(differs && 'rounded bg-warning/25 px-1 font-medium text-foreground')}>{value}</span>
+        </div>
+    );
+}
+
 function ResidentCard({
     resident,
+    other,
     onKeep,
     canAct,
 }: {
-    resident?: Resident & { barangay?: { name: string } };
+    resident?: Person;
+    other?: Person;
     onKeep: () => void;
     canAct: boolean;
 }) {
@@ -41,18 +102,26 @@ function ResidentCard({
         return <div className="flex-1 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Record unavailable</div>;
     }
 
+    const dob = resident.date_of_birth?.substring(0, 10) ?? '-';
+    const philsys = resident.philsys_card_no ?? '-';
+    const barangay = resident.barangay?.name ?? '-';
+    const nameDiffers = !!other && other.full_name !== resident.full_name;
+
     return (
         <div className="flex-1 rounded-lg border p-3">
             <div className="flex items-center justify-between">
-                <Link href={`/residents/${resident.id}`} className="font-medium hover:underline">
+                <Link
+                    href={`/residents/${resident.id}`}
+                    className={cn('font-medium hover:underline', nameDiffers && 'rounded bg-warning/25 px-1')}
+                >
                     {resident.full_name}
                 </Link>
                 {!resident.is_active && <Badge variant="outline">Inactive</Badge>}
             </div>
             <dl className="mt-2 space-y-1 text-xs text-muted-foreground">
-                <div>DOB: {resident.date_of_birth?.substring(0, 10) ?? '-'}</div>
-                <div>PhilSys: {resident.philsys_card_no ?? '-'}</div>
-                <div>Barangay: {resident.barangay?.name ?? '-'}</div>
+                <Field label="DOB" value={dob} differs={!!other && (other.date_of_birth?.substring(0, 10) ?? '-') !== dob} />
+                <Field label="PhilSys" value={philsys} differs={!!other && (other.philsys_card_no ?? '-') !== philsys} />
+                <Field label="Barangay" value={barangay} differs={!!other && (other.barangay?.name ?? '-') !== barangay} />
             </dl>
             {canAct && (
                 <Button variant="outline" size="sm" className="mt-3 w-full" onClick={onKeep}>
@@ -131,13 +200,30 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                 {alerts.data.length === 0 && (
                     <Card>
                         <CardContent className="py-12 text-center text-muted-foreground">
-                            No {filters.status} alerts. 🎉
+                            No {filters.status} alerts. You are all caught up.
                         </CardContent>
                     </Card>
                 )}
 
-                <div className="space-y-3">
-                    {alerts.data.map((alert) => {
+                <div className="space-y-4">
+                    {clusterAlerts(alerts.data).map((cluster) => (
+                        <div
+                            key={cluster.alerts[0].id}
+                            className={cn(
+                                'space-y-3',
+                                cluster.alerts.length > 1 && 'rounded-xl border border-warning/40 bg-warning/5 p-3',
+                            )}
+                        >
+                            {cluster.alerts.length > 1 && (
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-sm">
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                        <Users className="size-4 text-amber-500" aria-hidden="true" />
+                                        {cluster.people.length} records may be the same person
+                                    </span>
+                                    <span className="text-muted-foreground">{cluster.people.map((person) => person.full_name).join(' · ')}</span>
+                                </div>
+                            )}
+                    {cluster.alerts.map((alert) => {
                         const isTransfer = alert.match_basis === 'cross_barangay_transfer';
                         const isEscalated = alert.escalated_at !== null;
                         const canReview = role !== 'super_admin' && !(isEscalated && role === 'bhw');
@@ -173,6 +259,7 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                                     <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
                                         <ResidentCard
                                             resident={alert.resident_one}
+                                            other={alert.resident_two}
                                             canAct={isPending && canReview}
                                             onKeep={() => resolve(alert, alert.resident_id_1)}
                                         />
@@ -181,6 +268,7 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                                         </div>
                                         <ResidentCard
                                             resident={alert.resident_two}
+                                            other={alert.resident_one}
                                             canAct={isPending && canReview}
                                             onKeep={() => resolve(alert, alert.resident_id_2)}
                                         />
@@ -202,6 +290,8 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                             </Card>
                         );
                     })}
+                        </div>
+                    ))}
                 </div>
 
                 <DataPagination meta={alerts} />

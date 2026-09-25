@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Plus, Search } from 'lucide-react';
+import { ChevronRight, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { SectorBadges } from '@/components/sector-badges';
@@ -146,32 +146,40 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
                                 {isSuperAdmin && <TableHead>Barangay</TableHead>}
                                 <TableHead>Household</TableHead>
                                 <TableHead>Vulnerability Sectors</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead className="w-10">
+                                    <span className="sr-only">Open record</span>
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {residents.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={isSuperAdmin ? 7 : 6} className="py-10 text-center text-muted-foreground">
+                                    <TableCell colSpan={isSuperAdmin ? 6 : 5} className="py-10 text-center text-muted-foreground">
                                         No residents found.
                                     </TableCell>
                                 </TableRow>
                             )}
                             {residents.data.map((resident) => (
-                                <TableRow key={resident.id}>
+                                <TableRow
+                                    key={resident.id}
+                                    className="cursor-pointer"
+                                    onClick={() => router.visit(`/residents/${resident.id}`)}
+                                >
                                     <TableCell className="font-medium">
-                                        <Link href={`/residents/${resident.id}`} className="hover:underline">
-                                            {resident.full_name}
-                                        </Link>
-                                        {resident.resident_id && (
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Link
+                                                href={`/residents/${resident.id}`}
+                                                className="hover:underline"
+                                                onClick={(event) => event.stopPropagation()}
+                                            >
+                                                {resident.full_name}
+                                            </Link>
+                                            {resident.is_duplicate_flagged && <Badge variant="destructive">Flagged</Badge>}
+                                            {!resident.is_active && <Badge variant="outline">Inactive</Badge>}
+                                        </div>
+                                        {(resident.resident_id || resident.contact_number) && (
                                             <span className="block text-xs text-muted-foreground">
-                                                {resident.resident_id}
-                                            </span>
-                                        )}
-                                        {resident.contact_number && (
-                                            <span className="block text-xs text-muted-foreground">
-                                                Contact: {resident.contact_number}
+                                                {[resident.resident_id, resident.contact_number].filter(Boolean).join(' · ')}
                                             </span>
                                         )}
                                         {resident.philsys_card_no && (
@@ -193,26 +201,21 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
                                     <TableCell>
                                         <SectorBadges sectors={resident.sectors} />
                                     </TableCell>
-                                    <TableCell>
-                                        {resident.is_duplicate_flagged ? (
-                                            <Badge variant="destructive">Flagged</Badge>
-                                        ) : resident.is_active ? (
-                                            <Badge variant="secondary">Active</Badge>
-                                        ) : (
-                                            <Badge variant="outline">Inactive</Badge>
-                                        )}
-                                    </TableCell>
                                     <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button asChild variant="outline" size="sm">
-                                                <Link href={`/residents/${resident.id}`}>View</Link>
+                                        {!resident.is_active && role === 'barangay_admin' ? (
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    restore(resident);
+                                                }}
+                                            >
+                                                Activate / Restore
                                             </Button>
-                                            {!resident.is_active && role === 'barangay_admin' && (
-                                                <Button variant="secondary" size="sm" onClick={() => restore(resident)}>
-                                                    Activate / Restore
-                                                </Button>
-                                            )}
-                                        </div>
+                                        ) : (
+                                            <ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden="true" />
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}

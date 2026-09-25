@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccountDeletionRequest;
+use App\Models\AccountReactivationRequest;
 use App\Models\Barangay;
 use App\Models\PartnerAgency;
 use App\Models\User;
@@ -84,5 +86,42 @@ class DashboardTest extends TestCase
                     ->where('scope', $barangay->name)
                     ->has('barangays', 0));
         }
+    }
+
+    public function test_staff_get_a_needs_attention_list_scoped_to_their_own_barangay(): void
+    {
+        $this->seed(ReferenceDataSeeder::class);
+        $own = Barangay::where('name', 'Barangay 22')->first();
+        $other = Barangay::where('name', 'Barangay 23')->first();
+        $admin = User::factory()->create(['role' => User::ROLE_BARANGAY_ADMIN, 'barangay_id' => $own->id]);
+        $bhw = User::factory()->create(['role' => User::ROLE_BHW, 'barangay_id' => $own->id]);
+        $resident = User::factory()->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $own->id]);
+        $outsider = User::factory()->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $other->id]);
+
+        AccountDeletionRequest::create(['user_id' => $resident->id, 'barangay_id' => $own->id, 'reason' => 'x', 'status' => AccountDeletionRequest::STATUS_PENDING]);
+        AccountDeletionRequest::create(['user_id' => $outsider->id, 'barangay_id' => $other->id, 'reason' => 'x', 'status' => AccountDeletionRequest::STATUS_PENDING]);
+        AccountReactivationRequest::create(['user_id' => $resident->id, 'barangay_id' => $own->id, 'reason' => 'x', 'status' => AccountReactivationRequest::STATUS_PENDING]);
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('attention', fn ($items) => collect($items)->pluck('count', 'key')->all() === ['duplicates' => 0, 'deletions' => 1, 'reactivations' => 1]));
+
+        $this->actingAs($bhw)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('attention', fn ($items) => collect($items)->pluck('key')->all() === ['duplicates', 'registrations']));
+    }
+
+    public function test_only_barangay_staff_get_the_needs_attention_list(): void
+    {
+        $this->seed(ReferenceDataSeeder::class);
+        $barangay = Barangay::first();
+        $agencyUser = User::factory()->create([
+            'role' => User::ROLE_PARTNER_AGENCY,
+            'agency_id' => PartnerAgency::first()->id,
+            'barangay_id' => $barangay->id,
+        ]);
+
+        $this->actingAs($agencyUser)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('attention', []));
     }
 }

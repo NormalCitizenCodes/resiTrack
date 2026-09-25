@@ -36,8 +36,8 @@ const en: Dictionary = {
     'nav.reports': 'Reports',
     'nav.staff': 'Staff',
     'nav.accountRecovery': 'Account Recovery',
-    'nav.accountDeletionRequests': 'Account Deletion Requests',
-    'nav.accountReactivationRequests': 'Account Reactivation Requests',
+    'nav.accountDeletionRequests': 'Deletion Requests',
+    'nav.accountReactivationRequests': 'Reactivation Requests',
     'nav.partnerAgencies': 'Partner Agencies',
 
     'common.viewAll': 'View all',

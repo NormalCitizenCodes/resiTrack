@@ -9,16 +9,18 @@ import {
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn } from '@/lib/utils';
-import type { NavItem } from '@/types';
+import type { NavGroup } from '@/types';
 
-export function NavMain({ items = [] }: { items: NavItem[] }) {
+export function NavMain({ groups = [] }: { groups: NavGroup[] }) {
     const { isCurrentUrl } = useCurrentUrl();
 
     return (
-        <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
-            <SidebarMenu>
-                {items.map((item) => (
+        <>
+            {groups.map((group, index) => (
+                <SidebarGroup key={group.label ?? index} className="px-2 py-0 not-first:mt-3">
+                    {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+                    <SidebarMenu>
+                {group.items.map((item) => (
                     <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                             asChild
@@ -38,7 +40,9 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                         ) : null}
                     </SidebarMenuItem>
                 ))}
-            </SidebarMenu>
-        </SidebarGroup>
+                    </SidebarMenu>
+                </SidebarGroup>
+            ))}
+        </>
     );
 }

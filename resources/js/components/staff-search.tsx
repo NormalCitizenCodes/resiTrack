@@ -12,10 +12,14 @@ const STAFF_ROLES = ['super_admin', 'barangay_admin', 'bhw'];
  * applies the user's barangay scope), so there is no separate search backend.
  */
 export function StaffSearch() {
-    const role = usePage().props.auth?.user?.role;
+    const page = usePage();
+    const role = page.props.auth?.user?.role;
     const [query, setQuery] = useState('');
 
-    if (!role || !STAFF_ROLES.includes(role)) {
+    // The Residents list has its own, richer search: two search boxes on one screen is noise.
+    const onResidentsList = page.url.split('?')[0] === '/residents';
+
+    if (!role || !STAFF_ROLES.includes(role) || onResidentsList) {
         return null;
     }
 

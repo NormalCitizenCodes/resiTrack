@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountDeletionRequest;
+use App\Models\AccountReactivationRequest;
 use App\Models\AppNotification;
 use App\Models\ProgramApplication;
 use App\Models\Resident;
@@ -43,7 +44,59 @@ class DashboardController extends Controller
             'stats' => $this->stats->forBarangay($barangayId),
             'scope' => $user->isSuperAdmin() ? 'City-wide' : ($user->barangay?->name ?? 'Barangay'),
             'barangays' => $showCityWideSummary ? $this->stats->barangaySummaries() : [],
+            'attention' => $user->isBarangayStaff() ? $this->attentionItems($user, $barangayId) : [],
         ]);
+    }
+
+    /**
+     * What is waiting on this staff member, scoped exactly like the pages the
+     * links lead to: BHWs verify resident accounts, admins review account
+     * requests, everyone sees pending duplicate alerts.
+     *
+     * @return array<int, array{key: string, label: string, count: int, href: string}>
+     */
+    private function attentionItems(User $user, ?int $barangayId): array
+    {
+        $items = [
+            ['key' => 'duplicates', 'label' => 'Pending duplicate alerts', 'count' => $this->stats->pendingDuplicates($barangayId), 'href' => '/duplicate-alerts'],
+        ];
+
+        if ($user->role === User::ROLE_BHW) {
+            $items[] = [
+                'key' => 'registrations',
+                'label' => 'Resident accounts to verify',
+                'count' => User::query()
+                    ->where('role', User::ROLE_RESIDENT)
+                    ->whereNull('resident_id')
+                    ->whereNotNull('registration_id')
+                    ->where('barangay_id', $barangayId)
+                    ->count(),
+                'href' => '/resident-registrations',
+            ];
+        }
+
+        if ($user->role !== User::ROLE_BHW) {
+            $items[] = [
+                'key' => 'deletions',
+                'label' => 'Account deletion requests',
+                'count' => AccountDeletionRequest::query()
+                    ->where('status', AccountDeletionRequest::STATUS_PENDING)
+                    ->when($barangayId, fn ($query) => $query->where('barangay_id', $barangayId))
+                    ->count(),
+                'href' => '/account-deletion-requests',
+            ];
+            $items[] = [
+                'key' => 'reactivations',
+                'label' => 'Account reactivation requests',
+                'count' => AccountReactivationRequest::query()
+                    ->where('status', AccountReactivationRequest::STATUS_PENDING)
+                    ->when($barangayId, fn ($query) => $query->where('barangay_id', $barangayId))
+                    ->count(),
+                'href' => '/account-reactivation-requests',
+            ];
+        }
+
+        return $items;
     }
 
     /**
