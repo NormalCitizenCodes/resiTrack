@@ -2,12 +2,11 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, Home, Users } from 'lucide-react';
 import { useState } from 'react';
 import { BarangayHeatmap } from '@/components/barangay-heatmap';
+import { AgePyramid, SectorBars } from '@/components/demographic-charts';
+import type { AgeBracket, Compound, SectorCount } from '@/components/demographic-charts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
-
-type SectorCount = { code: string; name: string; count: number };
-type AgeBracket = { label: string; count: number };
 
 type Stats = {
     total_residents: number;
@@ -15,14 +14,7 @@ type Stats = {
     pending_duplicates: number;
     age_distribution: AgeBracket[];
     sector_counts: SectorCount[];
-};
-
-const SECTOR_BAR: Record<string, string> = {
-    SENIOR: 'bg-chart-5',
-    PWD: 'bg-chart-1',
-    OSY: 'bg-chart-2',
-    SOLO_PARENT: 'bg-chart-4',
-    PREGNANT: 'bg-chart-3',
+    compound: Compound;
 };
 
 function StatCard({
@@ -123,8 +115,6 @@ export default function Dashboard({
     const role = usePage().props.auth?.user?.role;
     const [highlightId, setHighlightId] = useState<number | null>(null);
     const isStaff = role === 'super_admin' || role === 'barangay_admin' || role === 'bhw';
-    const totalPop = stats.age_distribution.reduce((sum, b) => sum + b.count, 0) || 1;
-    const maxSector = Math.max(1, ...stats.sector_counts.map((s) => s.count));
 
     return (
         <>
@@ -210,26 +200,10 @@ export default function Dashboard({
                 <div className="grid gap-4 md:grid-cols-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Age Distribution</CardTitle>
+                            <CardTitle>Age and Sex</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                            {stats.age_distribution.map((bracket) => {
-                                const pct = Math.round((bracket.count / totalPop) * 100);
-
-                                return (
-                                    <div key={bracket.label}>
-                                        <div className="mb-1 flex justify-between text-sm">
-                                            <span className="font-medium">{bracket.label}</span>
-                                            <span className="text-muted-foreground">
-                                                {bracket.count} ({pct}%)
-                                            </span>
-                                        </div>
-                                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                                            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <CardContent className="flex-1">
+                            <AgePyramid brackets={stats.age_distribution} />
                         </CardContent>
                     </Card>
 
@@ -237,25 +211,8 @@ export default function Dashboard({
                         <CardHeader>
                             <CardTitle>Vulnerable Sectors</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                            {stats.sector_counts.map((sector) => {
-                                const pct = Math.round((sector.count / maxSector) * 100);
-
-                                return (
-                                    <div key={sector.code}>
-                                        <div className="mb-1 flex justify-between text-sm">
-                                            <span className="font-medium">{sector.name}</span>
-                                            <span className="text-muted-foreground">{sector.count}</span>
-                                        </div>
-                                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                                            <div
-                                                className={`h-full rounded-full ${SECTOR_BAR[sector.code] ?? 'bg-neutral-500'}`}
-                                                style={{ width: `${pct}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                        <CardContent>
+                            <SectorBars sectors={stats.sector_counts} totalResidents={stats.total_residents} compound={stats.compound} />
                         </CardContent>
                     </Card>
                 </div>

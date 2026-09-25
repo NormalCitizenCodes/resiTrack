@@ -6,7 +6,9 @@ use App\Models\AccountDeletionRequest;
 use App\Models\AccountReactivationRequest;
 use App\Models\Barangay;
 use App\Models\PartnerAgency;
+use App\Models\Resident;
 use App\Models\User;
+use App\Models\VulnerabilitySector;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -123,5 +125,29 @@ class DashboardTest extends TestCase
 
         $this->actingAs($agencyUser)->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page->where('attention', []));
+    }
+
+    public function test_the_dashboard_splits_age_groups_by_sex_and_counts_residents_in_several_sectors(): void
+    {
+        $this->seed(ReferenceDataSeeder::class);
+        $own = Barangay::where('name', 'Barangay 22')->first();
+        $other = Barangay::where('name', 'Barangay 23')->first();
+        $admin = User::factory()->create(['role' => User::ROLE_BARANGAY_ADMIN, 'barangay_id' => $own->id]);
+        $senior = VulnerabilitySector::where('code', 'SENIOR')->first();
+        $pwd = VulnerabilitySector::where('code', 'PWD')->first();
+
+        $both = Resident::factory()->create(['barangay_id' => $own->id, 'sex' => 'male', 'date_of_birth' => now()->subYears(70)->toDateString()]);
+        $both->sectors()->attach([$senior->id, $pwd->id]);
+        $onlySenior = Resident::factory()->create(['barangay_id' => $own->id, 'sex' => 'female', 'date_of_birth' => now()->subYears(65)->toDateString()]);
+        $onlySenior->sectors()->attach($senior->id);
+        $elsewhere = Resident::factory()->create(['barangay_id' => $other->id, 'sex' => 'male', 'date_of_birth' => now()->subYears(70)->toDateString()]);
+        $elsewhere->sectors()->attach([$senior->id, $pwd->id]);
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('stats.compound.with_sector', 2)
+                ->where('stats.compound.multi', 1)
+                ->where('stats.compound.combos.0.count', 1)
+                ->where('stats.age_distribution', fn ($brackets) => collect($brackets)->firstWhere('label', '60+') === ['label' => '60+', 'count' => 2, 'male' => 1, 'female' => 1]));
     }
 }

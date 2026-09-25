@@ -8,6 +8,7 @@ use App\Models\Household;
 use App\Models\Resident;
 use App\Models\VulnerabilitySector;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Aggregates the figures shown on the barangay dashboard and sector reports.
@@ -35,13 +36,14 @@ class DashboardStatsService
             'pending_duplicates' => $this->pendingDuplicates($barangayId),
             'age_distribution' => $this->ageDistribution($barangayId),
             'sector_counts' => $this->sectorCounts($barangayId),
+            'compound' => $this->compoundVulnerability($barangayId),
         ];
     }
 
     /**
      * Population split into the five age brackets used on the dashboard.
      *
-     * @return array<int, array{label: string, count: int}>
+     * @return array<int, array{label: string, count: int, male: int, female: int}>
      */
     public function ageDistribution(?int $barangayId = null): array
     {
@@ -68,8 +70,52 @@ class DashboardStatsService
                 $query->where('barangay_id', $barangayId);
             }
 
-            return ['label' => $bracket['label'], 'count' => $query->count()];
+            return [
+                'label' => $bracket['label'],
+                'count' => (clone $query)->count(),
+                'male' => (clone $query)->where('sex', 'male')->count(),
+                'female' => (clone $query)->where('sex', 'female')->count(),
+            ];
         }, $brackets);
+    }
+
+    /**
+     * How many residents carry more than one vulnerability sector, and the most
+     * common pairings. The sector counts overlap (they add up to more than the
+     * number of residents), which is the point of compound classification.
+     *
+     * @return array{with_sector: int, multi: int, combos: array<int, array{label: string, count: int}>}
+     */
+    public function compoundVulnerability(?int $barangayId = null): array
+    {
+        $bySector = DB::table('resident_sectors as rs')
+            ->join('residents as r', 'r.id', '=', 'rs.resident_id')
+            ->join('vulnerability_sectors as s', 's.id', '=', 'rs.sector_id')
+            ->where('r.is_active', true)
+            ->when($barangayId, fn ($query) => $query->where('r.barangay_id', $barangayId))
+            ->get(['rs.resident_id', 's.sector_name'])
+            ->groupBy('resident_id');
+
+        $pairs = [];
+
+        foreach ($bySector as $rows) {
+            $names = $rows->pluck('sector_name')->unique()->sort()->values()->all();
+
+            for ($i = 0; $i < count($names); $i++) {
+                for ($j = $i + 1; $j < count($names); $j++) {
+                    $key = $names[$i].' + '.$names[$j];
+                    $pairs[$key] = ($pairs[$key] ?? 0) + 1;
+                }
+            }
+        }
+
+        arsort($pairs);
+
+        return [
+            'with_sector' => $bySector->count(),
+            'multi' => $bySector->filter(fn ($rows) => $rows->pluck('sector_name')->unique()->count() > 1)->count(),
+            'combos' => collect($pairs)->take(3)->map(fn (int $count, string $label) => ['label' => $label, 'count' => $count])->values()->all(),
+        ];
     }
 
     /**
