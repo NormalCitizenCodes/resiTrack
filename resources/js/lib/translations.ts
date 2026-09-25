@@ -163,6 +163,13 @@ const en: Dictionary = {
     'help.r.language.a': 'Yes. Choose your language at the top of the page. Tap the speaker button next to announcements and programs to hear them.',
     'help.r.password.q': 'What if I forget my password?',
     'help.r.password.a': 'Use Forgot Password on the login page. If you have no email, a Barangay Health Worker can help you recover your account.',
+    'dashboard.programs.title': 'Programs for you',
+    'dashboard.programs.slotsLeft': '{count} slots left',
+    'dashboard.programs.until': 'Until {date}',
+    'dashboard.programs.view': 'View and apply',
+    'dashboard.programs.more': 'See all {count} programs for you',
+    'dashboard.programs.empty': 'No matching programs right now. Keep your profile up to date and you will be matched when one opens.',
+    'dashboard.feed.new': 'New',
 };
 
 const fil: Dictionary = {
@@ -304,6 +311,13 @@ const fil: Dictionary = {
     'help.r.language.a': 'Oo. Piliin ang iyong wika sa itaas ng pahina. Pindutin ang button ng speaker sa tabi ng mga anunsyo at programa para marinig ang mga ito.',
     'help.r.password.q': 'Paano kung makalimutan ko ang aking password?',
     'help.r.password.a': 'Gamitin ang Forgot Password sa login page. Kung wala kang email, matutulungan ka ng isang Barangay Health Worker na mabawi ang iyong account.',
+    'dashboard.programs.title': 'Mga programa para sa iyo',
+    'dashboard.programs.slotsLeft': '{count} na slot ang natitira',
+    'dashboard.programs.until': 'Hanggang {date}',
+    'dashboard.programs.view': 'Tingnan at mag-apply',
+    'dashboard.programs.more': 'Tingnan ang lahat ng {count} programa para sa iyo',
+    'dashboard.programs.empty': 'Wala pang angkop na programa ngayon. Panatilihing updated ang iyong impormasyon at maitutugma ka kapag may bumukas.',
+    'dashboard.feed.new': 'Bago',
 };
 
 const ceb: Dictionary = {
@@ -445,6 +459,13 @@ const ceb: Dictionary = {
     'help.r.language.a': 'Oo. Pilia ang imong pinulongan sa ibabaw sa panid. Pinduta ang button sa speaker tupad sa mga pahibalo ug programa aron madungog kini.',
     'help.r.password.q': 'Unsa kon makalimtan nako ang akong password?',
     'help.r.password.a': 'Gamita ang Forgot Password sa login page. Kon wala kay email, matabangan ka sa usa ka Barangay Health Worker nga mabawi ang imong account.',
+    'dashboard.programs.title': 'Mga programa para nimo',
+    'dashboard.programs.slotsLeft': '{count} ka slot ang nahabilin',
+    'dashboard.programs.until': 'Hangtod {date}',
+    'dashboard.programs.view': 'Tan-awa ug mag-apply',
+    'dashboard.programs.more': 'Tan-awa ang tanang {count} ka programa para nimo',
+    'dashboard.programs.empty': 'Wala pay hustong programa karon. Padayona ang pag-update sa imong impormasyon aron mahiangay ka kon naay maablihan.',
+    'dashboard.feed.new': 'Bag-o',
 };
 
 export const TRANSLATIONS: Record<Language, Dictionary> = { en, fil, ceb };

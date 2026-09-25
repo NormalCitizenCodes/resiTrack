@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Bell, FileHeart, Gift, HandHeart, Megaphone, UserCircle } from 'lucide-react';
+import { ArrowRight, Bell, FileHeart, Gift, HandHeart, Megaphone, UserCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ReadAloudButton } from '@/components/read-aloud-button';
 import { SectorBadge } from '@/components/sector-badges';
@@ -35,6 +35,74 @@ const FEED_ICON: Record<string, typeof Bell> = {
     program_match: Gift,
     announcement: Megaphone,
 };
+
+type MatchedPrograms = {
+    total: number;
+    items: {
+        id: number;
+        title: string;
+        agency: string | null;
+        slots_left: number | null;
+        end_date: string | null;
+        sectors: { code: string; name: string }[];
+    }[];
+};
+
+// Fixed locale and zone so the server and the browser print the same date.
+const formatEndDate = (date: string) =>
+    new Date(`${date}T00:00:00Z`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+/** Real programs the resident can apply to now: the point of the app, so it comes first. */
+function ProgramsForYouCard({ matched }: { matched: MatchedPrograms }) {
+    const { t } = useTranslation();
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>{t('dashboard.programs.title')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {matched.items.length === 0 && <p className="text-sm text-muted-foreground">{t('dashboard.programs.empty')}</p>}
+                {matched.items.map((program) => (
+                    <div key={program.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 space-y-1">
+                            <Link href={`/programs/${program.id}`} className="font-semibold hover:underline">
+                                {program.title}
+                            </Link>
+                            <p className="text-sm text-muted-foreground">
+                                {[
+                                    program.agency,
+                                    program.slots_left !== null ? t('dashboard.programs.slotsLeft', { count: program.slots_left }) : null,
+                                    program.end_date ? t('dashboard.programs.until', { date: formatEndDate(program.end_date) }) : null,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                            </p>
+                            {program.sectors.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                    {program.sectors.map((sector) => (
+                                        <SectorBadge key={sector.code} code={sector.code} label={sector.name} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <Button asChild className="shrink-0">
+                            <Link href={`/programs/${program.id}`}>
+                                {t('dashboard.programs.view')}
+                                <ArrowRight className="size-4" aria-hidden="true" />
+                            </Link>
+                        </Button>
+                    </div>
+                ))}
+                {matched.total > matched.items.length && (
+                    <Button asChild variant="link" size="sm" className="px-0">
+                        <Link href="/programs">{t('dashboard.programs.more', { count: matched.total })}</Link>
+                    </Button>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
 
 function ProfileCompletenessCard({
     completeness,
@@ -158,41 +226,32 @@ function FeedCard({ feed }: { feed: AppNotification[] }) {
                     return (
                         <div
                             key={item.id}
-                            className={cn(
-                                'flex items-start gap-3 rounded-lg border p-3 transition-colors',
-                                !item.is_read && 'border-primary/40 bg-primary/5',
-                            )}
+                            className={cn('rounded-lg border p-4 transition-colors', !item.is_read && 'border-primary/40 bg-primary/5')}
                         >
                             <Link
                                 href={item.action_url ?? '#'}
                                 onClick={() => item.action_url && !item.is_read && markRead(item.id)}
-                                className={cn('flex min-w-0 flex-1 items-start gap-3', !item.action_url && 'pointer-events-none')}
+                                className={cn('flex items-start gap-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50', !item.action_url && 'pointer-events-none')}
                             >
-                                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                                <div className="flex-1 space-y-0.5">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium">{item.title}</span>
-                                        {!item.is_read && <span className="size-2 rounded-full bg-primary" />}
+                                <Icon className="mt-1 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={cn('font-medium', !item.is_read && 'font-semibold')}>{item.title}</span>
+                                        {!item.is_read && <Badge className="px-1.5 py-0 text-[11px]">{t('dashboard.feed.new')}</Badge>}
                                     </div>
                                     {item.message && <p className="whitespace-pre-line text-sm text-muted-foreground">{item.message}</p>}
-                                    <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
                                 </div>
                             </Link>
-                            <div className="flex shrink-0 items-center gap-1">
-                                <ReadAloudButton
-                                    text={[item.title, item.message]
-                                        .filter(Boolean)
-                                        .join('. ')}
-                                />
-                                {!item.is_read && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => markRead(item.id)}
-                                    >
-                                        {t('dashboard.feed.markRead')}
-                                    </Button>
-                                )}
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-8">
+                                <span className="text-xs whitespace-nowrap text-muted-foreground">{formatDate(item.created_at)}</span>
+                                <div className="flex items-center gap-1">
+                                    <ReadAloudButton text={[item.title, item.message].filter(Boolean).join('. ')} />
+                                    {!item.is_read && (
+                                        <Button variant="ghost" size="sm" onClick={() => markRead(item.id)}>
+                                            {t('dashboard.feed.markRead')}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     );
@@ -244,12 +303,8 @@ function ApplicationsCard({
                             {application.program?.title ??
                                 `Program #${application.program_id}`}
                         </Link>
-                        <Badge
-                            variant={
-                                STATUS_VARIANT[application.status] ?? 'outline'
-                            }
-                        >
-                            {application.status}
+                        <Badge variant={STATUS_VARIANT[application.status] ?? 'outline'}>
+                            {t(`common.${application.status}`) === `common.${application.status}` ? application.status : t(`common.${application.status}`)}
                         </Badge>
                     </div>
                 ))}
@@ -311,12 +366,12 @@ function QuickLinks() {
     ];
 
     return (
-        <nav className="grid gap-3 sm:grid-cols-3">
+        <nav aria-label="Shortcuts" className="grid grid-cols-3 gap-3 lg:hidden">
             {links.map((link) => (
                 <Link
                     key={link.href}
                     href={link.href}
-                    className="flex items-center gap-3 rounded-lg border bg-card p-4 font-medium outline-none transition-colors hover:border-primary/50 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="flex flex-col items-center gap-2 rounded-lg border bg-card px-2 py-3 text-center text-sm font-medium outline-none transition-colors hover:border-primary/50 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 >
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                         <link.icon className="size-5" />
@@ -333,6 +388,7 @@ export default function ResidentDashboard({
     completeness,
     sectors,
     recentApplications,
+    matchedPrograms,
     feed,
     deletionRequest,
 }: {
@@ -340,6 +396,7 @@ export default function ResidentDashboard({
     completeness: Completeness;
     sectors: SectorWithReasons[];
     recentApplications: ProgramApplication[];
+    matchedPrograms: MatchedPrograms;
     feed: AppNotification[];
     deletionRequest: { status: 'pending' | 'approved' | 'rejected'; admin_remarks: string | null } | null;
 }) {
@@ -369,9 +426,6 @@ export default function ResidentDashboard({
                                     Resident ID: <strong>{resident.resident_id}</strong>
                                 </span>
                             </p>
-                            <p className="max-w-2xl text-sm text-white/75">
-                                You can now log in using either your Resident ID or registered email address together with your password.
-                            </p>
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -395,14 +449,20 @@ export default function ResidentDashboard({
                         {deletionRequest?.status === 'pending' && <Card className="border-amber-500/40 bg-amber-500/10"><CardContent className="space-y-1 py-4"><p className="font-medium">Account Deletion Request Pending</p><p className="text-sm text-muted-foreground">Your account deletion request is currently being reviewed by an administrator.</p></CardContent></Card>}
                         {deletionRequest?.status === 'rejected' && <Card className="border-destructive/30 bg-destructive/5"><CardContent className="space-y-1 py-4"><p className="font-medium">Account Deletion Request Rejected</p><p className="text-sm text-muted-foreground">Your account will remain active.{deletionRequest.admin_remarks ? ` ${deletionRequest.admin_remarks}` : ''}</p></CardContent></Card>}
                         <QuickLinks />
+                        {/* One column on phones, in the order a resident should act: programs they can
+                            apply to, then their profile, then news. On desktop the profile sits beside them. */}
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                            {/* On phones the profile prompt comes first: it is the one thing a resident can act on. */}
-                            <div className="order-first min-w-0 space-y-4 lg:order-last">
+                            <div className="min-w-0 lg:col-span-2">
+                                <ProgramsForYouCard matched={matchedPrograms} />
+                            </div>
+                            <div className="min-w-0 space-y-4 lg:col-start-3 lg:row-span-3 lg:row-start-1">
                                 <ProfileCompletenessCard completeness={completeness} />
                                 <SectorsCard sectors={sectors} />
                             </div>
-                            <div className="min-w-0 space-y-4 lg:col-span-2">
+                            <div className="min-w-0 lg:col-span-2">
                                 <FeedCard feed={feed} />
+                            </div>
+                            <div className="min-w-0 lg:col-span-2">
                                 <ApplicationsCard applications={recentApplications} />
                             </div>
                         </div>

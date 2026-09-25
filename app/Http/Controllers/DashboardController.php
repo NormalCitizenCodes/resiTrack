@@ -5,13 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\AccountDeletionRequest;
 use App\Models\AccountReactivationRequest;
 use App\Models\AppNotification;
+use App\Models\Program;
 use App\Models\ProgramApplication;
 use App\Models\Resident;
 use App\Models\User;
 use App\Services\DashboardStatsService;
 use App\Services\OnboardingService;
+use App\Services\ProgramEligibilityService;
 use App\Services\ResidentDashboardService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,6 +25,7 @@ class DashboardController extends Controller
         private readonly DashboardStatsService $stats,
         private readonly ResidentDashboardService $residentStats,
         private readonly OnboardingService $onboarding,
+        private readonly ProgramEligibilityService $eligibility,
     ) {}
 
     public function index(Request $request): Response
@@ -103,6 +108,58 @@ class DashboardController extends Controller
     }
 
     /**
+     * Open programs this resident qualifies for and has not applied to yet, so
+     * the first thing on their dashboard is something they can act on. Uses the
+     * same eligibility rule as the Apply button (barangay, then sector overlap),
+     * skips programs whose slots are all taken, and shows at most a handful.
+     *
+     * @return array{total: int, items: array<int, array<string, mixed>>}
+     */
+    private function matchedPrograms(Resident $resident): array
+    {
+        $resident->loadMissing('sectors:id,code,sector_name');
+
+        $programs = Program::query()
+            ->where('status', 'active')
+            ->where(fn ($query) => $query->whereNull('end_date')->orWhereDate('end_date', '>=', today()))
+            ->where(fn ($query) => $query->whereNull('barangay_id')->orWhere('barangay_id', $resident->barangay_id))
+            ->whereDoesntHave('applications', fn ($applications) => $applications->where('resident_id', $resident->id))
+            ->with(['agency:id,agency_name', 'sectors:id,code,sector_name'])
+            ->latest()
+            ->limit(30)
+            ->get()
+            ->filter(fn (Program $program) => $this->eligibility->residentQualifies($program, $resident))
+            ->filter(fn (Program $program) => $program->slots_available === 0 || $program->slots_filled < $program->slots_available);
+
+        return [
+            'total' => $programs->count(),
+            'items' => $programs->take(3)->map(fn (Program $program) => $this->programCard($program))->values()->all(),
+        ];
+    }
+
+    /**
+     * What the resident dashboard shows for one matched program.
+     *
+     * @return array<string, mixed>
+     */
+    private function programCard(Program $program): array
+    {
+        $slotsLeft = $program->slots_available > 0 ? $program->slots_available - $program->slots_filled : null;
+
+        return [
+            'id' => $program->id,
+            'title' => $program->title,
+            'agency' => $program->agency?->getAttribute('agency_name'),
+            'slots_left' => $slotsLeft,
+            'end_date' => $program->end_date ? Carbon::parse($program->end_date)->toDateString() : null,
+            'sectors' => $program->sectors
+                ->map(fn (Model $sector) => ['code' => $sector->getAttribute('code'), 'name' => $sector->getAttribute('sector_name')])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
      * A resident's own dashboard: a feed (their notifications, richer than the
      * bell dropdown) plus a profile-completeness nudge and sector breakdown -
      * distinct from the staff aggregate-stats view above.
@@ -123,6 +180,7 @@ class DashboardController extends Controller
                     ->limit(5)
                     ->get()
                 : [],
+            'matchedPrograms' => $resident ? $this->matchedPrograms($resident) : [],
             'feed' => AppNotification::where('user_id', $user->id)
                 ->latest()
                 ->limit(15)
