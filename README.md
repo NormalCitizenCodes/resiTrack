@@ -75,6 +75,7 @@ For a clean local database, use `php artisan migrate:fresh --seed`. Do not use t
 copy database\sample\resitrack-sample.sqlite database\database.sqlite   # Windows PowerShell
 # cp database/sample/resitrack-sample.sqlite database/database.sqlite   # macOS/Linux
 php artisan migrate       # applies any migrations newer than the snapshot
+php artisan psgc:import   # loads the address lists (kept out of the snapshot to keep it small)
 ```
 
 Never commit `database/database.sqlite` itself: it is your working database and is ignored on purpose. Only the sample snapshot is tracked. If you add a migration or change the seeders, regenerate the snapshot against a scratch file so your own database is untouched:
@@ -140,6 +141,8 @@ Seeded reference barangays include Barangays 21, 22, 23, and 24. Test data may a
 - **Exports for LGU compliance** - the *Sector Dashboard* report as a printable **PDF** (`barryvdh/laravel-dompdf`, pure-PHP) and a *Resident Population* roster as **CSV** (streamed).
 - **Real audit trail** (`App\Services\AuditLogger`) - meaningful mutations across Modules 1 & 2 (resident/household create & update, duplicate resolve/dismiss, program apply/approve/reject) and report generation are recorded in `audit_logs`, which also powers the "previously generated reports" history table.
 - All stats are barangay-scoped (super admin sees city-wide), reusing `DashboardStatsService` to avoid duplicating aggregation logic.
+- **Staff dashboard** opens with a *Needs attention* strip (pending duplicate alerts, plus resident accounts to verify for BHWs, or account deletion and reactivation requests for admins), each linking to its page and scoped to the user's barangay. Below it, an **Age and Sex** population pyramid (male and female per age group, with children, working-age and senior totals) and **Vulnerable Sectors** ranked largest first with their share of residents.
+- **Compound vulnerability** is shown on the dashboard, not just computed: how many residents belong to two or more sectors and the most common pairings (`DashboardStatsService::compoundVulnerability`). Sector counts overlap by design, which is why they add up to more than the number of residents.
 
 ### Community Features
 - **Household Wellbeing Assessment** - barangay staff record a household's wellbeing tier (Survival / Subsistence / Self-Sufficient) with a dated, append-only history on the household page, complementing resident-level sector classification with a household-level need signal.
@@ -158,6 +161,8 @@ Seeded reference barangays include Barangays 21, 22, 23, and 24. Test data may a
 - Super Admins can create and edit organizations, assign accounts across barangays, and activate/deactivate accounts.
 - Barangay Admins can create and manage agency accounts only within their assigned barangay. The barangay assignment is locked server-side and in the form.
 - BHWs and residents cannot manage partner agency accounts. Agency program access is limited by agency ownership and assigned barangay where applicable.
+- Agency accounts get their own sidebar: **Applications to Review** (one queue across all their programs, filterable by status, with a pending-count badge), **Beneficiaries** (everyone accepted into any of their programs, filterable by program), **Announcements** (broadcasts, read-only) and **Agency Profile** (the agency edits its own contact details; the agency is taken from the signed-in account, never from the URL).
+- Approving or rejecting an application checks the reviewer's barangay as well as their agency, so a barangay-scoped agency account cannot review another barangay's applications under the same agency.
 
 ### Resident Self-Service Dashboard
 Residents get a distinct dashboard from barangay staff - a feed, not the aggregate stats view (`App\Http\Controllers\DashboardController` branches by role; the previous behavior had every role sharing the staff stats page, including a "Pending Duplicate Alerts" card residents couldn't actually open).
@@ -182,12 +187,15 @@ Built after realizing residents who can't use a phone at all already have a safe
 - BHWs and barangay admins review duplicate and transfer alerts for their own barangay. Every alert action checks the alert belongs to the acting user's barangay, so an alert from another barangay cannot be resolved by passing its ID.
 - A BHW who cannot settle a case can **escalate** it with an optional note. Every active barangay admin in that barangay is notified, the alert moves to an *Escalated* tab, and from then on only a barangay admin can resolve or dismiss it. Escalation is audit-logged (`duplicate_alerts.escalated_at`, `escalated_by`, `escalation_note`).
 - The super admin can view alerts city-wide but cannot act on them.
+- Alerts that share a person are grouped ("4 records may be the same person"), and fields that differ between two records (name, birth date, PhilSys number, barangay) are highlighted. Grouping covers the alerts on the current page.
 
 ### Super Admin: Read-only Oversight
 The super admin represents the city or municipality, so the role is deliberately limited to oversight rather than day-to-day record keeping.
 - Residents and households are **read-only** for the super admin (no create, edit, deactivate, wellbeing assessments, or alert actions). Permanent resident deletion remains a super admin action, as before.
 - The Residents and Households lists gain a **Barangay filter and column** for the super admin, and the dashboard gains a **By Barangay** summary (active residents, households, pending alerts), plus a city-wide **heatmap** coloring each barangay by resident count or a chosen vulnerability sector. Partner agency accounts see the same city-wide summary and heatmap (their own stat cards stay scoped to their assigned barangay), to help decide where to target future programs.
   - The heatmap's barangay boundary shapes (`public/data/cdo-barangays.geojson`) are from the Philippine Statistics Authority's official PSGC barangay boundary layer, queried via the [GeoRisk Philippines](https://georisk.gov.ph) ArcGIS service and filtered to Cagayan de Oro's 80 barangays. Only barangays that have actually adopted resiTrack are colored by density; the rest render as "not yet using resiTrack."
+  - The map sits beside its controls and the barangay table. It uses a muted Esri gray basemap (light and dark, no API key), frames the active barangays with a *Show whole city* toggle, prints each barangay's count on its shape, and colors on a square-root scale so one large barangay does not flatten the rest. Legend bins are rounded and grow with the data. Hovering a table row outlines its shape and the other way round; staff can click a shape to open that barangay's residents.
+  - Leaflet is loaded only in the browser (it reads `window` on import), so the dashboard still renders on the server.
 - Write routes live in a `role:barangay_admin,bhw` group in `routes/web.php`, registered before the read routes so `residents/create` is not captured by `residents/{resident}`.
 
 ### Barangay Staff Conveniences
@@ -195,6 +203,11 @@ The super admin represents the city or municipality, so the role is deliberately
 - **Household picker** in the resident form shows household number, family name, and address.
 - **Quick resident search** in the top bar for BHWs and admins, which opens the Residents list with the query (name, Resident ID, email, or PhilSys number).
 - **Sidebar badges** for pending duplicate alerts and pending resident accounts, and a role-aware quick action ("Register resident" for staff, "New program" for agencies). Counts are barangay-scoped and computed lazily in `HandleInertiaRequests`.
+- **Cascading address pickers** (Region, Province, City or Municipality, Barangay, then street and zip) for a resident's home address, place of birth and previous address, and for a household's address. The lists come from the PSA's Philippine Standard Geographic Code (PSGC), stored in the `psgc_locations` table (about 43,800 places) and served by `PsgcController`. Picked places are saved as codes next to the readable line, which the server builds itself and checks (a barangay must belong to the chosen city). New records start on the staff member's own barangay.
+  - The table is filled by `php artisan psgc:import` from `database/data/psgc.json.gz`. Render runs it on every boot (a no-op once loaded). **After pulling this change, run `php artisan migrate` and `php artisan psgc:import` on your own database.** Migrations deliberately do not load the data, so the test suite stays fast.
+  - Zip codes are typed, not looked up: PSGC has no zip data.
+- **Grouped sidebar** for staff: Records (Residents, Households, Duplicate Alerts, Reports), Outreach (Programs, Announcements, Partner Agencies) and Admin (Staff, account requests).
+- **Residents table**: whole rows open the record, and only *Flagged* or *Inactive* is shown (next to the name), since "Active" on every row said nothing. The top-bar search is hidden on this page, which has its own.
 - Email is required when a BHW creates a resident portal account.
 - BHWs have no access to announcements.
 
@@ -203,6 +216,7 @@ The super admin represents the city or municipality, so the role is deliberately
 - **Privacy Notice** (`/privacy`), **Terms of Use** (`/terms`), and **FAQ** (`/faq`). The Privacy Notice and Terms are drafts and carry a visible banner: they should be reviewed by the barangay and its data protection officer before public use.
 - The footer intentionally uses no government seals or "Republic of the Philippines" wording, because resiTrack is a capstone system and not an official government site.
 - Screenshots on the landing page live in `public/images/landing/` and use seeded sample data only. Retake them if the dashboards change.
+- **Intro splash** (`components/intro-splash.tsx`): on the first visit of a tab session the wordmark fills in left to right, the logo glides into the header, and the hero heading blurs in word by word. Scrolling is locked until it finishes, and the stats count-up and scroll reveals wait for it (`lib/intro.ts`). Add `?intro=1` to replay it. Whether it plays is decided by a small script in `app.blade.php` before first paint; it is skipped for reduced motion.
 
 ### Sign In and Sign Up
 - Centered card with a Log in / Sign up switch, field icons, and Terms and Privacy links.
@@ -211,6 +225,7 @@ The super admin represents the city or municipality, so the role is deliberately
 
 ### Design System and Responsive Behavior
 - Brand tokens (navy, blue, cyan, green), status colors (success, warning, info), and Inter live in `resources/css/app.css`. **Light is the default theme**; dark mode is one toggle away in the sidebar (browsers that had the old "system" default are reset to light once). Restrained gradients are defined as utilities (`bg-sidebar-gradient`, `bg-brand-gradient`, `bg-page-gradient`, `bg-footer-gradient`).
+- Data tables (`components/ui/table.tsx`) have faint alternating row stripes; the hovered row goes a solid muted tone so it still stands out on striped rows.
 - Below **1024px** the sidebar becomes a slide-out drawer that closes after each link and never remembers a collapsed state. On larger screens the collapsed or expanded choice persists across pages through the `sidebar_state` cookie.
 - The breadcrumb shows only the current page name on phones. The landing header collapses to a menu button below 768px.
 - Server-rendered pages avoid hydration mismatches by never reading `window`, the clock, or media queries during render; browser-only values use `useSyncExternalStore` with a server snapshot.
@@ -228,7 +243,7 @@ The super admin represents the city or municipality, so the role is deliberately
 php artisan test
 ```
 
-Feature tests cover role access control, automatic sector classification, compound-vulnerability detection, in-barangay duplicate flagging, cross-barangay transfer detection, duplicate escalation, super admin read-only access, resident dashboards, self-service edits, account deletion, account reactivation, barangay isolation, Partner Agency management, program targeting, the public landing page (aggregate totals only), and authorization boundaries.
+Feature tests cover role access control, automatic sector classification, compound-vulnerability detection, in-barangay duplicate flagging, cross-barangay transfer detection, duplicate escalation, super admin read-only access, resident dashboards, self-service edits, account deletion, account reactivation, barangay isolation, Partner Agency management, program targeting, the public landing page (aggregate totals only), the Needs attention counts and dashboard charts, address picking (codes stored, readable line built server-side, mismatched places rejected), agency applications and beneficiaries, and authorization boundaries.
 
 ## Known Issues
 
@@ -256,10 +271,15 @@ One-time setup:
    change made outside the initial blueprint run).
 
 Every deploy (`git push` to the connected branch) rebuilds the Docker image, runs
-`php artisan migrate --force` on boot, then serves the app. On the free plan the
+`php artisan migrate --force` and `php artisan psgc:import --if-empty` on boot (the import only does work the first time, and a failure there does not stop the site from starting), then serves the app. On the free plan the
 container spins down after ~15 minutes idle and takes 30-60 seconds to wake on the next
 request, open the URL once before a demo rather than relying on the first click being
 instant.
+
+Supabase's free tier behaves differently: a project with no activity for 7 days is
+**paused**, and does not wake on the next request. It has to be restored from the
+Supabase dashboard. If the site has gone unused for a while, check the project before a
+defense or demo.
 
 `MAIL_MAILER` stays `log` (no real email sent) until a real provider is configured;
 `config/services.php` already has a `resend` block ready, set `MAIL_MAILER=resend` and
@@ -268,7 +288,6 @@ instant.
 ## Roadmap
 
 - **Partner agency onboarding:** confirm with city hall or the barangay chairman who may add partner agencies, then decide on a request flow.
-- **Agency applications tab.** An agency now gets an in-app notification the moment someone applies (`NotificationService::notifyNewApplication`), but there is still no dedicated list view of an agency's applications outside a program's own page.
 - **Resident username login** for residents without an email, with staff-assisted recovery.
 - **BHW offline sync.** In progress: a PWA-based offline draft queue for the resident/household intake forms (see the implementation plan), not the full local-database mirror the capstone paper's System Architecture describes.
 - Native email delivery for account and request notifications (currently `MAIL_MAILER=log`; see Deployment below for switching to a real provider).
