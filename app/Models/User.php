@@ -81,6 +81,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'is_active' => 'boolean',
             'deactivated_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'onboarding_dismissed_at' => 'datetime',
         ];
     }
 

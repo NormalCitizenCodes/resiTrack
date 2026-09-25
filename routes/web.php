@@ -7,6 +7,7 @@ use App\Http\Controllers\BeneficiaryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DuplicateAlertController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HouseholdController;
 use App\Http\Controllers\HouseholdWellbeingAssessmentController;
 use App\Http\Controllers\LandingController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\PsgcController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ResidentRegistrationController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +29,8 @@ Route::get('/', LandingController::class)->name('home');
 Route::inertia('privacy', 'legal/privacy')->name('privacy');
 Route::inertia('terms', 'legal/terms')->name('terms');
 Route::inertia('faq', 'legal/faq')->name('faq');
+Route::get('robots.txt', [SeoController::class, 'robots'])->name('robots');
+Route::get('sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
 
 Route::post('forgot-password', [PasswordRecoveryController::class, 'store'])
     ->middleware('guest')
@@ -44,6 +48,10 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('help', [HelpController::class, 'index'])->name('help');
+    Route::post('onboarding/dismiss', [HelpController::class, 'dismissOnboarding'])->name('onboarding.dismiss');
+    Route::post('onboarding/restore', [HelpController::class, 'restoreOnboarding'])->name('onboarding.restore');
 
     // Address lists for the cascading pickers (region > province > city > barangay).
     Route::get('psgc/regions', [PsgcController::class, 'regions'])->name('psgc.regions');

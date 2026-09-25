@@ -9,6 +9,7 @@ use App\Models\ProgramApplication;
 use App\Models\Resident;
 use App\Models\User;
 use App\Services\DashboardStatsService;
+use App\Services\OnboardingService;
 use App\Services\ResidentDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +20,7 @@ class DashboardController extends Controller
     public function __construct(
         private readonly DashboardStatsService $stats,
         private readonly ResidentDashboardService $residentStats,
+        private readonly OnboardingService $onboarding,
     ) {}
 
     public function index(Request $request): Response
@@ -45,6 +47,7 @@ class DashboardController extends Controller
             'scope' => $user->isSuperAdmin() ? 'City-wide' : ($user->barangay?->name ?? 'Barangay'),
             'barangays' => $showCityWideSummary ? $this->stats->barangaySummaries() : [],
             'attention' => $user->isBarangayStaff() ? $this->attentionItems($user, $barangayId) : [],
+            'onboarding' => $this->onboarding->checklistFor($user),
         ]);
     }
 

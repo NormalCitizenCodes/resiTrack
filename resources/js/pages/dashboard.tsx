@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { BarangayHeatmap } from '@/components/barangay-heatmap';
 import { AgePyramid, SectorBars } from '@/components/demographic-charts';
 import type { AgeBracket, Compound, SectorCount } from '@/components/demographic-charts';
+import { GettingStarted } from '@/components/getting-started';
+import type { Onboarding } from '@/components/getting-started';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -106,11 +108,13 @@ export default function Dashboard({
     scope,
     barangays,
     attention = [],
+    onboarding = null,
 }: {
     stats: Stats;
     scope: string;
     barangays: BarangaySummary[];
     attention?: AttentionItem[];
+    onboarding?: Onboarding | null;
 }) {
     const role = usePage().props.auth?.user?.role;
     const [highlightId, setHighlightId] = useState<number | null>(null);
@@ -126,6 +130,8 @@ export default function Dashboard({
                         Resident profiling summary for data-driven social service distribution.
                     </p>
                 </div>
+
+                {onboarding && <GettingStarted onboarding={onboarding} />}
 
                 {attention.length > 0 && <NeedsAttention items={attention} />}
 

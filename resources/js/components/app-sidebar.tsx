@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { BarChart3, Building2, ClipboardCheck, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, ShieldCheck, UserCircle, UserCog, UserPlus, Users } from 'lucide-react';
+import { BarChart3, Building2, LifeBuoy, ClipboardCheck, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, ShieldCheck, UserCircle, UserCog, UserPlus, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -116,6 +116,7 @@ function navGroupsForRole(role: Role | undefined, t: (key: string) => string, co
 
 export function AppSidebar() {
     const { auth, navCounts } = usePage().props;
+    const currentPath = usePage().url.split('?')[0];
     const role = auth?.user?.role as Role | undefined;
     const { t } = useTranslation();
     const navGroups = navGroupsForRole(role, t, navCounts);
@@ -146,6 +147,16 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild isActive={currentPath === '/help'} tooltip={{ children: role === 'resident' ? t('nav.help') : 'Help' }}>
+                            <Link href="/help" prefetch>
+                                <LifeBuoy />
+                                <span>{role === 'resident' ? t('nav.help') : 'Help'}</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
                 <NavThemeToggle />
                 <NavUser />
             </SidebarFooter>
