@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Support\Carbon;
 
 class Resident extends Model
 {
-    /** @use HasFactory<\Database\Factories\ResidentFactory> */
+    /** @use HasFactory<ResidentFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -52,6 +53,23 @@ class Resident extends Model
         'registered_at',
         'profiled_by_user_id',
         'profiled_at',
+        'address_region_code',
+        'address_province_code',
+        'address_city_code',
+        'address_barangay_code',
+        'address_street',
+        'address_zip',
+        'birth_region_code',
+        'birth_province_code',
+        'birth_city_code',
+        'birth_barangay_code',
+        'previous_region_code',
+        'previous_province_code',
+        'previous_city_code',
+        'previous_barangay_code',
+        'previous_street',
+        'previous_zip',
+        'previous_address',
     ];
 
     protected function casts(): array

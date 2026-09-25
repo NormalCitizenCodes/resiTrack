@@ -16,6 +16,7 @@ use App\Http\Controllers\PartnerAgencyController;
 use App\Http\Controllers\PasswordRecoveryController;
 use App\Http\Controllers\ProgramApplicationController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\PsgcController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ResidentRegistrationController;
@@ -43,6 +44,10 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Address lists for the cascading pickers (region > province > city > barangay).
+    Route::get('psgc/regions', [PsgcController::class, 'regions'])->name('psgc.regions');
+    Route::get('psgc/{code}/children', [PsgcController::class, 'children'])->name('psgc.children');
 
     // Writing resident/household records is barangay-level work; the super admin
     // has read-only, city-wide oversight. Registered before the read routes so

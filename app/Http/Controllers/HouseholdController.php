@@ -8,8 +8,10 @@ use App\Models\BarangayZone;
 use App\Models\Household;
 use App\Models\WellbeingLevel;
 use App\Services\AuditLogger;
+use App\Services\PsgcAddress;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -54,6 +56,7 @@ class HouseholdController extends Controller
     public function create(Request $request): Response
     {
         return Inertia::render('households/create', [
+            'addressDefaults' => app(PsgcAddress::class)->defaultsFor($request->user()->barangay),
             'zones' => $this->zones($request),
         ]);
     }
@@ -63,7 +66,7 @@ class HouseholdController extends Controller
         $user = $request->user();
 
         $household = new Household($request->validated());
-        $household->barangay_id = $user->barangay_id ?? \App\Models\Barangay::value('id');
+        $household->barangay_id = $user->barangay_id ?? Barangay::value('id');
         $household->save();
         $household->update(['household_id' => sprintf('HH-%06d', $household->id)]);
 
@@ -102,7 +105,7 @@ class HouseholdController extends Controller
     /**
      * Zones belonging to the acting user's barangay.
      *
-     * @return \Illuminate\Support\Collection<int, BarangayZone>
+     * @return Collection<int, BarangayZone>
      */
     private function zones(Request $request)
     {

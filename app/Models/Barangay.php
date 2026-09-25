@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\BarangayFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barangay extends Model
 {
-    /** @use HasFactory<\Database\Factories\BarangayFactory> */
+    /** @use HasFactory<BarangayFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -16,6 +17,7 @@ class Barangay extends Model
         'city_municipality',
         'province',
         'region',
+        'psgc_code',
     ];
 
     public function zones(): HasMany

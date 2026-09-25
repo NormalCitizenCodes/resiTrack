@@ -1,13 +1,16 @@
 import { Head } from '@inertiajs/react';
 import { ResidentForm } from '@/components/resident-form';
+import type { AddressDefaults } from '@/components/resident-form';
 import { dashboard } from '@/routes';
 import type { Household, Resident } from '@/types';
 
 export default function ResidentCreate({
     households,
     linkedAccount,
+    addressDefaults,
 }: {
     households: Household[];
+    addressDefaults?: AddressDefaults | null;
     linkedAccount?: {
         id: number;
         name: string;
@@ -42,6 +45,7 @@ export default function ResidentCreate({
                     mode="create"
                     action="/residents"
                     households={households}
+                    addressDefaults={addressDefaults}
                     resident={prefill}
                     linkedUserId={linkedAccount?.id}
                     submitLabel={linkedAccount ? 'Complete profiling' : 'Save Resident'}

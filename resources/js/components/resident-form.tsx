@@ -1,12 +1,15 @@
 import { useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import type { FormEventHandler} from 'react';
+import { useState } from 'react';
+import { AddressPicker, emptyAddress } from '@/components/address-picker';
+import type { AddressValue } from '@/components/address-picker';
 import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import PasswordInput from '@/components/password-input';
 import {
     Select,
     SelectContent,
@@ -47,8 +50,45 @@ type ResidentFormData = {
     [key: string]: string | boolean;
 };
 
-function toInitial(resident?: Resident): ResidentFormData {
+/** The address picker's four codes, street and zip live in the form as flat `<prefix>_...` fields. */
+type Prefix = 'address' | 'birth' | 'previous';
+
+const readAddress = (data: ResidentFormData, prefix: Prefix): AddressValue => ({
+    region: String(data[`${prefix}_region_code`] ?? ''),
+    province: String(data[`${prefix}_province_code`] ?? ''),
+    city: String(data[`${prefix}_city_code`] ?? ''),
+    barangay: String(data[`${prefix}_barangay_code`] ?? ''),
+    street: String(data[`${prefix}_street`] ?? ''),
+    zip: String(data[`${prefix}_zip`] ?? ''),
+});
+
+const flattenAddress = (prefix: Prefix, value: AddressValue): Record<string, string> => ({
+    [`${prefix}_region_code`]: value.region,
+    [`${prefix}_province_code`]: value.province,
+    [`${prefix}_city_code`]: value.city,
+    [`${prefix}_barangay_code`]: value.barangay,
+    [`${prefix}_street`]: value.street,
+    [`${prefix}_zip`]: value.zip,
+});
+
+const savedAddress = (resident: Resident | undefined, prefix: Prefix): AddressValue => ({
+    region: resident?.[`${prefix}_region_code` as keyof Resident] ? String(resident[`${prefix}_region_code` as keyof Resident]) : '',
+    province: resident?.[`${prefix}_province_code` as keyof Resident] ? String(resident[`${prefix}_province_code` as keyof Resident]) : '',
+    city: resident?.[`${prefix}_city_code` as keyof Resident] ? String(resident[`${prefix}_city_code` as keyof Resident]) : '',
+    barangay: resident?.[`${prefix}_barangay_code` as keyof Resident] ? String(resident[`${prefix}_barangay_code` as keyof Resident]) : '',
+    street: resident?.[`${prefix}_street` as keyof Resident] ? String(resident[`${prefix}_street` as keyof Resident]) : '',
+    zip: resident?.[`${prefix}_zip` as keyof Resident] ? String(resident[`${prefix}_zip` as keyof Resident]) : '',
+});
+
+function toInitial(resident?: Resident, addressDefaults?: AddressDefaults | null): ResidentFormData {
+    // New records start on the staff member's own barangay; saved ones show what was saved.
+    const home = resident?.address_city_code ? savedAddress(resident, 'address') : { ...emptyAddress, ...(resident ? {} : toValue(addressDefaults)) };
+
     return {
+        ...flattenAddress('address', home),
+        ...flattenAddress('birth', savedAddress(resident, 'birth')),
+        ...flattenAddress('previous', savedAddress(resident, 'previous')),
+
         household_id: resident?.household_id ? String(resident.household_id) : '',
         philsys_card_no: resident?.philsys_card_no ?? '',
         last_name: resident?.last_name ?? '',
@@ -64,6 +104,7 @@ function toInitial(resident?: Resident): ResidentFormData {
         contact_number: resident?.contact_number ?? '',
         email: resident?.email ?? '',
         address: resident?.address ?? '',
+        previous_address: resident?.previous_address ?? '',
         occupation: resident?.occupation ?? '',
         employment_status: resident?.employment_status ?? '',
         education_level: resident?.education_level ?? '',
@@ -81,6 +122,11 @@ function toInitial(resident?: Resident): ResidentFormData {
 
 const NONE = '__none__';
 
+export type AddressDefaults = { region: string | null; province: string | null; city: string | null; barangay: string | null };
+
+const toValue = (defaults?: AddressDefaults | null): Partial<AddressValue> =>
+    defaults ? { region: defaults.region ?? '', province: defaults.province ?? '', city: defaults.city ?? '', barangay: defaults.barangay ?? '' } : {};
+
 export function ResidentForm({
     mode,
     action,
@@ -88,6 +134,7 @@ export function ResidentForm({
     resident,
     submitLabel,
     linkedUserId,
+    addressDefaults,
 }: {
     mode: 'create' | 'edit';
     action: string;
@@ -95,14 +142,29 @@ export function ResidentForm({
     resident?: Resident;
     submitLabel: string;
     linkedUserId?: number;
+    addressDefaults?: AddressDefaults | null;
 }) {
     const { data, setData, post, put, processing, errors } = useForm<ResidentFormData>({
-        ...toInitial(resident),
+        ...toInitial(resident, addressDefaults),
         linked_user_id: linkedUserId ? String(linkedUserId) : '',
     });
 
+    const [hasPrevious, setHasPrevious] = useState(Boolean(resident?.previous_address || resident?.previous_city_code));
+
+    const setAddress = (prefix: Prefix) => (value: AddressValue) => setData((current) => ({ ...current, ...flattenAddress(prefix, value) }));
+
+    const togglePrevious = (on: boolean) => {
+        setHasPrevious(on);
+
+        if (!on) {
+            setAddress('previous')(emptyAddress);
+            setData('previous_address', '');
+        }
+    };
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
+
         if (mode === 'create') {
             post(action);
         } else {
@@ -146,8 +208,11 @@ export function ResidentForm({
                     <Field label="Date of Birth" required error={errors.date_of_birth}>
                         <Input type="date" value={data.date_of_birth} onChange={(e) => setData('date_of_birth', e.target.value)} />
                     </Field>
-                    <Field label="Place of Birth" error={errors.place_of_birth}>
-                        <Input value={data.place_of_birth} onChange={(e) => setData('place_of_birth', e.target.value)} />
+                    <Field label="Place of Birth" error={errors.place_of_birth || errors.birth_city_code} className="md:col-span-3">
+                        {data.place_of_birth && !data.birth_city_code && (
+                            <p className="mb-2 text-xs text-muted-foreground">Saved as "{data.place_of_birth}". Pick from the lists to replace it.</p>
+                        )}
+                        <AddressPicker idPrefix="birth" value={readAddress(data, 'birth')} onChange={setAddress('birth')} showBarangay={false} showStreetAndZip={false} />
                     </Field>
                     <Field label="Sex" required error={errors.sex}>
                         <SelectField
@@ -193,6 +258,44 @@ export function ResidentForm({
 
             <Card>
                 <CardHeader>
+                    <CardTitle>Home Address</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {data.address && !data.address_city_code && (
+                        <p className="text-xs text-muted-foreground">Saved as "{data.address}". Pick from the lists to replace it.</p>
+                    )}
+                    <AddressPicker
+                        idPrefix="address"
+                        value={readAddress(data, 'address')}
+                        onChange={setAddress('address')}
+                        error={errors.address || errors.address_city_code}
+                    />
+
+                    <div className="border-t pt-4">
+                        <div className="flex items-center gap-3">
+                            <Checkbox id="has_previous" checked={hasPrevious} onCheckedChange={(checked) => togglePrevious(checked === true)} />
+                            <Label htmlFor="has_previous">This resident moved here from another place</Label>
+                        </div>
+                        {hasPrevious && (
+                            <div className="mt-4 space-y-3">
+                                {data.previous_address && !data.previous_city_code && (
+                                    <p className="text-xs text-muted-foreground">Saved as "{data.previous_address}". Pick from the lists to replace it.</p>
+                                )}
+                                <AddressPicker
+                                    idPrefix="previous"
+                                    value={readAddress(data, 'previous')}
+                                    onChange={setAddress('previous')}
+                                    streetLabel="Previous house no., street or purok"
+                                    error={errors.previous_city_code}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
                     <CardTitle>Contact &amp; Socio-economic</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-3">
@@ -219,9 +322,6 @@ export function ResidentForm({
                                 ))}
                             </SelectContent>
                         </Select>
-                    </Field>
-                    <Field label="Address" error={errors.address} className="md:col-span-3">
-                        <Input value={data.address} onChange={(e) => setData('address', e.target.value)} />
                     </Field>
                     <Field label="Occupation" error={errors.occupation}>
                         <Input value={data.occupation} onChange={(e) => setData('occupation', e.target.value)} />

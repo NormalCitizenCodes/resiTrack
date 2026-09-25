@@ -13,6 +13,7 @@ use App\Models\VulnerabilitySector;
 use App\Services\AuditLogger;
 use App\Services\DuplicateDetectionService;
 use App\Services\NotificationService;
+use App\Services\PsgcAddress;
 use App\Services\SectorClassificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -337,6 +338,7 @@ class ResidentController extends Controller
         $user = $request->user();
 
         return [
+            'addressDefaults' => app(PsgcAddress::class)->defaultsFor($user->barangay),
             'households' => Household::query()
                 ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
                 ->orderBy('household_number')

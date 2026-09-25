@@ -40,7 +40,10 @@ EXPOSE 10000
 # first deploy - migrate is safe to re-run (skips what's already applied), and
 # this way a new migration merged into main gets applied automatically on the
 # next boot without a manual step.
+# The PSGC address lists load once (43,000+ places) and are skipped after that.
+# A failed import must not keep the site from starting, so it is allowed to fail.
 CMD php artisan migrate --force \
+    && { php artisan psgc:import --if-empty || echo "PSGC import failed; address pickers will be empty until it is re-run"; } \
     && php artisan config:cache \
     && php artisan route:cache \
     && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}

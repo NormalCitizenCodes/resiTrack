@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\HasStructuredAddresses;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreResidentRequest extends FormRequest
 {
+    use HasStructuredAddresses;
+
     public function authorize(): bool
     {
         return $this->user() !== null && $this->user()->isBarangayStaff();
@@ -71,6 +74,17 @@ class StoreResidentRequest extends FormRequest
             'is_pwd' => ['boolean'],
             'is_solo_parent' => ['boolean'],
             'is_pregnant' => ['boolean'],
+
+            ...$this->addressRules(),
+        ];
+    }
+
+    protected function addressParts(): array
+    {
+        return [
+            'address' => ['column' => 'address', 'street' => true, 'barangay' => true],
+            'birth' => ['column' => 'place_of_birth', 'street' => false, 'barangay' => false],
+            'previous' => ['column' => 'previous_address', 'street' => true, 'barangay' => true],
         ];
     }
 
@@ -109,6 +123,8 @@ class StoreResidentRequest extends FormRequest
 
     public function withValidator($validator): void
     {
+        $this->validateAddressChains($validator);
+
         $validator->after(function ($validator) {
             // Cross-field consistency: only female residents can be marked pregnant.
             if ($this->boolean('is_pregnant') && $this->input('sex') !== 'female') {

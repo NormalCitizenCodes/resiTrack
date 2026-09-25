@@ -1,5 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import type { FormEventHandler } from 'react';
+import { AddressPicker, emptyAddress } from '@/components/address-picker';
+import type { AddressValue } from '@/components/address-picker';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,10 +37,26 @@ type HouseholdFormData = {
 
 const NONE = '__none__';
 
-export default function HouseholdCreate({ zones }: { zones: Zone[] }) {
+type AddressDefaults = { region: string | null; province: string | null; city: string | null; barangay: string | null };
+
+export default function HouseholdCreate({ zones, addressDefaults }: { zones: Zone[]; addressDefaults?: AddressDefaults | null }) {
+    const start: AddressValue = {
+        ...emptyAddress,
+        region: addressDefaults?.region ?? '',
+        province: addressDefaults?.province ?? '',
+        city: addressDefaults?.city ?? '',
+        barangay: addressDefaults?.barangay ?? '',
+    };
+
     const { data, setData, post, processing, errors } = useForm<HouseholdFormData>({
         household_number: '',
         address: '',
+        address_region_code: start.region,
+        address_province_code: start.province,
+        address_city_code: start.city,
+        address_barangay_code: start.barangay,
+        address_street: '',
+        address_zip: '',
         zone_id: '',
         house_materials: '',
         house_ownership: '',
@@ -123,8 +141,29 @@ export default function HouseholdCreate({ zones }: { zones: Zone[] }) {
                             <Label className="mb-1.5 block">
                                 Household Address <span className="text-red-500">*</span>
                             </Label>
-                            <Input value={data.address} onChange={(e) => setData('address', e.target.value)} />
-                            <InputError message={errors.address} className="mt-1" />
+                            <AddressPicker
+                                idPrefix="household"
+                                value={{
+                                    region: String(data.address_region_code),
+                                    province: String(data.address_province_code),
+                                    city: String(data.address_city_code),
+                                    barangay: String(data.address_barangay_code),
+                                    street: String(data.address_street),
+                                    zip: String(data.address_zip),
+                                }}
+                                onChange={(next) =>
+                                    setData((current) => ({
+                                        ...current,
+                                        address_region_code: next.region,
+                                        address_province_code: next.province,
+                                        address_city_code: next.city,
+                                        address_barangay_code: next.barangay,
+                                        address_street: next.street,
+                                        address_zip: next.zip,
+                                    }))
+                                }
+                                error={errors.address || errors.address_city_code}
+                            />
                         </div>
                     </CardContent>
                 </Card>

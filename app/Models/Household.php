@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\HouseholdFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Household extends Model
 {
-    /** @use HasFactory<\Database\Factories\HouseholdFactory> */
+    /** @use HasFactory<HouseholdFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -30,6 +31,12 @@ class Household extends Model
         'member_count',
         'monthly_income',
         'is_4ps_beneficiary',
+        'address_region_code',
+        'address_province_code',
+        'address_city_code',
+        'address_barangay_code',
+        'address_street',
+        'address_zip',
     ];
 
     protected function casts(): array
