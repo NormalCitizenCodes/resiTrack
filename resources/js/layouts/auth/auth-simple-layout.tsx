@@ -16,14 +16,20 @@ const trustPoints = [
 function AuthTabs({ active }: { active: 'login' | 'register' }) {
     const tab = (isActive: boolean) =>
         cn(
-            'flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors',
-            isActive
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
+            'relative z-10 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors duration-300',
+            isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
         );
 
     return (
-        <nav aria-label="Account" className="mb-6 flex gap-1 rounded-lg bg-muted p-1">
+        <nav aria-label="Account" className="relative mb-6 flex gap-1 rounded-lg bg-muted p-1">
+            {/* The white pill slides between the two tabs. The layout stays mounted across both pages, so this transitions. */}
+            <span
+                aria-hidden="true"
+                className={cn(
+                    'absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-md bg-card shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none',
+                    active === 'register' && 'translate-x-[calc(100%+0.25rem)]',
+                )}
+            />
             <Link href={login()} className={tab(active === 'login')} aria-current={active === 'login' ? 'page' : undefined}>
                 Log in
             </Link>
@@ -45,7 +51,7 @@ export default function AuthSimpleLayout({
     tab,
 }: AuthLayoutProps) {
     return (
-        <div className="grid min-h-svh bg-background bg-page-gradient lg:grid-cols-[minmax(280px,0.82fr)_minmax(420px,1fr)]">
+        <div className="grid min-h-svh bg-background bg-page-gradient lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)]">
             <aside className="relative hidden overflow-hidden bg-brand-navy bg-brand-gradient p-10 text-white lg:flex lg:flex-col lg:justify-between">
                 <BrandPath />
                 <div className="relative">

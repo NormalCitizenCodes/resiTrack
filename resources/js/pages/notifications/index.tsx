@@ -82,27 +82,34 @@ export default function NotificationsIndex({
                                 !notification.is_read && 'border-primary/40 bg-primary/5',
                             )}
                         >
-                            <CardContent className="flex items-start justify-between gap-3 py-4">
-                                <div className="min-w-0 flex-1 space-y-1">
+                            <CardContent className="space-y-2 py-4">
+                                {/* Type + unread dot on one row, so the title beneath gets the full width
+                                    instead of the buttons taking half of it on a phone. */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline">{t(`notifications.type.${notification.type}`)}</Badge>
+                                    {!notification.is_read && (
+                                        <span className="size-2 rounded-full bg-primary" aria-label="Unread" />
+                                    )}
+                                </div>
                                 <div className="space-y-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <Badge variant="outline">{t(`notifications.type.${notification.type}`)}</Badge>
-                                        <span className="font-medium">{notification.title}</span>
-                                        {!notification.is_read && <span className="size-2 rounded-full bg-primary" />}
-                                    </div>
-                    {notification.message && (
-                        <p className="whitespace-pre-line text-sm text-muted-foreground">{notification.message}</p>
-                    )}
-                                    <p className="text-xs text-muted-foreground">{formatDate(notification.created_at)}</p>
+                                    <p className="font-medium">{notification.title}</p>
+                                    {notification.message && (
+                                        <p className="whitespace-pre-line text-sm text-muted-foreground">{notification.message}</p>
+                                    )}
                                 </div>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-1">
+                                {/* Actions row: date on the left, controls hugged to the right. Kept on
+                                    one line even on a phone by giving the date `min-w-0` so a long
+                                    formatted date can shrink instead of pushing the button to a new line. */}
+                                <div className="flex items-center gap-2">
+                                    <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{formatDate(notification.created_at)}</p>
                                     <ReadAloudButton
                                         onClick={(event) => event.stopPropagation()}
                                         text={[notification.title, notification.message].filter(Boolean).join('. ')}
                                     />
                                     {!notification.is_read && (
-                                        <Button variant="ghost" size="sm" onClick={(event) => { event.stopPropagation(); markRead(notification.id); }}>
+                                        <Button variant="ghost" size="sm" onClick={(event) => {
+ event.stopPropagation(); markRead(notification.id); 
+}}>
                                             {t('notifications.markRead')}
                                         </Button>
                                     )}

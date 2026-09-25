@@ -255,7 +255,7 @@
  * a senior resident would get from increasing their own browser zoom.
  */
 html.comfortable-scale {
-    font-size: 120%;
+    font-size: 110%;
 }
 
 /*
@@ -279,11 +279,28 @@ html.intro-glide {
     overflow: hidden;
 }
 
-/* Keep the scrollbar's width reserved for the whole intro, so the header does
-   not shift sideways when scrolling comes back and the logo lands off-target. */
-html.intro-pending,
-html.intro-glide {
+/* Keep the scrollbar's width reserved, so nothing shifts sideways when a page is
+   tall enough to scroll (the sign-up form is, the log-in form is not) and, during
+   the intro, so the logo does not land off-target when scrolling comes back. */
+html {
     scrollbar-gutter: stable;
+}
+
+/* Dropdowns and dialogs lock page scrolling (react-remove-scroll-bar) and add
+   a right margin the width of the scrollbar they hide, to stop the page
+   jumping. The gutter above already keeps that space, so the margin would take
+   it away twice and shift everything left. Beats the library's own
+   body[data-scroll-locked] rule by one element of specificity. */
+html body[data-scroll-locked] {
+    margin-right: 0 !important;
+}
+
+/* The staff menu is taller than a laptop screen, so the sidebar scrolls. A
+   thin translucent bar that sits on the navy, instead of the grey system one
+   with arrows; still visible, so people can tell the menu goes on. */
+[data-sidebar='content'] {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, white 30%, transparent) transparent;
 }
 
 html.intro-pending .intro-gate {

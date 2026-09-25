@@ -11,6 +11,12 @@ export function useComfortableScale(): void {
     const role = usePage().props.auth?.user?.role as Role | undefined;
 
     useEffect(() => {
-        document.documentElement.classList.toggle('comfortable-scale', role === 'resident');
+        const root = document.documentElement;
+
+        root.classList.toggle('comfortable-scale', role === 'resident');
+
+        // Leaving the app shell (logging out lands on the auth pages, which have
+        // no shell) must not leave the bigger text behind.
+        return () => root.classList.remove('comfortable-scale');
     }, [role]);
 }
