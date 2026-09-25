@@ -218,6 +218,15 @@ The super admin represents the city or municipality, so the role is deliberately
 - Screenshots on the landing page live in `public/images/landing/` and use seeded sample data only. Retake them if the dashboards change.
 - **Intro splash** (`components/intro-splash.tsx`): on the first visit of a tab session the wordmark fills in left to right, the logo glides into the header, and the hero heading blurs in word by word. Scrolling is locked until it finishes, and the stats count-up and scroll reveals wait for it (`lib/intro.ts`). Add `?intro=1` to replay it. Whether it plays is decided by a small script in `app.blade.php` before first paint; it is skipped for reduced motion.
 
+### Help and Getting Started
+- **Getting started checklist** on the dashboard for staff and partner agencies (`App\Services\OnboardingService`, `components/getting-started.tsx`). Each role gets its own first steps (a BHW: register a household, register a resident, place a resident in a household, verify a self-registered resident; an admin, the super admin and agencies get theirs). Steps tick themselves off from real data, scoped to the user's barangay or agency. The card can be hidden (`users.onboarding_dismissed_at`, so it stays hidden on every device) and brought back from Help. Residents do not get it: their dashboard already walks them through verification and profile completion.
+- **Help page** (`/help`, a *Help* link at the bottom of every sidebar): task-by-task guides for the signed-in role, with links straight to the right page, plus a *Good to know* list. The resident version is translated (English, Filipino, Bisaya); staff guides are English, like the rest of the staff screens. Both point to the public FAQ.
+
+### Search and Link Previews
+- Every page carries a description, and public pages (landing, programs, FAQ, privacy, terms) have their own title and description; pages behind a login are marked `noindex`. Sharing a link on Messenger or Facebook shows a branded preview card (`public/images/og-image.png`, 1200 by 630).
+- These tags are in `resources/views/app.blade.php`, not in React, because production does not server-render pages and link crawlers only see the Blade template.
+- `/robots.txt` and `/sitemap.xml` are generated (`SeoController`) so their URLs follow `APP_URL`.
+
 ### Sign In and Sign Up
 - Centered card with a Log in / Sign up switch, field icons, and Terms and Privacy links.
 - The sign-up page shows a **live password checklist** built from the server's own password rules (`Password::defaults()`), so it always matches what the server enforces: 8 characters locally, and 12 with mixed case, a number, and a symbol in production.
