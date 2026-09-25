@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // the only thing that can reach this container directly.
         $middleware->trustProxies(at: '*');
 
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'resident_lang']);
+        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'app_lang', 'resident_lang']);
 
         $middleware->web(append: [
             HandleAppearance::class,
@@ -63,7 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Laravel's own default error pages are plain and unbranded. Render
         // resiTrack's own error page for the status codes a visitor could
         // actually hit, leave everything else (like validation's 422) alone.
-        $exceptions->respond(function (Response $response, \Throwable $e, Request $request) {
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             if (! app()->hasDebugModeEnabled()
                 && ! $request->expectsJson()
                 && in_array($response->getStatusCode(), [404, 403, 500, 503], true)
