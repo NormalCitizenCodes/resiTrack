@@ -1,5 +1,5 @@
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import type L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -86,7 +86,9 @@ type Props = {
 
 export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, onSelect, aside }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const leafletRef = useRef<typeof L | null>(null);
     const mapRef = useRef<L.Map | null>(null);
+    const [mapReady, setMapReady] = useState(false);
     const tileRef = useRef<L.TileLayer | null>(null);
     const layerRef = useRef<L.GeoJSON | null>(null);
     const activeGroupRef = useRef<L.FeatureGroup | null>(null);
@@ -112,25 +114,39 @@ export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, on
     const maxValue = Math.max(1, ...barangays.map((b) => valueFor(b)));
     const bounds = stepBounds(maxValue);
 
-    // Create the map once; never re-run on data/metric changes.
+    // Create the map once; never re-run on data/metric changes. Leaflet reads
+    // `window` the moment it is imported, so it is loaded here, in the browser,
+    // and never during server-side rendering.
     useEffect(() => {
-        if (!containerRef.current || mapRef.current) {
-            return;
-        }
+        let cancelled = false;
+        let created: L.Map | null = null;
 
-        // One-finger drag would trap page scrolling on phones; pinch still zooms.
-        const map = L.map(containerRef.current, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
+        import('leaflet').then((module) => {
+            const leaflet = (module.default ?? module) as typeof L;
 
-        tileRef.current = L.tileLayer(TILES.light, {
-            attribution: 'Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community',
-            maxNativeZoom: 16,
-            maxZoom: 18,
-        }).addTo(map);
+            if (cancelled || !containerRef.current || mapRef.current) {
+                return;
+            }
 
-        mapRef.current = map;
+            // One-finger drag would trap page scrolling on phones; pinch still zooms.
+            created = leaflet.map(containerRef.current, { scrollWheelZoom: false, dragging: !leaflet.Browser.mobile });
+
+            tileRef.current = leaflet
+                .tileLayer(TILES.light, {
+                    attribution: 'Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community',
+                    maxNativeZoom: 16,
+                    maxZoom: 18,
+                })
+                .addTo(created);
+
+            leafletRef.current = leaflet;
+            mapRef.current = created;
+            setMapReady(true);
+        });
 
         return () => {
-            map.remove();
+            cancelled = true;
+            created?.remove();
             mapRef.current = null;
             tileRef.current = null;
         };
@@ -138,7 +154,7 @@ export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, on
 
     useEffect(() => {
         tileRef.current?.setUrl(isDark ? TILES.dark : TILES.light);
-    }, [isDark]);
+    }, [isDark, mapReady]);
 
     const fit = (mode: 'active' | 'city') => {
         const map = mapRef.current;
@@ -157,8 +173,9 @@ export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, on
     // whenever the data or the selected metric changes.
     useEffect(() => {
         const map = mapRef.current;
+        const leaflet = leafletRef.current;
 
-        if (!map) {
+        if (!map || !leaflet) {
             return;
         }
 
@@ -169,7 +186,7 @@ export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, on
 
             layerRef.current?.remove();
 
-            const layer = L.geoJSON(geojson, {
+            const layer = leaflet.geoJSON(geojson, {
                 style: (feature) => {
                     const match = byName.get(normalizeBarangayName(feature?.properties?.brgy_name ?? ''));
 
@@ -222,7 +239,7 @@ export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, on
             }).addTo(map);
 
             layerRef.current = layer;
-            activeGroupRef.current = L.featureGroup(activeShapes);
+            activeGroupRef.current = leaflet.featureGroup(activeShapes);
             shapesRef.current = shapes;
 
             if (!geojsonRef.current) {
@@ -251,7 +268,7 @@ export function BarangayHeatmap({ barangays, highlightId = null, onHighlight, on
             cancelled = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [barangays, metric, noDataFill, isDark]);
+    }, [barangays, metric, noDataFill, isDark, mapReady]);
 
     // Table row hover lights up its shape.
     useEffect(() => {
