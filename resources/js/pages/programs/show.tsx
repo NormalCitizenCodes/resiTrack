@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Building2, Check, MapPin, Pencil, Trash2, X } from 'lucide-react';
+import { ScheduleForm, ScheduleList, removeSchedule } from '@/components/program-schedules';
+import type { ProgramSchedule } from '@/components/program-schedules';
 import { ReadAloudButton } from '@/components/read-aloud-button';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +22,7 @@ type Props = {
     barangayApplications?: ProgramApplication[];
     myApplication?: ProgramApplication | null;
     isEligible?: boolean;
+    schedules?: ProgramSchedule[];
 };
 
 const STATUS_VARIANT: Record<string, 'secondary' | 'outline' | 'destructive' | 'default'> = {
@@ -45,6 +48,7 @@ export default function ProgramShow(props: Props) {
         barangayApplications,
         myApplication,
         isEligible,
+        schedules = [],
     } = props;
     const { t } = useTranslation();
 
@@ -171,6 +175,39 @@ export default function ProgramShow(props: Props) {
                             ) : (
                                 <p className="text-sm text-muted-foreground">{t('programs.notQualify')}</p>
                             )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Approved resident: when and where to claim */}
+                {props.viewerRole === 'resident' && myApplication?.status === 'approved' && (
+                    <Card className="border-primary/40">
+                        <CardHeader>
+                            <CardTitle>{t('programs.schedule.title')}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {schedules.length > 0 ? (
+                                <ScheduleList schedules={schedules} />
+                            ) : (
+                                <p className="text-sm text-muted-foreground">{t('programs.schedule.none')}</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Agency: payout / service-day schedule */}
+                {isOwner && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Claim schedule</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Post when and where beneficiaries claim. Every active beneficiary with an account is notified, and it shows on
+                                their dashboard.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {schedules.length > 0 && <ScheduleList schedules={schedules} onRemove={removeSchedule} />}
+                            <ScheduleForm programId={program.id} />
                         </CardContent>
                     </Card>
                 )}

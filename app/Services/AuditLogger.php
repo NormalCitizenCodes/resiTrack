@@ -19,6 +19,7 @@ class AuditLogger
     /**
      * @param  array<string, mixed>|null  $old
      * @param  array<string, mixed>|null  $new
+     * @param  int|null  $userId  who did it, when that is not the signed-in user (e.g. during the login event itself)
      */
     public static function record(
         string $action,
@@ -26,9 +27,10 @@ class AuditLogger
         ?int $recordId = null,
         ?array $old = null,
         ?array $new = null,
+        ?int $userId = null,
     ): void {
         AuditLog::create([
-            'user_id' => Auth::id(),
+            'user_id' => $userId ?? Auth::id(),
             'action' => $action,
             'table_affected' => $table,
             'record_id' => $recordId,

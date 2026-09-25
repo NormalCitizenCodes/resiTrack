@@ -38,6 +38,27 @@ const RECORD_TASKS: Task[] = [
         steps: ['Open Programs and choose a program.', 'Under Eligible residents in your barangay, choose Endorse next to the resident.'],
         link: { label: 'Open Programs', href: '/programs' },
     },
+    {
+        question: 'How do I handle a certificate request?',
+        steps: [
+            'Open Certificate Requests (the badge shows how many are waiting).',
+            'Prepare and sign the paper, then choose Mark ready for pickup. The resident is notified.',
+            'When they collect it, choose Mark released. To turn a request down, choose Decline and give the reason.',
+        ],
+        link: { label: 'Open Certificate Requests', href: '/document-requests' },
+    },
+    {
+        question: 'How do I answer a resident\'s report?',
+        steps: [
+            'Open Resident Reports. New reports have an orange border.',
+            'Set the status and write a reply, then Save. The resident sees the reply in their notifications. Resolving or closing needs a reply.',
+        ],
+        link: { label: 'Open Resident Reports', href: '/resident-concerns' },
+    },
+    {
+        question: 'How do I check a resident\'s ID card?',
+        steps: ['Scan the QR code on the card with your phone camera while logged in to resiTrack.', 'A green result means the card is genuine and the record is active.'],
+    },
 ];
 
 const GUIDES: Record<Exclude<Role, 'resident'>, Guide> = {
@@ -95,6 +116,19 @@ const GUIDES: Record<Exclude<Role, 'resident'>, Guide> = {
                 steps: ['Open Deletion Requests or Reactivation Requests.', 'Verify the resident\'s identity, add remarks, then approve or reject. Records are kept either way.'],
             },
             {
+                question: 'How do I see what my staff have done?',
+                steps: [
+                    'Open Activity Log (under Admin). Every action by your barangay\'s staff and residents is listed newest first, with who did it and when.',
+                    'Staff at a glance shows each person\'s actions in the last 30 days and their last sign-in. Choose Show activity to see only theirs, or filter by kind of work and dates.',
+                ],
+                link: { label: 'Open Activity Log', href: '/activity-log' },
+            },
+            {
+                question: 'How do I add our emergency numbers?',
+                steps: ['Open Hotlines and use Add a number. Call each number first to check it.', 'Residents of your barangay see them with a Call button. 911 and the Red Cross are always listed.'],
+                link: { label: 'Open Hotlines', href: '/hotlines' },
+            },
+            {
                 question: 'How do I get a report for the city?',
                 steps: ['Open Reports.', 'Export the sector dashboard as PDF, or the resident roster as CSV.'],
                 link: { label: 'Open Reports', href: '/reports' },
@@ -129,6 +163,11 @@ const GUIDES: Record<Exclude<Role, 'resident'>, Guide> = {
                 link: { label: 'Open the dashboard', href: '/dashboard' },
             },
             {
+                question: 'How do I see who did what?',
+                steps: ['Open Activity Log. It covers every barangay; pick one to narrow it down and to see its staff at a glance.'],
+                link: { label: 'Open Activity Log', href: '/activity-log' },
+            },
+            {
                 question: 'How do I get city-wide reports?',
                 steps: ['Open Reports. Totals cover every barangay, and can be exported as PDF or CSV.'],
                 link: { label: 'Open Reports', href: '/reports' },
@@ -158,6 +197,19 @@ const GUIDES: Record<Exclude<Role, 'resident'>, Guide> = {
                 link: { label: 'Open Applications to Review', href: '/applications/review' },
             },
             {
+                question: 'How do I tell beneficiaries when and where to claim?',
+                steps: [
+                    'Open the program and find Claim schedule.',
+                    'Enter what is happening, the date and time, the place and what to bring, then Post. Every active beneficiary is notified and sees it on their dashboard.',
+                    'Removing a future date tells them it was cancelled.',
+                ],
+                link: { label: 'Open Programs', href: '/programs' },
+            },
+            {
+                question: 'How do I check people in on payout day?',
+                steps: ['Scan the QR code on the resident\'s resiTrack ID card with your phone while logged in.', 'The result shows whether the card is genuine and which of your programs they are a beneficiary of.'],
+            },
+            {
                 question: 'Where do I see who received a program?',
                 steps: ['Open Beneficiaries and filter by program.'],
                 link: { label: 'Open Beneficiaries', href: '/beneficiaries' },
@@ -179,6 +231,10 @@ const RESIDENT_KEYS = [
     { key: 'verify' },
     { key: 'profile', href: '/my-profile', label: 'nav.myProfile' },
     { key: 'programs', href: '/programs', label: 'nav.programs' },
+    { key: 'myId', href: '/my-id', label: 'nav.myId' },
+    { key: 'claim' },
+    { key: 'documents', href: '/documents', label: 'nav.documents' },
+    { key: 'concerns', href: '/concerns', label: 'nav.concerns' },
     { key: 'language' },
     { key: 'password' },
 ];

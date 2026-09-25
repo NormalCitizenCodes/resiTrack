@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProgramRequest;
 use App\Models\Barangay;
 use App\Models\Program;
+use App\Models\ProgramSchedule;
 use App\Models\VulnerabilitySector;
+use App\Services\AuditLogger;
 use App\Services\NotificationService;
 use App\Services\ProgramEligibilityService;
 use Illuminate\Http\RedirectResponse;
@@ -83,6 +85,7 @@ class ProgramController extends Controller
         $program->posted_by = $user->id;
         $program->save();
         $program->sectors()->sync($request->input('sector_ids', []));
+        AuditLogger::record('create', 'programs', $program->id, null, ['title' => $program->title]);
 
         // Notify residents whose vulnerability sectors match the new program.
         if ($program->status === 'active') {
@@ -99,10 +102,7 @@ class ProgramController extends Controller
         $user = $request->user();
         $program->load(['agency:id,agency_name,agency_type', 'barangay:id,name', 'sectors:id,code,sector_name']);
 
-        $isOwner = $user?->isSuperAdmin()
-            || ($user?->role === 'partner_agency'
-                && $program->agency_id === $user->agency_id
-                && ($user->barangay_id === null || $program->barangay_id === null || $program->barangay_id === $user->barangay_id));
+        $isOwner = $program->isManagedBy($user);
 
         $props = [
             'program' => $program,
@@ -120,6 +120,7 @@ class ProgramController extends Controller
                 ->with('resident:id,first_name,last_name,middle_name')
                 ->latest('date_added')
                 ->get();
+            $props['schedules'] = $program->schedules()->get()->map(fn (ProgramSchedule $s) => $this->scheduleData($s))->all();
         }
 
         // Barangay staff: eligible residents in their barangay + endorsements so far.
@@ -139,6 +140,15 @@ class ProgramController extends Controller
             $props['isEligible'] = $user->resident
                 ? $this->eligibility->residentQualifies($program, $user->resident->load('sectors'))
                 : false;
+
+            // Claim dates are only for the people who will actually claim.
+            $isBeneficiary = $program->beneficiaries()
+                ->where('resident_id', $user->resident_id)
+                ->where('status', 'active')
+                ->exists();
+            $props['schedules'] = $isBeneficiary
+                ? $program->schedules()->where('starts_at', '>=', today())->get()->map(fn (ProgramSchedule $s) => $this->scheduleData($s))->all()
+                : [];
         }
 
         return Inertia::render('programs/show', $props);
@@ -161,6 +171,7 @@ class ProgramController extends Controller
 
         $program->update($request->safe()->except('sector_ids'));
         $program->sectors()->sync($request->input('sector_ids', []));
+        AuditLogger::record('update', 'programs', $program->id, null, ['title' => $program->title]);
 
         return redirect()
             ->route('programs.show', $program)
@@ -171,6 +182,7 @@ class ProgramController extends Controller
     {
         $this->authorizeOwner($request, $program);
         $title = $program->title;
+        AuditLogger::record('delete', 'programs', $program->id, ['title' => $title]);
         $program->delete();
 
         return redirect()
@@ -183,13 +195,25 @@ class ProgramController extends Controller
      */
     private function authorizeOwner(Request $request, Program $program): void
     {
-        $user = $request->user();
+        abort_unless($program->isManagedBy($request->user()), 403, 'You can only manage your own agency\'s programs.');
+    }
 
-        $owns = $user->isSuperAdmin()
-            || ($user->role === 'partner_agency'
-                && $program->agency_id === $user->agency_id
-                && ($user->barangay_id === null || $program->barangay_id === null || $program->barangay_id === $user->barangay_id));
-
-        abort_unless($owns, 403, 'You can only manage your own agency\'s programs.');
+    /**
+     * Times are wall-clock times at the venue, sent without a zone so the
+     * browser prints exactly what the agency typed.
+     *
+     * @return array<string, mixed>
+     */
+    public static function scheduleData(ProgramSchedule $schedule): array
+    {
+        return [
+            'id' => $schedule->id,
+            'program_id' => $schedule->program_id,
+            'title' => $schedule->title,
+            'starts_at' => $schedule->starts_at->format('Y-m-d\TH:i'),
+            'location' => $schedule->location,
+            'what_to_bring' => $schedule->what_to_bring,
+            'notes' => $schedule->notes,
+        ];
     }
 }

@@ -6,9 +6,11 @@ use App\Models\Barangay;
 use App\Models\BarangayZone;
 use App\Models\Household;
 use App\Models\Resident;
+use App\Models\User;
 use App\Services\DuplicateDetectionService;
 use App\Services\SectorClassificationService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class SampleResidentSeeder extends Seeder
 {
@@ -83,9 +85,21 @@ class SampleResidentSeeder extends Seeder
             'philsys_card_no' => '9876-5432-1098',
         ]);
 
-        // Link the demo resident login to a real resident record so the resident
-        // portal (view/apply for programs) is functional out of the box.
-        $residentUser = \App\Models\User::where('email', 'resident@resitrack.test')->first();
+        // The demo resident login from the README (password: "password"), linked
+        // to a real resident record so the resident portal works out of the box.
+        $residentUser = User::updateOrCreate(
+            ['email' => 'resident@resitrack.test'],
+            [
+                'name' => 'Juan Dela Cruz',
+                'first_name' => 'Juan',
+                'last_name' => 'Dela Cruz',
+                'role' => User::ROLE_RESIDENT,
+                'barangay_id' => $b22->id,
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+                'is_active' => true,
+            ],
+        );
         if ($residentUser) {
             $juan = Resident::factory()->senior()->soloParent()->create([
                 'barangay_id' => $b22->id,
@@ -102,5 +116,7 @@ class SampleResidentSeeder extends Seeder
             $this->classifier->classify($resident);
             $this->duplicates->scan($resident);
         });
+
+        $this->call(ResidentServicesSeeder::class);
     }
 }

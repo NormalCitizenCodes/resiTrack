@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AppNotification;
 use App\Models\PasswordRecoveryRequest;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\GuestFormThrottle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -100,6 +101,7 @@ class PasswordRecoveryController extends Controller
             'recovery_token_hash' => hash('sha256', $token),
             'token_expires_at' => now()->addMinutes(15),
         ]);
+        AuditLogger::record('approve', 'password_recovery_requests', $recoveryRequest->id, null, ['name' => $recoveryRequest->user?->name]);
 
         return redirect()->route('account-recovery.index', ['highlight' => $recoveryRequest->id, 'token' => $token]);
     }
@@ -117,6 +119,7 @@ class PasswordRecoveryController extends Controller
             'reviewed_by' => $request->user()->id,
             'reviewed_at' => now(),
         ]);
+        AuditLogger::record('reject', 'password_recovery_requests', $recoveryRequest->id, null, ['name' => $recoveryRequest->user?->name]);
 
         return back()->with('success', 'Recovery request rejected. The resident cannot change their password.');
     }
@@ -140,6 +143,7 @@ class PasswordRecoveryController extends Controller
         ]);
 
         $recoveryRequest->user->update(['password' => Hash::make($validated['password'])]);
+        AuditLogger::record('password_reset', 'users', $recoveryRequest->user->id, null, ['name' => $recoveryRequest->user->name]);
         $recoveryRequest->update([
             'recovery_token_hash' => null,
             'token_expires_at' => null,
@@ -151,7 +155,7 @@ class PasswordRecoveryController extends Controller
     private function requestForToken(string $token): PasswordRecoveryRequest
     {
         $recoveryRequest = PasswordRecoveryRequest::query()
-            ->with('user:id,email')
+            ->with('user:id,name,email')
             ->where('status', PasswordRecoveryRequest::STATUS_APPROVED)
             ->where('token_expires_at', '>', now())
             ->get()

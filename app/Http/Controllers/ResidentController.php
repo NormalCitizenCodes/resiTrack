@@ -266,6 +266,7 @@ class ResidentController extends Controller
         // Deactivate rather than hard-delete to preserve records for audit.
         $resident->update(['is_active' => false]);
         $this->syncLinkedAccountStatus($resident, false, $request->user()->id);
+        AuditLogger::record('deactivate', 'residents', $resident->id, null, ['name' => $resident->full_name]);
 
         return redirect()
             ->route('residents.index')
@@ -321,6 +322,12 @@ class ResidentController extends Controller
     {
         abort_unless($request->user()->isSuperAdmin(), 403, 'Only a Super Admin can permanently delete residents.');
 
+        // Logged before the delete: afterwards there is nothing left to name.
+        AuditLogger::record('force_delete', 'residents', $resident->id, [
+            'name' => $resident->full_name,
+            'resident_id' => $resident->resident_id,
+            'barangay_id' => $resident->barangay_id,
+        ]);
         $resident->delete();
 
         return redirect()

@@ -2,24 +2,31 @@
 
 use App\Http\Controllers\AccountDeletionRequestController;
 use App\Http\Controllers\AccountReactivationRequestController;
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\BeneficiaryController;
+use App\Http\Controllers\ConcernController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentRequestController;
 use App\Http\Controllers\DuplicateAlertController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HelpController;
+use App\Http\Controllers\HotlineController;
 use App\Http\Controllers\HouseholdController;
 use App\Http\Controllers\HouseholdWellbeingAssessmentController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\MyHouseholdController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartnerAgencyController;
 use App\Http\Controllers\PasswordRecoveryController;
 use App\Http\Controllers\ProgramApplicationController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\ProgramScheduleController;
 use App\Http\Controllers\PsgcController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ResidentController;
+use App\Http\Controllers\ResidentIdController;
 use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\StaffController;
@@ -154,6 +161,46 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:resident')->group(function () {
         Route::get('settings/account', [AccountDeletionRequestController::class, 'create'])->name('account-deletion.create');
         Route::post('settings/account/deletion-request', [AccountDeletionRequestController::class, 'store'])->name('account-deletion.store');
+
+        // Resident services: digital ID, household, certificates, reports.
+        Route::get('my-id', [ResidentIdController::class, 'show'])->name('resident-id.show');
+        Route::get('my-household', [MyHouseholdController::class, 'show'])->name('my-household.show');
+        Route::get('documents', [DocumentRequestController::class, 'index'])->name('documents.index');
+        Route::post('documents', [DocumentRequestController::class, 'store'])->middleware('throttle:10,1')->name('documents.store');
+        Route::delete('documents/{documentRequest}', [DocumentRequestController::class, 'cancel'])->name('documents.cancel');
+        Route::get('concerns', [ConcernController::class, 'index'])->name('concerns.index');
+        Route::post('concerns', [ConcernController::class, 'store'])->middleware('throttle:10,1')->name('concerns.store');
+    });
+
+    // Barangay-level service desks: certificates and residents' reports.
+    Route::middleware('role:barangay_admin,bhw')->group(function () {
+        Route::get('document-requests', [DocumentRequestController::class, 'manage'])->name('document-requests.index');
+        Route::patch('document-requests/{documentRequest}', [DocumentRequestController::class, 'update'])->name('document-requests.update');
+        Route::get('resident-concerns', [ConcernController::class, 'manage'])->name('resident-concerns.index');
+        Route::patch('resident-concerns/{concern}', [ConcernController::class, 'update'])->name('resident-concerns.update');
+    });
+
+    // Opened by scanning a resident's ID card QR code.
+    Route::get('verify/{residentId}', [ResidentIdController::class, 'verify'])
+        ->middleware('role:super_admin,barangay_admin,bhw,partner_agency')
+        ->name('resident-id.verify');
+
+    // Payout and service-day schedules; owner checks are in the controller.
+    Route::middleware('role:partner_agency,super_admin')->group(function () {
+        Route::post('programs/{program}/schedules', [ProgramScheduleController::class, 'store'])->name('program-schedules.store');
+        Route::delete('program-schedules/{schedule}', [ProgramScheduleController::class, 'destroy'])->name('program-schedules.destroy');
+    });
+
+    // Who did what: the audit trail, scoped to the admin's barangay (city-wide for the super admin).
+    Route::get('activity-log', [ActivityLogController::class, 'index'])
+        ->middleware('role:super_admin,barangay_admin')
+        ->name('activity-log.index');
+
+    // Everyone signed in can read the hotlines; admins maintain their own list.
+    Route::get('hotlines', [HotlineController::class, 'index'])->name('hotlines.index');
+    Route::middleware('role:super_admin,barangay_admin')->group(function () {
+        Route::post('hotlines', [HotlineController::class, 'store'])->name('hotlines.store');
+        Route::delete('hotlines/{hotline}', [HotlineController::class, 'destroy'])->name('hotlines.destroy');
     });
 
     Route::middleware('role:super_admin,barangay_admin')->group(function () {

@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Services\AuditLogger;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -27,6 +30,21 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureVerificationEmail();
+        $this->recordSignIns();
+    }
+
+    /**
+     * Every sign-in goes into the audit trail, so the Activity Log shows when
+     * each staff member (and resident) was last active. The user is passed in
+     * explicitly: the guard fires Login before it sets the signed-in user.
+     */
+    protected function recordSignIns(): void
+    {
+        Event::listen(Login::class, function (Login $event): void {
+            $id = (int) $event->user->getAuthIdentifier();
+
+            AuditLogger::record('login', 'users', $id, null, null, $id);
+        });
     }
 
     /**

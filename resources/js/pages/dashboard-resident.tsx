@@ -1,6 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowRight, Bell, FileHeart, Gift, HandHeart, Megaphone, UserCircle } from 'lucide-react';
+import { ArrowRight, Bell, CalendarClock, FileText, Gift, Home, IdCard, Megaphone, MessageSquareWarning, PhoneCall } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { ScheduleList } from '@/components/program-schedules';
+import type { ProgramSchedule } from '@/components/program-schedules';
 import { ReadAloudButton } from '@/components/read-aloud-button';
 import { SectorBadge } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
@@ -320,6 +322,59 @@ function ApplicationsCard({
     );
 }
 
+/** Time-critical, so it goes above everything else, and only when there is something. */
+function UpcomingSchedulesCard({ schedules }: { schedules: ProgramSchedule[] }) {
+    const { t } = useTranslation();
+
+    return (
+        <Card className="border-primary/40">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <CalendarClock className="size-5 text-primary" aria-hidden="true" />
+                    {t('dashboard.schedules.title')}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ScheduleList schedules={schedules} showProgram />
+            </CardContent>
+        </Card>
+    );
+}
+
+/** The barangay services a resident would otherwise walk to the hall for. */
+function ServicesCard() {
+    const { t } = useTranslation();
+    const services = [
+        { href: '/documents', label: t('dashboard.services.documents'), icon: FileText },
+        { href: '/concerns', label: t('dashboard.services.concerns'), icon: MessageSquareWarning },
+        { href: '/my-household', label: t('dashboard.services.household'), icon: Home },
+        { href: '/hotlines', label: t('dashboard.services.hotlines'), icon: PhoneCall },
+    ];
+
+    return (
+        <section aria-labelledby="services-title" className="space-y-2">
+            <h2 id="services-title" className="text-sm font-semibold tracking-tight">
+                {t('dashboard.services.title')}
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {services.map((service) => (
+                    <Link
+                        key={service.href}
+                        href={service.href}
+                        prefetch
+                        className="flex items-center gap-3 rounded-lg border bg-card p-3 text-sm font-medium leading-snug outline-none transition-colors hover:border-primary/50 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-col sm:items-start"
+                    >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <service.icon className="size-5" aria-hidden="true" />
+                        </span>
+                        {service.label}
+                    </Link>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 /**
  * The resident's status sits in one place at the top: who they are, whether
  * they are verified, and what to do next. The path motif is the logo's own
@@ -357,38 +412,13 @@ function WelcomeBand({
     );
 }
 
-function QuickLinks() {
-    const { t } = useTranslation();
-    const links = [
-        { href: '/programs', label: t('nav.programs'), icon: HandHeart },
-        { href: '/my-applications', label: t('nav.myApplications'), icon: FileHeart },
-        { href: '/my-profile', label: t('nav.myProfile'), icon: UserCircle },
-    ];
-
-    return (
-        <nav aria-label="Shortcuts" className="grid grid-cols-3 gap-3 lg:hidden">
-            {links.map((link) => (
-                <Link
-                    key={link.href}
-                    href={link.href}
-                    className="flex flex-col items-center gap-2 rounded-lg border bg-card px-2 py-3 text-center text-sm font-medium outline-none transition-colors hover:border-primary/50 hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <link.icon className="size-5" />
-                    </span>
-                    {link.label}
-                </Link>
-            ))}
-        </nav>
-    );
-}
-
 export default function ResidentDashboard({
     resident,
     completeness,
     sectors,
     recentApplications,
     matchedPrograms,
+    upcomingSchedules = [],
     feed,
     deletionRequest,
 }: {
@@ -397,6 +427,7 @@ export default function ResidentDashboard({
     sectors: SectorWithReasons[];
     recentApplications: ProgramApplication[];
     matchedPrograms: MatchedPrograms;
+    upcomingSchedules?: ProgramSchedule[];
     feed: AppNotification[];
     deletionRequest: { status: 'pending' | 'approved' | 'rejected'; admin_remarks: string | null } | null;
 }) {
@@ -426,6 +457,11 @@ export default function ResidentDashboard({
                                     Resident ID: <strong>{resident.resident_id}</strong>
                                 </span>
                             </p>
+                            <Button asChild size="lg" variant="secondary" className="mt-2 bg-white text-brand-navy hover:bg-white/90">
+                                <Link href="/my-id" prefetch>
+                                    <IdCard className="size-5" aria-hidden="true" /> {t('dashboard.showId')}
+                                </Link>
+                            </Button>
                         </div>
                     ) : (
                         <div className="space-y-2">
@@ -448,14 +484,17 @@ export default function ResidentDashboard({
                     <>
                         {deletionRequest?.status === 'pending' && <Card className="border-amber-500/40 bg-amber-500/10"><CardContent className="space-y-1 py-4"><p className="font-medium">Account Deletion Request Pending</p><p className="text-sm text-muted-foreground">Your account deletion request is currently being reviewed by an administrator.</p></CardContent></Card>}
                         {deletionRequest?.status === 'rejected' && <Card className="border-destructive/30 bg-destructive/5"><CardContent className="space-y-1 py-4"><p className="font-medium">Account Deletion Request Rejected</p><p className="text-sm text-muted-foreground">Your account will remain active.{deletionRequest.admin_remarks ? ` ${deletionRequest.admin_remarks}` : ''}</p></CardContent></Card>}
-                        <QuickLinks />
                         {/* One column on phones, in the order a resident should act: programs they can
                             apply to, then their profile, then news. On desktop the profile sits beside them. */}
+                        {upcomingSchedules.length > 0 && <UpcomingSchedulesCard schedules={upcomingSchedules} />}
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                             <div className="min-w-0 lg:col-span-2">
                                 <ProgramsForYouCard matched={matchedPrograms} />
                             </div>
-                            <div className="min-w-0 space-y-4 lg:col-start-3 lg:row-span-3 lg:row-start-1">
+                            <div className="min-w-0 lg:col-span-2">
+                                <ServicesCard />
+                            </div>
+                            <div className="min-w-0 space-y-4 lg:col-start-3 lg:row-span-4 lg:row-start-1">
                                 <ProfileCompletenessCard completeness={completeness} />
                                 <SectorsCard sectors={sectors} />
                             </div>

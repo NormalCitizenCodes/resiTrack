@@ -96,6 +96,7 @@ class AnnouncementController extends Controller
             abort(403, 'This announcement belongs to another barangay.');
         }
 
+        AuditLogger::record('delete', 'announcements', $announcement->id, ['title' => $announcement->title]);
         $announcement->delete();
 
         return back()->with('success', 'Announcement deleted.');

@@ -1,11 +1,10 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { BarChart3, Building2, LifeBuoy, ClipboardCheck, CopyCheck, FileHeart, HandHeart, Home, LayoutGrid, Megaphone, ShieldCheck, UserCircle, UserCog, UserPlus, Users } from 'lucide-react';
+import { BarChart3, Building2, LifeBuoy, ClipboardCheck, CopyCheck, FileHeart, FileText, HandHeart, History, Home, IdCard, LayoutGrid, Megaphone, MessageSquareWarning, PhoneCall, ShieldCheck, UserCircle, UserCog, UserPlus, Users } from 'lucide-react';
 import { useEffect } from 'react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavQuickAction } from '@/components/nav-quick-action';
 import type { QuickAction } from '@/components/nav-quick-action';
-import { NavThemeToggle } from '@/components/nav-theme-toggle';
 import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
@@ -21,7 +20,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { dashboard } from '@/routes';
 import type { NavGroup, NavItem, Role } from '@/types';
 
-type NavCounts = { duplicates?: number; registrations?: number; pendingApplications?: number };
+type NavCounts = { duplicates?: number; registrations?: number; pendingApplications?: number; documentRequests?: number; concerns?: number };
 
 // One primary task per role. The super admin is read-only and residents have
 // nothing to "create", so neither gets one. Staff labels stay in English, as
@@ -58,6 +57,15 @@ function navGroupsForRole(role: Role | undefined, t: (key: string) => string, co
                 { title: t('nav.reports'), href: '/reports', icon: BarChart3 },
             ];
 
+            // The super admin is read-only city-wide and has no service desk.
+            const services: NavItem[] = role === 'super_admin'
+                ? [{ title: 'Hotlines', href: '/hotlines', icon: PhoneCall }]
+                : [
+                      { title: 'Certificate Requests', href: '/document-requests', icon: FileText, badge: counts.documentRequests },
+                      { title: 'Resident Reports', href: '/resident-concerns', icon: MessageSquareWarning, badge: counts.concerns },
+                      { title: 'Hotlines', href: '/hotlines', icon: PhoneCall },
+                  ];
+
             const outreach: NavItem[] = [
                 { title: t('nav.programs'), href: '/programs', icon: HandHeart },
                 ...(!isBhw ? [{ title: t('nav.announcements'), href: '/announcements', icon: Megaphone }] : []),
@@ -70,6 +78,7 @@ function navGroupsForRole(role: Role | undefined, t: (key: string) => string, co
                 ? [{ title: t('nav.accountRecovery'), href: '/account-recovery', icon: ShieldCheck }]
                 : [
                       { title: t('nav.staff'), href: '/staff', icon: UserCog },
+                      { title: 'Activity Log', href: '/activity-log', icon: History },
                       { title: t('nav.accountDeletionRequests'), href: '/account-deletion-requests', icon: ShieldCheck },
                       { title: t('nav.accountReactivationRequests'), href: '/account-reactivation-requests', icon: ShieldCheck },
                   ];
@@ -78,6 +87,7 @@ function navGroupsForRole(role: Role | undefined, t: (key: string) => string, co
                 { items: [{ title: 'Dashboard', href: dashboard(), icon: LayoutGrid }] },
                 { label: 'Records', items: records },
                 { label: 'Outreach', items: outreach },
+                { label: 'Services', items: services },
                 { label: isBhw ? 'Support' : 'Admin', items: admin },
             ];
         }
@@ -94,11 +104,13 @@ function navGroupsForRole(role: Role | undefined, t: (key: string) => string, co
                         // posts only, see AnnouncementController::index) but no link to it.
                         { title: t('nav.announcements'), href: '/announcements', icon: Megaphone },
                         { title: 'Agency Profile', href: '/agency-profile', icon: Building2 },
+                        { title: 'Hotlines', href: '/hotlines', icon: PhoneCall },
                     ],
                 },
             ];
         default:
-            // Residents: browse programs, announcements, and track their applications.
+            // Residents: browse programs, announcements, and track their applications,
+            // plus the barangay services they would otherwise walk to the hall for.
             return [
                 {
                     label: 'Platform',
@@ -108,6 +120,16 @@ function navGroupsForRole(role: Role | undefined, t: (key: string) => string, co
                         { title: t('nav.myApplications'), href: '/my-applications', icon: FileHeart },
                         announcementsItem,
                         { title: t('nav.myProfile'), href: '/my-profile', icon: UserCircle },
+                    ],
+                },
+                {
+                    label: t('nav.services'),
+                    items: [
+                        { title: t('nav.myId'), href: '/my-id', icon: IdCard },
+                        { title: t('nav.myHousehold'), href: '/my-household', icon: Home },
+                        { title: t('nav.documents'), href: '/documents', icon: FileText },
+                        { title: t('nav.concerns'), href: '/concerns', icon: MessageSquareWarning },
+                        { title: t('nav.hotlines'), href: '/hotlines', icon: PhoneCall },
                     ],
                 },
             ];
@@ -157,7 +179,6 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-                <NavThemeToggle />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

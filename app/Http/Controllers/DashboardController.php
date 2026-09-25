@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AccountDeletionRequest;
 use App\Models\AccountReactivationRequest;
 use App\Models\AppNotification;
+use App\Models\Concern;
+use App\Models\DocumentRequest;
 use App\Models\Program;
 use App\Models\ProgramApplication;
+use App\Models\ProgramSchedule;
 use App\Models\Resident;
 use App\Models\User;
 use App\Services\DashboardStatsService;
@@ -80,6 +83,21 @@ class DashboardController extends Controller
                     ->where('barangay_id', $barangayId)
                     ->count(),
                 'href' => '/resident-registrations',
+            ];
+        }
+
+        if (! $user->isSuperAdmin()) {
+            $items[] = [
+                'key' => 'documents',
+                'label' => 'Certificate requests to prepare',
+                'count' => DocumentRequest::where('barangay_id', $barangayId)->where('status', DocumentRequest::STATUS_PENDING)->count(),
+                'href' => '/document-requests',
+            ];
+            $items[] = [
+                'key' => 'concerns',
+                'label' => 'New reports from residents',
+                'count' => Concern::where('barangay_id', $barangayId)->where('status', 'open')->count(),
+                'href' => '/resident-concerns',
             ];
         }
 
@@ -164,6 +182,29 @@ class DashboardController extends Controller
      * bell dropdown) plus a profile-completeness nudge and sector breakdown -
      * distinct from the staff aggregate-stats view above.
      */
+    /**
+     * Payout and service days coming up for programs this resident is an
+     * active beneficiary of, soonest first, so a claim date is never missed.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function upcomingSchedules(Resident $resident): array
+    {
+        $programIds = $resident->beneficiaries()->where('status', 'active')->pluck('program_id');
+
+        return ProgramSchedule::query()
+            ->whereIn('program_id', $programIds)
+            ->where('starts_at', '>=', today())
+            ->with('program:id,title')
+            ->orderBy('starts_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (ProgramSchedule $schedule) => ProgramController::scheduleData($schedule) + [
+                'program_title' => $schedule->program?->getAttribute('title'),
+            ])
+            ->all();
+    }
+
     private function residentDashboard(User $user): Response
     {
         $resident = $user->resident_id
@@ -181,6 +222,7 @@ class DashboardController extends Controller
                     ->get()
                 : [],
             'matchedPrograms' => $resident ? $this->matchedPrograms($resident) : [],
+            'upcomingSchedules' => $resident ? $this->upcomingSchedules($resident) : [],
             'feed' => AppNotification::where('user_id', $user->id)
                 ->latest()
                 ->limit(15)

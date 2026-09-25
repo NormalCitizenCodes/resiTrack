@@ -73,6 +73,57 @@ return `${diffDay}d`;
     };
 }
 
+/** "2026-10-01" or "2026-10-01T08:00" (no zone) as a UTC Date, so it prints exactly as written. */
+const wallClock = (value: string): Date => new Date(value.length <= 10 ? `${value}T00:00:00Z` : `${value}:00Z`);
+
+/**
+ * A calendar date with no time zone attached, like a birthday ("2001-05-04"):
+ * printed as written, never shifted a day by the viewer's zone.
+ */
+export function useCalendarDate(): (value: string | null | undefined) => string {
+    const { language } = useTranslation();
+    const hydrated = useHydrated();
+
+    return (value: string | null | undefined): string => {
+        if (!value) {
+            return '';
+        }
+
+        const locale = hydrated ? (LOCALE[language] ?? 'en-US') : 'en-US';
+
+        return wallClock(value.substring(0, 10)).toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    };
+}
+
+/**
+ * A venue's local time as the agency typed it ("2026-10-01T08:00"): the day,
+ * the time, and how many days away it is for the viewer. The day count needs
+ * the clock, so it stays null until hydration is done.
+ */
+export function useScheduleTime(): (value: string) => { day: string; time: string; daysAway: number | null } {
+    const { language } = useTranslation();
+    const hydrated = useHydrated();
+
+    return (value: string) => {
+        const date = wallClock(value);
+        const locale = hydrated ? (LOCALE[language] ?? 'en-US') : 'en-US';
+        let daysAway: number | null = null;
+
+        if (hydrated) {
+            const now = new Date();
+            const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+            const target = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+            daysAway = Math.round((target - today) / 86_400_000);
+        }
+
+        return {
+            day: date.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }),
+            time: date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }),
+            daysAway,
+        };
+    };
+}
+
 /**
  * Plain "June 10, 2026" - no relative bucketing, no time. For forward-looking
  * dates (e.g. an announcement's expiry) where "in 3 days" isn't what's wanted.

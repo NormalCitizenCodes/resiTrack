@@ -12,6 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
+/**
+ * @property-read string $full_name
+ * @property-read int|null $age
+ * @property Carbon|null $date_of_birth
+ * @property Carbon|null $registered_at
+ * @property Carbon|null $profiled_at
+ */
 class Resident extends Model
 {
     /** @use HasFactory<ResidentFactory> */
@@ -168,5 +175,27 @@ class Resident extends Model
     public function beneficiaries(): HasMany
     {
         return $this->hasMany(Beneficiary::class);
+    }
+
+    /** @return HasMany<DocumentRequest, $this> */
+    public function documentRequests(): HasMany
+    {
+        return $this->hasMany(DocumentRequest::class);
+    }
+
+    /** @return HasMany<Concern, $this> */
+    public function concerns(): HasMany
+    {
+        return $this->hasMany(Concern::class);
+    }
+
+    /**
+     * Short signature printed in the ID card's QR code, so a guessed or typed
+     * resident number alone does not verify. Tied to APP_KEY: rotating the key
+     * invalidates every printed code, which is the point.
+     */
+    public static function idSignature(string $residentId): string
+    {
+        return substr(hash_hmac('sha256', 'resident-id|'.$residentId, (string) config('app.key')), 0, 16);
     }
 }

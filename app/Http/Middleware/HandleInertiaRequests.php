@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Models\AppNotification;
+use App\Models\Concern;
+use App\Models\DocumentRequest;
 use App\Models\ProgramApplication;
 use App\Models\User;
 use App\Services\DashboardStatsService;
@@ -70,7 +72,7 @@ class HandleInertiaRequests extends Middleware
      * agency (partner agency). Evaluated lazily, so requests that never render
      * the sidebar skip the queries.
      *
-     * @return array{duplicates?: int, registrations?: int, pendingApplications?: int}
+     * @return array{duplicates?: int, registrations?: int, pendingApplications?: int, documentRequests?: int, concerns?: int}
      */
     private function navCounts(?User $user): array
     {
@@ -89,6 +91,18 @@ class HandleInertiaRequests extends Middleware
                     ->whereNull('resident_id')
                     ->whereNotNull('registration_id')
                     ->where('barangay_id', $barangayId)
+                    ->count();
+            }
+
+            // The service desks are barangay work; the super admin has none.
+            if (! $user->isSuperAdmin()) {
+                $counts['documentRequests'] = DocumentRequest::query()
+                    ->where('barangay_id', $barangayId)
+                    ->where('status', DocumentRequest::STATUS_PENDING)
+                    ->count();
+                $counts['concerns'] = Concern::query()
+                    ->where('barangay_id', $barangayId)
+                    ->where('status', 'open')
                     ->count();
             }
 

@@ -64,4 +64,26 @@ class Program extends Model
     {
         return $this->hasMany(Beneficiary::class);
     }
+
+    /**
+     * The owning agency (within its barangay, if it has one) or a super admin.
+     * The same rule ProgramController and ProgramApplicationController apply.
+     */
+    public function isManagedBy(?User $user): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        return $user->isSuperAdmin()
+            || ($user->role === User::ROLE_PARTNER_AGENCY
+                && $this->agency_id === $user->agency_id
+                && ($user->barangay_id === null || $this->barangay_id === null || $this->barangay_id === $user->barangay_id));
+    }
+
+    /** @return HasMany<ProgramSchedule, $this> */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(ProgramSchedule::class)->orderBy('starts_at');
+    }
 }

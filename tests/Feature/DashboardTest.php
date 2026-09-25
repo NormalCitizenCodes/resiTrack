@@ -106,11 +106,11 @@ class DashboardTest extends TestCase
 
         $this->actingAs($admin)->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page
-                ->where('attention', fn ($items) => collect($items)->pluck('count', 'key')->all() === ['duplicates' => 0, 'deletions' => 1, 'reactivations' => 1]));
+                ->where('attention', fn ($items) => collect($items)->pluck('count', 'key')->all() === ['duplicates' => 0, 'documents' => 0, 'concerns' => 0, 'deletions' => 1, 'reactivations' => 1]));
 
         $this->actingAs($bhw)->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page
-                ->where('attention', fn ($items) => collect($items)->pluck('key')->all() === ['duplicates', 'registrations']));
+                ->where('attention', fn ($items) => collect($items)->pluck('key')->all() === ['duplicates', 'registrations', 'documents', 'concerns']));
     }
 
     public function test_only_barangay_staff_get_the_needs_attention_list(): void

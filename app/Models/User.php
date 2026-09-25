@@ -90,6 +90,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->belongsTo(Barangay::class);
     }
 
+    /** @return HasMany<AuditLog, $this> */
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class);
+    }
+
     public function agency(): BelongsTo
     {
         return $this->belongsTo(PartnerAgency::class, 'agency_id');
