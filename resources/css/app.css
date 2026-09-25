@@ -323,3 +323,19 @@ html.intro-hide-logo #site-logo {
         animation: none;
     }
 }
+
+/* Barangay heatmap labels: text printed straight on the shapes, no tooltip chrome. */
+.leaflet-tooltip.heat-label {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.leaflet-tooltip.heat-label::before {
+    display: none;
+}
