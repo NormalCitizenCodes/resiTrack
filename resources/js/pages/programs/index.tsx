@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Building2, MapPin, Plus, Search, Users } from 'lucide-react';
 import { useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
+import { ProgramDialog } from '@/components/program-dialog';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,13 @@ export default function ProgramsIndex({
     const { t } = useTranslation();
     const isResident = viewerRole === 'resident';
     const [search, setSearch] = useState(filters.search ?? '');
+    const [openId, setOpenId] = useState<number | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    // Residents read a program in a pop-up; staff and agencies keep the full page.
+    const show = (programId: number) => {
+        setOpenId(programId);
+        setDialogOpen(true);
+    };
     const applyFilter = (key: 'search' | 'sector', value: string) => {
         router.get('/programs', { ...filters, [key]: value || undefined }, { preserveState: true, preserveScroll: true, replace: true });
     };
@@ -91,12 +99,15 @@ export default function ProgramsIndex({
                             <Card key={program.id} className="flex flex-col">
                                 <CardHeader>
                                     <div className="flex items-start justify-between gap-2">
-                                        <Link
-                                            href={`/programs/${program.id}`}
-                                            className="font-semibold hover:underline"
-                                        >
-                                            {program.title}
-                                        </Link>
+                                        {isResident ? (
+                                            <button type="button" onClick={() => show(program.id)} className="text-left font-semibold hover:underline">
+                                                {program.title}
+                                            </button>
+                                        ) : (
+                                            <Link href={`/programs/${program.id}`} className="font-semibold hover:underline">
+                                                {program.title}
+                                            </Link>
+                                        )}
                                         <Badge variant={STATUS_VARIANT[program.status] ?? 'outline'}>
                                             {program.status === 'active' ? t('programs.open') : t('programs.closed')}
                                         </Badge>
@@ -135,11 +146,15 @@ export default function ProgramsIndex({
                                             </Badge>
                                         )}
                                     </div>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={`/programs/${program.id}`}>
-                                            {isResident ? t('programs.viewDetails') : 'View details'}
-                                        </Link>
-                                    </Button>
+                                    {isResident ? (
+                                        <Button variant="outline" size="sm" onClick={() => show(program.id)}>
+                                            {t('programs.viewDetails')}
+                                        </Button>
+                                    ) : (
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={`/programs/${program.id}`}>View details</Link>
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         );
@@ -147,6 +162,7 @@ export default function ProgramsIndex({
                 </div>
 
                 <DataPagination meta={programs} />
+                {isResident && <ProgramDialog programId={openId} open={dialogOpen} onOpenChange={setDialogOpen} />}
             </div>
         </>
     );

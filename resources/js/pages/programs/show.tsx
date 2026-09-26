@@ -1,17 +1,16 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Building2, Check, MapPin, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { confirmDialog } from '@/components/confirm-dialog';
 import { ProgramClaims } from '@/components/program-claims';
 import type { ProgramClaim } from '@/components/program-claims';
+import { ProgramHeading, ProgramOverview, ResidentProgramPanels, StatusBadge } from '@/components/program-resident-panels';
 import { ScheduleForm, ScheduleList, removeSchedule } from '@/components/program-schedules';
 import type { ProgramSchedule } from '@/components/program-schedules';
-import { ReadAloudButton } from '@/components/read-aloud-button';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useTranslation } from '@/hooks/use-translation';
 import { dashboard, login, register } from '@/routes';
 import type { Beneficiary, Program, ProgramApplication, Resident, Role } from '@/types';
 
@@ -32,19 +31,6 @@ type Props = {
     myClaims?: { id: number; claimed_on: string }[];
 };
 
-const STATUS_VARIANT: Record<string, 'secondary' | 'outline' | 'destructive' | 'default'> = {
-    active: 'secondary',
-    approved: 'secondary',
-    pending: 'default',
-    inactive: 'outline',
-    rejected: 'destructive',
-    expired: 'destructive',
-};
-
-function StatusBadge({ status }: { status: string }) {
-    return <Badge variant={STATUS_VARIANT[status] ?? 'outline'}>{status === 'active' ? 'Open' : status === 'inactive' || status === 'expired' ? 'Closed' : status}</Badge>;
-}
-
 export default function ProgramShow(props: Props) {
     const {
         program,
@@ -61,9 +47,6 @@ export default function ProgramShow(props: Props) {
         today = '',
         myClaims = [],
     } = props;
-    const { t } = useTranslation();
-
-    const remaining = Math.max(0, program.slots_available - program.slots_filled);
     const endorsedIds = new Set((barangayApplications ?? []).map((a) => a.resident_id));
 
     const review = (application: ProgramApplication, status: 'approved' | 'rejected') => {
@@ -93,28 +76,7 @@ export default function ProgramShow(props: Props) {
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4">
                 {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-semibold tracking-tight">{program.title}</h1>
-                            <StatusBadge status={program.status} />
-                            {props.viewerRole === 'resident' && (
-                                <ReadAloudButton text={`${program.title}. ${program.description ?? ''}`} />
-                            )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                                <Building2 className="size-4" />
-                                {program.agency?.agency_name ?? 'Partner Agency'}
-                            </span>
-                            {program.barangay && (
-                                <span className="flex items-center gap-1">
-                                    <MapPin className="size-4" />
-                                    {program.barangay.name} only
-                                </span>
-                            )}
-                        </div>
-                        <SectorBadges sectors={program.sectors} />
-                    </div>
+                    <ProgramHeading program={program} isResident={props.viewerRole === 'resident'} />
                     {isOwner && (
                         <div className="flex gap-2">
                             <Button asChild variant="outline">
@@ -129,30 +91,7 @@ export default function ProgramShow(props: Props) {
                     )}
                 </div>
 
-                {/* Overview */}
-                <Card>
-                    <CardContent className="grid gap-4 md:grid-cols-4">
-                        <div className="md:col-span-3">
-                            <p className="text-sm">{program.description ?? '-'}</p>
-                            {program.eligibility_criteria && (
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                    <span className="font-medium">Eligibility:</span> {program.eligibility_criteria}
-                                </p>
-                            )}
-                            <p className="mt-2 text-xs text-muted-foreground">
-                                {program.start_date?.substring(0, 10) ?? '-'} to{' '}
-                                {program.end_date?.substring(0, 10) ?? '-'}
-                            </p>
-                        </div>
-                        <div className="rounded-lg border p-3 text-center">
-                            <p className="text-2xl font-semibold">
-                                {program.slots_filled}/{program.slots_available}
-                            </p>
-                            <p className="text-xs text-muted-foreground">slots filled</p>
-                            <p className="mt-1 text-xs font-medium text-emerald-600">{remaining} open</p>
-                        </div>
-                    </CardContent>
-                </Card>
+                <ProgramOverview program={program} />
 
                 {!props.viewerRole && (
                     <Card>
@@ -164,59 +103,9 @@ export default function ProgramShow(props: Props) {
                     </Card>
                 )}
 
-                {/* Resident self-service */}
+                {/* Resident self-service: application status, claim schedule, claims */}
                 {props.viewerRole === 'resident' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{t('programs.yourApplication')}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {myApplication ? (
-                                <div className="flex items-center gap-2 text-sm">
-                                    {t('programs.status')}: <StatusBadge status={myApplication.status} />
-                                </div>
-                            ) : isEligible ? (
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">{t('programs.qualify')}</p>
-                                    <Button
-                                        size="lg"
-                                        onClick={applySelf}
-                                        disabled={program.status !== 'active' || remaining === 0}
-                                    >
-                                        {t('programs.applyNow')}
-                                    </Button>
-                                </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">{t('programs.notQualify')}</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Approved resident: when and where to claim */}
-                {props.viewerRole === 'resident' && myApplication?.status === 'approved' && (
-                    <Card className="border-primary/40">
-                        <CardHeader>
-                            <CardTitle>{t('programs.schedule.title')}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {schedules.length > 0 ? (
-                                <ScheduleList schedules={schedules} />
-                            ) : (
-                                <p className="text-sm text-muted-foreground">{t('programs.schedule.none')}</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {props.viewerRole === 'resident' && myClaims.length > 0 && (
-                    <Card>
-                        <CardContent className="space-y-1 text-sm">
-                            {myClaims.map((claim) => (
-                                <p key={claim.id}>{t('programs.claimedOn', { date: claim.claimed_on })}</p>
-                            ))}
-                        </CardContent>
-                    </Card>
+                    <ResidentProgramPanels program={program} myApplication={myApplication} isEligible={isEligible} schedules={schedules} myClaims={myClaims} onApply={applySelf} />
                 )}
 
                 {/* Agency: payout / service-day schedule */}

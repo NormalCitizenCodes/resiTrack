@@ -1,6 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, Bell, CalendarClock, FileText, Gift, Home, IdCard, Megaphone, MessageSquareWarning, PhoneCall } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { ProgramDialog } from '@/components/program-dialog';
 import { ScheduleList } from '@/components/program-schedules';
 import type { ProgramSchedule } from '@/components/program-schedules';
 import { ReadAloudButton } from '@/components/read-aloud-button';
@@ -56,7 +58,7 @@ const formatEndDate = (date: string) =>
     new Date(`${date}T00:00:00Z`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 /** Real programs the resident can apply to now: the point of the app, so it comes first. */
-function ProgramsForYouCard({ matched }: { matched: MatchedPrograms }) {
+function ProgramsForYouCard({ matched, onOpen }: { matched: MatchedPrograms; onOpen: (programId: number) => void }) {
     const { t } = useTranslation();
 
     return (
@@ -69,9 +71,9 @@ function ProgramsForYouCard({ matched }: { matched: MatchedPrograms }) {
                 {matched.items.map((program) => (
                     <div key={program.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0 space-y-1">
-                            <Link href={`/programs/${program.id}`} className="font-semibold hover:underline">
+                            <button type="button" onClick={() => onOpen(program.id)} className="text-left font-semibold hover:underline">
                                 {program.title}
-                            </Link>
+                            </button>
                             <p className="text-sm text-muted-foreground">
                                 {[
                                     program.agency,
@@ -89,11 +91,9 @@ function ProgramsForYouCard({ matched }: { matched: MatchedPrograms }) {
                                 </div>
                             )}
                         </div>
-                        <Button asChild className="shrink-0">
-                            <Link href={`/programs/${program.id}`}>
-                                {t('dashboard.programs.view')}
-                                <ArrowRight className="size-4" aria-hidden="true" />
-                            </Link>
+                        <Button className="shrink-0" onClick={() => onOpen(program.id)}>
+                            {t('dashboard.programs.view')}
+                            <ArrowRight className="size-4" aria-hidden="true" />
                         </Button>
                     </div>
                 ))}
@@ -271,8 +271,10 @@ function FeedCard({ feed }: { feed: AppNotification[] }) {
 
 function ApplicationsCard({
     applications,
+    onOpen,
 }: {
     applications: ProgramApplication[];
+    onOpen: (programId: number) => void;
 }) {
     const { t } = useTranslation();
 
@@ -299,13 +301,10 @@ function ApplicationsCard({
                         key={application.id}
                         className="flex items-center justify-between text-sm"
                     >
-                        <Link
-                            href={`/programs/${application.program_id}`}
-                            className="font-medium hover:underline"
-                        >
+                        <button type="button" onClick={() => onOpen(application.program_id)} className="text-left font-medium hover:underline">
                             {application.program?.title ??
                                 `Program #${application.program_id}`}
-                        </Link>
+                        </button>
                         <Badge variant={STATUS_VARIANT[application.status] ?? 'outline'}>
                             {t(`common.${application.status}`) === `common.${application.status}` ? application.status : t(`common.${application.status}`)}
                         </Badge>
@@ -433,10 +432,18 @@ export default function ResidentDashboard({
     deletionRequest: { status: 'pending' | 'approved' | 'rejected'; admin_remarks: string | null } | null;
 }) {
     const { t } = useTranslation();
+    const [openId, setOpenId] = useState<number | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    // A program is read in a pop-up so the dashboard stays where it is.
+    const openProgram = (programId: number) => {
+        setOpenId(programId);
+        setDialogOpen(true);
+    };
 
     return (
         <>
             <Head title="Dashboard" />
+            <ProgramDialog programId={openId} open={dialogOpen} onOpenChange={setDialogOpen} />
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4">
                 <WelcomeBand
                     title={
@@ -490,7 +497,7 @@ export default function ResidentDashboard({
                         {upcomingSchedules.length > 0 && <UpcomingSchedulesCard schedules={upcomingSchedules} />}
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                             <div className="min-w-0 lg:col-span-2">
-                                <ProgramsForYouCard matched={matchedPrograms} />
+                                <ProgramsForYouCard matched={matchedPrograms} onOpen={openProgram} />
                             </div>
                             <div className="min-w-0 lg:col-span-2">
                                 <ServicesCard />
@@ -503,7 +510,7 @@ export default function ResidentDashboard({
                                 <FeedCard feed={feed} />
                             </div>
                             <div className="min-w-0 lg:col-span-2">
-                                <ApplicationsCard applications={recentApplications} />
+                                <ApplicationsCard applications={recentApplications} onOpen={openProgram} />
                             </div>
                         </div>
                     </>

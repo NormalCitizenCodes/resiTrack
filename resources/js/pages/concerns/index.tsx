@@ -3,6 +3,7 @@ import { MessageSquareWarning, PhoneCall } from 'lucide-react';
 import type { FormEventHandler } from 'react';
 import InputError from '@/components/input-error';
 import { CONCERN_TONE, StatusPill } from '@/components/status-pill';
+import { buildSteps, RequestProgress } from '@/components/status-timeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,8 @@ type Concern = {
 
 const CATEGORIES = ['streetlight', 'garbage', 'drainage', 'road', 'safety', 'noise', 'record_correction', 'other'];
 
+const FINISHED = ['resolved', 'closed'];
+
 export default function Concerns({
     hasResidentRecord,
     concerns,
@@ -42,6 +45,14 @@ export default function Concerns({
         description: '',
         location: '',
     });
+
+    const stepsFor = (concern: Concern) =>
+        buildSteps(
+            [t('concerns.status.open'), t('concerns.status.in_progress'), t(concern.status === 'closed' ? 'concerns.status.closed' : 'concerns.status.resolved')],
+            concern.status === 'in_progress' ? 1 : 0,
+            FINISHED.includes(concern.status),
+            [concern.created_at, null, concern.resolved_at].map((value) => (value ? formatDate(value) : null)),
+        );
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -151,6 +162,7 @@ export default function Concerns({
                                         <CardContent className="space-y-2">
                                             <p className="text-sm whitespace-pre-line">{concern.description}</p>
                                             {concern.location && <p className="text-sm text-muted-foreground">{concern.location}</p>}
+                                            <RequestProgress steps={stepsFor(concern)} defaultOpen={!FINISHED.includes(concern.status)} />
                                             {concern.response && (
                                                 <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
                                                     <p className="mb-0.5 text-xs font-semibold text-primary">{t('concerns.response')}</p>

@@ -1,4 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
+import { ProgramDialog } from '@/components/program-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +22,13 @@ export default function MyApplications({
     hasResidentRecord: boolean;
 }) {
     const { t } = useTranslation();
+    const [openId, setOpenId] = useState<number | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    const show = (programId: number) => {
+        setOpenId(programId);
+        setDialogOpen(true);
+    };
 
     return (
         <>
@@ -63,12 +72,9 @@ export default function MyApplications({
                                 {applications.map((application) => (
                                     <TableRow key={application.id}>
                                         <TableCell className="font-medium">
-                                            <Link
-                                                href={`/programs/${application.program_id}`}
-                                                className="hover:underline"
-                                            >
+                                            <button type="button" onClick={() => show(application.program_id)} className="text-left underline-offset-4 hover:underline">
                                                 {application.program?.title ?? `Program #${application.program_id}`}
-                                            </Link>
+                                            </button>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {application.program?.agency?.agency_type ?? '-'}
@@ -87,6 +93,7 @@ export default function MyApplications({
                         </Table>
                     </div>
                 )}
+                <ProgramDialog programId={openId} open={dialogOpen} onOpenChange={setDialogOpen} />
             </div>
         </>
     );

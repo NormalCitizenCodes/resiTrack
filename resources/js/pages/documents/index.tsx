@@ -4,6 +4,8 @@ import type { FormEventHandler } from 'react';
 import { confirmDialog } from '@/components/confirm-dialog';
 import InputError from '@/components/input-error';
 import { DOCUMENT_TONE, StatusPill } from '@/components/status-pill';
+import { buildSteps, RequestProgress } from '@/components/status-timeline';
+import type { TimelineStep } from '@/components/status-timeline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,6 +29,8 @@ type DocumentRequest = {
 
 const TYPES = ['residency', 'indigency', 'clearance'] as const;
 
+const FINISHED = ['released', 'rejected'];
+
 export default function Documents({ hasResidentRecord, requests }: { hasResidentRecord: boolean; requests: DocumentRequest[] }) {
     const { t } = useTranslation();
     const formatDate = useLongDate();
@@ -35,6 +39,24 @@ export default function Documents({ hasResidentRecord, requests }: { hasResident
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
         post('/documents', { preserveScroll: true, onSuccess: () => reset() });
+    };
+
+    const stepsFor = (request: DocumentRequest): TimelineStep[] => {
+        const sent = { label: t('timeline.sent'), date: formatDate(request.created_at), state: 'done' as const };
+
+        if (request.status === 'rejected') {
+            return [sent, { label: t('documents.status.rejected'), state: 'stopped' }];
+        }
+
+        const reached = { pending: 1, ready: 2 }[request.status] ?? 3;
+        const steps = buildSteps(
+            [t('timeline.sent'), t('documents.status.pending'), t('documents.status.ready'), t('documents.status.released')],
+            reached,
+            request.status === 'released',
+            [request.created_at, null, request.ready_at, request.released_at].map((value) => (value ? formatDate(value) : null)),
+        );
+
+        return steps;
     };
 
     const cancel = (request: DocumentRequest) => {
@@ -142,6 +164,7 @@ export default function Documents({ hasResidentRecord, requests }: { hasResident
                                                 <p className="text-sm font-medium text-success-text">{t('documents.readyHint')}</p>
                                             )}
                                             {request.remarks && <p className="rounded-md bg-muted px-3 py-2 text-sm">{request.remarks}</p>}
+                                            <RequestProgress steps={stepsFor(request)} defaultOpen={!FINISHED.includes(request.status)} />
                                             <div className="flex items-center gap-2">
                                                 <p className="min-w-0 flex-1 text-xs text-muted-foreground">
                                                     <span className="font-mono">{request.reference_no}</span> · {t('documents.requestedOn', { date: formatDate(request.created_at) })}
