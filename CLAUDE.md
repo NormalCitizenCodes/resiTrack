@@ -14,6 +14,7 @@ Brand: the name is written `resiTrack`, the tagline is "Track today. Brighter to
 composer run dev          # php artisan serve + queue:listen + vite (http://localhost:8000)
 php artisan migrate:fresh --seed   # reset local DB (never against a shared DB)
 
+php artisan data:seed demo|loadtest      # realistic data in its OWN sqlite file (see README, "Demo and load-test data")
 php artisan test                          # all Pest tests (in-memory SQLite, see phpunit.xml)
 php artisan test --filter=ResidentProfiling   # one test file/class/name
 php artisan test tests/Feature/StaffManagementTest.php

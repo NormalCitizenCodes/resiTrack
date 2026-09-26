@@ -87,6 +87,52 @@ php artisan db:seed --class=SampleResidentSeeder --force
 Remove-Item Env:\DB_DATABASE
 ```
 
+### Demo and load-test data
+
+Two ready-made datasets, each built into its **own** SQLite file (`database/demo.sqlite`, `database/loadtest.sqlite`, both git-ignored), so the working database, the sample snapshot and the live site are never touched. The command refuses to run in production.
+
+```powershell
+php artisan data:seed demo                     # about 30 named people and one story, 3 seconds
+php artisan data:seed loadtest                 # about 1,000 residents, 7 seconds
+php artisan data:seed loadtest --residents=3000
+
+# Run the app against one of them (PHP's own server keeps the override; `php artisan serve` drops it):
+$env:DB_DATABASE = "$PWD\database\demo.sqlite"
+php -S 127.0.0.1:8000 "$PWD\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php"   # run from the public folder
+Remove-Item Env:DB_DATABASE                    # when done
+```
+
+Both are reproducible: one fixed random seed, so a rebuild gives the same people and records.
+
+**Demo set** (`DemoStorySeeder`): hand-made names, nothing random on screen. Use it for screenshots and the defense demo. Staff and agency passwords are the email; residents use `password`.
+
+| Login | Who | What to show |
+| --- | --- | --- |
+| `lola.nena@demo.test` | Lola Nena Ramirez, 68, Barangay 22 | Senior and solo parent, approved for the Social Pension, a payout date in 3 days, a Certificate of Indigency ready for pickup, a streetlight report in progress |
+| `mang.ernesto@demo.test` | Ernesto Cabahug, 71, Barangay 22 | Qualifies for programs and has applied to none, so *Programs for you* is full |
+| `teresita@demo.test`, `jocelyn@demo.test` | A solo parent, a pregnant mother | Pending applications, certificate and report requests for staff to work |
+| `rosa@demo.test` | Signed up online, not yet verified | Shows up under Pending Resident Accounts for a BHW |
+| `secretary@`, `bhw@`, `bhw2@resitrack.test` | Barangay 22 admin and two health workers | Activity Log with fresh activity, a duplicate pair, the request queues |
+| `secretary.b21@`, `bhw.b21@`, `secretary.b23@`, `bhw.b23@`, `secretary.b24@`, `bhw.b24@resitrack.test` | The other three barangays | Barangay separation |
+| `agency@`, `peso@`, `cedo@resitrack.test` | DSWD, PESO and CEDO officers | Applications to review, claim schedules, ID checks |
+| `superadmin@resitrack.test` | Super admin | City-wide dashboard and map |
+
+It also plants two duplicate cases: the same woman registered twice in Barangay 22, and a resident who moved from Barangay 23 to 22 (a transfer).
+
+**Load-test set** (`LoadTestSeeder`): about 1,000 residents in about 280 households across the four barangays (Barangay 22 the largest), with realistic ages and sectors (about 12% seniors, 4% persons with disability, out-of-school youth, solo parents, pregnant mothers), 26 planted duplicate and transfer alerts in mixed states, about 200 resident logins and 15 waiting for verification, 23 programs (some full, expired or inactive) with about 780 applications and 350 beneficiaries, claim dates, 28 announcements with about 1,700 notifications, 200 certificate requests, 150 reports, household assessments, account deletion, reactivation and password recovery requests, and about 7,500 activity-log entries over the last year. Every account ends in `@loadtest.test`:
+
+| Login | Who |
+| --- | --- |
+| `admin.b21@` to `admin.b24@loadtest.test` | Barangay admin of each barangay |
+| `bhw1.b22@` to `bhw4.b22@loadtest.test` (and `.b21`, `.b23`, `.b24`) | Four health workers per barangay |
+| `agency.dswd.city@`, `agency.peso.city@`, `agency.cedo.city@loadtest.test` | City-wide agency accounts |
+| `agency.dswd.b22@`, `agency.dswd.b23@`, `agency.peso.b21@`, `agency.peso.b23@`, `agency.cedo.b22@`, `agency.cedo.b24@loadtest.test` | Agency accounts tied to one barangay |
+| `resident1@` to `resident200@loadtest.test` (password `password`) | Residents with a linked record |
+| `pending1@` to `pending15@loadtest.test` (password `password`) | Signed up online, not yet verified |
+| `superadmin@resitrack.test` | Super admin |
+
+On a laptop every page for every role loaded in under 120 ms with this data, and a barangay admin saw exactly their barangay's numbers. Passwords in these files use a cheap hash (4 rounds) so seeding is fast; never copy the files anywhere real.
+
 ## Useful Commands
 
 ```bash
