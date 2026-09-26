@@ -13,6 +13,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HotlineController;
 use App\Http\Controllers\HouseholdController;
+use App\Http\Controllers\HouseholdMemberController;
 use App\Http\Controllers\HouseholdWellbeingAssessmentController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\MyHouseholdController;
@@ -74,8 +75,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('duplicate-alerts/{alert}/resolve', [DuplicateAlertController::class, 'resolve'])->name('duplicate-alerts.resolve');
         Route::post('duplicate-alerts/{alert}/dismiss', [DuplicateAlertController::class, 'dismiss'])->name('duplicate-alerts.dismiss');
         Route::post('duplicate-alerts/{alert}/escalate', [DuplicateAlertController::class, 'escalate'])->middleware('role:bhw')->name('duplicate-alerts.escalate');
+        Route::get('households/search', [HouseholdController::class, 'search'])->name('households.search');
         Route::resource('households', HouseholdController::class)->only(['create', 'store', 'edit', 'update']);
         Route::put('households/{household}/leader', [HouseholdController::class, 'setLeader'])->name('households.leader.update');
+        Route::get('households/{household}/member-search', [HouseholdMemberController::class, 'search'])->name('households.members.search');
+        Route::post('households/{household}/members', [HouseholdMemberController::class, 'store'])->name('households.members.store');
+        Route::delete('households/{household}/members/{resident}', [HouseholdMemberController::class, 'destroy'])->name('households.members.destroy');
         Route::post('households/{household}/wellbeing-assessments', [HouseholdWellbeingAssessmentController::class, 'store'])
             ->name('households.wellbeing-assessments.store');
     });

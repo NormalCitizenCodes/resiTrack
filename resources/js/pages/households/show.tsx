@@ -1,13 +1,15 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { Pencil, UserPlus, UserRound } from 'lucide-react';
+import { ChevronDown, Pencil, UserMinus, UserPlus, UserRound } from 'lucide-react';
 import type { FormEventHandler } from 'react';
 import { useState } from 'react';
+import { AddExistingMember } from '@/components/add-existing-member';
 import { confirmDialog } from '@/components/confirm-dialog';
 import { SectorBadge, SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -274,6 +276,16 @@ export default function HouseholdShow({
     const current = assessments[0];
     const name = household.household_number ?? `Household #${household.id}`;
     const declared = household.member_count;
+    const [adding, setAdding] = useState(false);
+
+    const removeMember = (member: Resident) => {
+        void confirmDialog({
+            title: `Take ${member.full_name} out of this household?`,
+            description: 'Their record stays. They will show as having no household until someone adds them to one.' + (leader?.id === member.id ? ' They are the household leader, so it will be left with no leader.' : ''),
+            confirmLabel: 'Remove from household',
+            destructive: true,
+        }).then((ok) => ok && router.delete(`/households/${household.id}/members/${member.id}`, { preserveScroll: true }));
+    };
 
     return (
         <>
@@ -298,11 +310,19 @@ export default function HouseholdShow({
                     </div>
                     {canWrite && (
                         <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline">
-                                <Link href={`/residents/create?household_id=${household.id}`}>
-                                    <UserPlus className="size-4" /> Add member
-                                </Link>
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        <UserPlus className="size-4" /> Add member <ChevronDown className="size-4 opacity-60" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/residents/create?household_id=${household.id}`}>Register a new person</Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setAdding(true)}>Add an existing resident</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button asChild variant="outline">
                                 <Link href={`/households/${household.id}/edit`}>
                                     <Pencil className="size-4" /> Edit household
@@ -394,9 +414,16 @@ export default function HouseholdShow({
                                             <SectorBadges sectors={member.sectors} />
                                         </TableCell>
                                         <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
                                             <Button asChild variant="outline" size="sm">
                                                 <Link href={`/residents/${member.id}`}>View</Link>
                                             </Button>
+                                            {canWrite && (
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => removeMember(member)} aria-label={`Remove ${member.full_name} from this household`}>
+                                                    <UserMinus className="size-4" /> Remove
+                                                </Button>
+                                            )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -404,6 +431,14 @@ export default function HouseholdShow({
                         </Table>
                     </CardContent>
                 </Card>
+                {canWrite && (
+                    <AddExistingMember
+                        householdId={household.id}
+                        householdLabel={family_name ? `${family_name} household` : name}
+                        open={adding}
+                        onOpenChange={setAdding}
+                    />
+                )}
             </div>
         </>
     );

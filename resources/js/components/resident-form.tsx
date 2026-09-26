@@ -3,6 +3,9 @@ import type { FormEventHandler} from 'react';
 import { useState } from 'react';
 import { AddressPicker, emptyAddress } from '@/components/address-picker';
 import type { AddressValue } from '@/components/address-picker';
+import { FormProgress } from '@/components/form-progress';
+import type { FormSection } from '@/components/form-progress';
+import { HouseholdPicker } from '@/components/household-picker';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -125,8 +128,6 @@ function toInitial(resident?: Resident, addressDefaults?: AddressDefaults | null
     };
 }
 
-const NONE = '__none__';
-
 export type AddressDefaults = { region: string | null; province: string | null; city: string | null; barangay: string | null };
 
 const toValue = (defaults?: AddressDefaults | null): Partial<AddressValue> =>
@@ -177,8 +178,33 @@ export function ResidentForm({
         }
     };
 
+    // Progress only reports what the server will require; it never blocks saving.
+    const filled = (value: string | boolean) => String(value).trim() !== '' && value !== false;
+    const personal = [data.last_name, data.first_name, data.date_of_birth, data.sex, data.civil_status];
+    const wantsAccount = mode === 'create' && !linkedUserId && data.create_account;
+    const account = wantsAccount ? [data.email, data.password, data.password_confirmation] : [];
+    const pregnancy = data.is_pregnant ? [data.pregnancy_expected_month] : [];
+    const required = [...personal, ...account, ...pregnancy];
+    const progress = { done: required.filter(filled).length, total: required.length };
+
+    const allIn = (values: (string | boolean)[]) => values.every(filled);
+    const sections: FormSection[] = [
+        { id: 'section-personal', label: 'Personal', state: allIn(personal) ? 'done' : 'todo' },
+        ...(mode === 'create' && !linkedUserId
+            ? [{ id: 'section-account', label: 'Portal account', state: !wantsAccount ? 'open' : allIn(account) ? 'done' : 'todo' } as FormSection]
+            : []),
+        { id: 'section-address', label: 'Address', state: filled(data.address_barangay_code) || filled(data.address_city_code) || filled(data.address) ? 'done' : 'open' },
+        {
+            id: 'section-contact',
+            label: 'Contact',
+            state: [data.contact_number, data.email, data.household_id, data.occupation, data.employment_status, data.monthly_income, data.education_level, data.education_status].some(filled) ? 'done' : 'open',
+        },
+        { id: 'section-sectors', label: 'Sectors', state: data.is_pregnant && !allIn(pregnancy) ? 'todo' : data.is_pwd || data.is_solo_parent || data.is_pregnant ? 'done' : 'open' },
+    ];
+
         return (
             <form onSubmit={submit} className="space-y-4">
+            <FormProgress done={progress.done} total={progress.total} sections={sections} />
             {linkedUserId ? (
                 <Card className="border-primary/30 bg-primary/5">
                     <CardContent className="py-4 text-sm">
@@ -186,7 +212,7 @@ export function ResidentForm({
                     </CardContent>
                 </Card>
             ) : null}
-            <Card>
+            <Card id="section-personal" className="scroll-mt-40">
                 <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
                 </CardHeader>
@@ -251,7 +277,7 @@ export function ResidentForm({
             </Card>
 
             {mode === 'create' && !linkedUserId && (
-                <Card>
+                <Card id="section-account" className="scroll-mt-40">
                     <CardHeader><CardTitle>Resident Portal Account</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-sm text-muted-foreground">Ask the resident to enter their own password. The password will be hidden and cannot be viewed by the BHW.</p>
@@ -261,7 +287,7 @@ export function ResidentForm({
                 </Card>
             )}
 
-            <Card>
+            <Card id="section-address" className="scroll-mt-40">
                 <CardHeader>
                     <CardTitle>Home Address</CardTitle>
                 </CardHeader>
@@ -299,7 +325,7 @@ export function ResidentForm({
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card id="section-contact" className="scroll-mt-40">
                 <CardHeader>
                     <CardTitle>Contact &amp; Socio-economic</CardTitle>
                 </CardHeader>
@@ -311,22 +337,7 @@ export function ResidentForm({
                         <Input type="email" value={data.email} onChange={(e) => setData('email', e.target.value)} />
                     </Field>
                     <Field label="Household" error={errors.household_id}>
-                        <Select
-                            value={data.household_id || NONE}
-                            onValueChange={(v) => setData('household_id', v === NONE ? '' : v)}
-                        >
-                            <SelectTrigger className="w-full min-w-0">
-                                <SelectValue placeholder="Unassigned" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={NONE}>Unassigned</SelectItem>
-                                {households.map((h) => (
-                                    <SelectItem key={h.id} value={String(h.id)}>
-                                        {[h.household_number ?? `Household #${h.id}`, h.family_name, h.address].filter(Boolean).join(' - ')}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <HouseholdPicker value={data.household_id} initial={households} onChange={(id) => setData((current) => ({ ...current, household_id: id, is_household_leader: id === '' ? false : current.is_household_leader }))} />
                     </Field>
                     {data.household_id !== '' && (
                         <label className="flex items-start gap-2 text-sm md:col-span-3">
@@ -387,7 +398,7 @@ export function ResidentForm({
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card id="section-sectors" className="scroll-mt-40">
                 <CardHeader>
                     <CardTitle>Vulnerability Sector Flags</CardTitle>
                 </CardHeader>

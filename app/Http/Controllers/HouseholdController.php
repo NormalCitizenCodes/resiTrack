@@ -10,6 +10,7 @@ use App\Models\Resident;
 use App\Models\WellbeingLevel;
 use App\Services\AuditLogger;
 use App\Services\PsgcAddress;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,6 +20,26 @@ use Inertia\Response;
 
 class HouseholdController extends Controller
 {
+    /**
+     * Type-ahead for the household picker on the resident form: the staff member's own
+     * barangay only, a handful of matches at a time so a large barangay stays quick.
+     */
+    public function search(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $term = $request->string('q')->trim()->value();
+
+        $households = Household::query()
+            ->with(['leader:id,last_name', 'residents:id,household_id,last_name'])
+            ->where('barangay_id', $user->barangay_id)
+            ->when($term !== '', fn ($q) => $q->matching($term))
+            ->orderBy('household_number')
+            ->limit(15)
+            ->get();
+
+        return response()->json($households->map(fn (Household $household) => $household->pickerOption())->values());
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -34,14 +55,7 @@ class HouseholdController extends Controller
             ])
             ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
             ->when($user->isSuperAdmin() ? $request->integer('barangay_id') : null, fn ($q, $barangayId) => $q->where('barangay_id', $barangayId))
-            ->when($request->string('search')->trim()->value(), function ($q, $search) {
-                // The barangay says "the Pollich household", so a surname finds it (a member's or the leader's).
-                $q->where(function ($inner) use ($search) {
-                    $inner->where('household_number', 'like', "%{$search}%")
-                        ->orWhere('address', 'like', "%{$search}%")
-                        ->orWhereHas('residents', fn ($r) => $r->where('last_name', 'like', "%{$search}%"));
-                });
-            })
+            ->when($request->string('search')->trim()->value(), fn ($q, $search) => $q->matching($search))
             ->when($request->string('leader')->value() === 'none', fn ($q) => $q->whereNull('leader_resident_id'))
             ->when($request->integer('zone_id'), fn ($q, $zoneId) => $q->where('zone_id', $zoneId))
             ->when($request->string('is_4ps')->value() === 'yes', fn ($q) => $q->where('is_4ps_beneficiary', true))

@@ -26,7 +26,7 @@ export default function AppSidebarLayout({
                     the last thing on every page (e.g. Save Changes) clear of it: the bar's 4rem plus 1rem of room. */}
                 <AppContent
                     variant="sidebar"
-                    className={cn('overflow-x-hidden', isResident && 'pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0')}
+                    className={cn('overflow-x-clip', isResident && 'pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0')}
                 >
                     <AppSidebarHeader breadcrumbs={breadcrumbs} />
                     {children}

@@ -62,6 +62,7 @@ class ResidentController extends Controller
             ->when($request->string('status')->value() === 'active', fn ($q) => $q->where('is_active', true))
             ->when($request->string('status')->value() === 'inactive', fn ($q) => $q->where('is_active', false))
             ->when($request->string('status')->value() === 'flagged', fn ($q) => $q->where('is_duplicate_flagged', true))
+            ->when($request->string('household')->value() === 'none', fn ($q) => $q->whereNull('household_id'))
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->paginate(15)
@@ -70,7 +71,7 @@ class ResidentController extends Controller
         return Inertia::render('residents/index', [
             'residents' => $residents,
             'sectors' => VulnerabilitySector::orderBy('id')->get(['id', 'code', 'sector_name']),
-            'filters' => $request->only(['search', 'sector', 'status', 'barangay_id']),
+            'filters' => $request->only(['search', 'sector', 'status', 'household', 'barangay_id']),
             'barangays' => $user->isSuperAdmin() ? Barangay::orderBy('name')->get(['id', 'name']) : [],
         ]);
     }
@@ -101,7 +102,7 @@ class ResidentController extends Controller
             : null;
 
         return Inertia::render('residents/create', [
-            ...$this->formData($request),
+            ...$this->formData($request, $prefillHouseholdId),
             'linkedAccount' => $this->linkedAccountPayload($request),
             'prefillHouseholdId' => $prefillHouseholdId,
         ]);
@@ -381,7 +382,7 @@ class ResidentController extends Controller
             && Household::query()->whereKey($resident->household_id)->where('leader_resident_id', $resident->id)->exists());
 
         return Inertia::render('residents/edit', [
-            ...$this->formData($request),
+            ...$this->formData($request, $resident->household_id),
             'resident' => $resident,
         ]);
     }
@@ -542,35 +543,42 @@ class ResidentController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function formData(Request $request): array
+    private function formData(Request $request, ?int $householdId = null): array
     {
         $user = $request->user();
 
         return [
             'addressDefaults' => app(PsgcAddress::class)->defaultsFor($user->barangay),
-            'households' => Household::query()
-                ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
-                ->orderBy('household_number')
-                ->with('residents:id,household_id,last_name')
-                ->get(['id', 'household_number', 'address'])
-                ->map(fn (Household $household) => [
-                    'id' => $household->id,
-                    'household_number' => $household->household_number,
-                    'address' => $household->address,
-                    'family_name' => $household->residents
-                        ->pluck('last_name')
-                        ->countBy()
-                        ->sortDesc()
-                        ->keys()
-                        ->first(),
-                ])
-                ->values(),
+            'households' => $this->chosenHousehold($request, $householdId),
             'barangays' => $user->isSuperAdmin()
                 ? Barangay::orderBy('name')->get(['id', 'name'])
                 : [],
         ];
     }
 
+
+    /**
+     * The household already chosen on the form (a saved one, or "Add member" from its page), so the
+     * picker can name it. The rest are found by typing, through `households/search`.
+     *
+     * @return list<array{id: int, household_number: string|null, address: string|null, family_name: string|null}>
+     */
+    private function chosenHousehold(Request $request, ?int $householdId): array
+    {
+        if ($householdId === null) {
+            return [];
+        }
+
+        $user = $request->user();
+
+        $household = Household::query()
+            ->with(['leader:id,last_name', 'residents:id,household_id,last_name'])
+            ->whereKey($householdId)
+            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
+            ->first();
+
+        return $household ? [$household->pickerOption()] : [];
+    }
     /**
      * Barangay staff may only touch residents within their own barangay.
      */

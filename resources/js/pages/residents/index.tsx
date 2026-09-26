@@ -22,7 +22,7 @@ import type { Paginated, Resident, VulnerabilitySector } from '@/types';
 type Props = {
     residents: Paginated<Resident>;
     sectors: VulnerabilitySector[];
-    filters: { search?: string; sector?: string; status?: string; barangay_id?: string };
+    filters: { search?: string; sector?: string; status?: string; household?: string; barangay_id?: string };
     barangays: { id: number; name: string }[];
 };
 
@@ -57,7 +57,7 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
         return () => clearTimeout(handler);
     }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const applyFilter = (key: 'sector' | 'status' | 'barangay_id', value: string) => {
+    const applyFilter = (key: 'sector' | 'status' | 'household' | 'barangay_id', value: string) => {
         router.get('/residents', cleanQuery({ ...filters, [key]: value === ALL ? '' : value }), {
             preserveState: true,
             preserveScroll: true,
@@ -135,6 +135,15 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="inactive">Inactive</SelectItem>
                             <SelectItem value="flagged">Duplicate-flagged</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={filters.household || ALL} onValueChange={(v) => applyFilter('household', v)}>
+                        <SelectTrigger className="w-[190px]">
+                            <SelectValue placeholder="Any household" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value={ALL}>Any household</SelectItem>
+                            <SelectItem value="none">No household yet</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

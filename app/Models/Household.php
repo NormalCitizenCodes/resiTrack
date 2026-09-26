@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\HouseholdFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -78,6 +79,37 @@ class Household extends Model
             && $resident->is_active
             && $resident->age !== null
             && $resident->age >= self::LEADER_MIN_AGE;
+    }
+
+    /**
+     * Households a search term points at. The barangay says "the Pollich household", so a
+     * surname finds it (a member's or the leader's), as do the number and the address.
+     *
+     * @param  Builder<Household>  $query
+     * @return Builder<Household>
+     */
+    public function scopeMatching(Builder $query, string $term): Builder
+    {
+        return $query->where(function (Builder $inner) use ($term) {
+            $inner->where('household_number', 'like', "%{$term}%")
+                ->orWhere('address', 'like', "%{$term}%")
+                ->orWhereHas('residents', fn (Builder $residents) => $residents->where('last_name', 'like', "%{$term}%"));
+        });
+    }
+
+    /**
+     * What a household picker shows for a choice. Needs `leader` and `residents` loaded.
+     *
+     * @return array{id: int, household_number: string|null, address: string|null, family_name: string|null}
+     */
+    public function pickerOption(): array
+    {
+        return [
+            'id' => $this->id,
+            'household_number' => $this->household_number,
+            'address' => $this->address,
+            'family_name' => $this->familyName(),
+        ];
     }
 
     /**
