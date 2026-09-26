@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\VulnerabilitySector;
 use Database\Seeders\AuditLogSeeder;
 use Database\Seeders\CommunityFeaturesSeeder;
 use Database\Seeders\DemoStorySeeder;
@@ -11,22 +12,31 @@ use Database\Seeders\ReferenceDataSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
- * Builds a throwaway database full of realistic data, in its OWN SQLite file,
- * so it can never touch the working database or the live site.
+ * Realistic data for development, never for production.
  *
- *   php artisan data:seed demo        a small, hand-made set for screenshots and the defense demo
- *   php artisan data:seed loadtest    about 1,000 residents, to see how the system copes at scale
+ *   php artisan data:seed loadtest --here   about 1,000 residents ADDED to the database you are
+ *                                           running now (backed up first; existing rows stay)
+ *   php artisan data:seed loadtest          the same, built into its own throwaway SQLite file
+ *   php artisan data:seed demo              a small hand-made set, also in its own file
  *
- * Then run the app against it: see "Demo and load-test data" in the README. Use PHP's
- * own server, because `php artisan serve` drops the DB_DATABASE override.
+ * A separate file can never touch the working database or the live site. To run the app
+ * against one, see "Demo and load-test data" in the README: use PHP's own server, because
+ * `php artisan serve` drops the DB_DATABASE override.
  */
 class SeedDataset extends Command
 {
-    protected $signature = 'data:seed {kind : demo or loadtest} {--residents=1000 : about how many residents the loadtest set gets}';
+    protected $signature = 'data:seed {kind : demo or loadtest} {--residents=1000 : about how many residents the loadtest set gets} {--here : add the load-test data to the CURRENT database instead of a new file (backs it up first)}';
 
-    protected $description = 'Create a demo or load-test database in its own SQLite file (never the working or live database)';
+    protected $description = 'Add realistic demo or load-test data, to the current local database (--here) or to its own SQLite file';
+
+    private const TABLES = [
+        'users', 'residents', 'households', 'resident_sectors', 'duplicate_alerts', 'programs', 'program_applications', 'beneficiaries',
+        'program_schedules', 'announcements', 'app_notifications', 'document_requests', 'concerns', 'household_wellbeing_assessments',
+        'account_deletion_requests', 'account_reactivation_requests', 'password_recovery_requests', 'audit_logs',
+    ];
 
     public function handle(): int
     {
@@ -42,6 +52,10 @@ class SeedDataset extends Command
             $this->components->error('Choose "demo" or "loadtest".');
 
             return self::FAILURE;
+        }
+
+        if ($this->option('here')) {
+            return $this->loadHere($kind);
         }
 
         $path = database_path("{$kind}.sqlite");
@@ -70,16 +84,14 @@ class SeedDataset extends Command
 
         foreach ($seeders as $seeder) {
             $this->components->task(class_basename($seeder), fn () => $this->call('db:seed', ['--class' => $seeder, '--force' => true, '--no-interaction' => true]) === 0);
+
+            // The barangays exist only now, so this is the moment they can be linked to their PSGC codes.
+            if ($seeder === ReferenceDataSeeder::class) {
+                $this->call('psgc:import', ['--if-empty' => true]);
+            }
         }
 
-        $this->newLine();
-        $this->table(['Table', 'Rows'], collect([
-            'users', 'residents', 'households', 'resident_sectors', 'duplicate_alerts', 'programs', 'program_applications', 'beneficiaries',
-            'program_schedules', 'announcements', 'app_notifications', 'document_requests', 'concerns', 'household_wellbeing_assessments',
-            'account_deletion_requests', 'account_reactivation_requests', 'password_recovery_requests', 'audit_logs',
-        ])->map(fn (string $table) => [$table, number_format(DB::table($table)->count())])->all());
-
-        $this->newLine();
+        $this->report();
         $this->components->info(sprintf('Done in %.1f seconds. Run the app against it:', microtime(true) - $started));
         $this->line("  \$env:DB_DATABASE = \"\$PWD\\database\\{$kind}.sqlite\"");
         $this->line('  cd public; php -S 127.0.0.1:8000 ..\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php');
@@ -87,5 +99,67 @@ class SeedDataset extends Command
         $this->line('  Staff and agency logins: email as password. Residents: "password".');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Adds the load-test data to the database the app is using right now. Nothing is
+     * removed: the file is copied first, and the seeder only adds rows (and refuses to
+     * run twice).
+     */
+    private function loadHere(string $kind): int
+    {
+        if ($kind !== 'loadtest') {
+            $this->components->error('Only the load-test data can be added to the current database. The demo set builds its own file.');
+
+            return self::FAILURE;
+        }
+
+        $connection = (string) config('database.default');
+        $path = (string) config("database.connections.{$connection}.database");
+
+        if (config("database.connections.{$connection}.driver") !== 'sqlite' || ! is_file($path)) {
+            $this->components->error('This only works on a local SQLite database file.');
+
+            return self::FAILURE;
+        }
+
+        if (! VulnerabilitySector::query()->exists()) {
+            $this->components->error('This database has no reference data yet. Run `php artisan migrate --seed` first.');
+
+            return self::FAILURE;
+        }
+
+        $backup = database_path('backup-'.now()->format('Ymd-His').'.sqlite');
+        copy($path, $backup);
+        $this->components->info("Backed up {$path} to {$backup}");
+
+        config(['hashing.bcrypt.rounds' => 4, 'dataset.residents' => max(50, (int) $this->option('residents'))]);
+
+        $started = microtime(true);
+        $this->call('migrate', ['--force' => true]);
+        $this->call('psgc:import', ['--if-empty' => true]);
+
+        try {
+            $this->components->task('LoadTestSeeder', fn () => $this->call('db:seed', ['--class' => LoadTestSeeder::class, '--force' => true, '--no-interaction' => true]) === 0);
+        } catch (Throwable $e) {
+            $this->components->error($e->getMessage());
+            $this->line("  Nothing was added. The backup is at {$backup}.");
+
+            return self::FAILURE;
+        }
+
+        $this->report();
+        $this->components->info(sprintf('Done in %.1f seconds. Refresh the app: the numbers are already there.', microtime(true) - $started));
+        $this->line('  Staff and agency logins end in @loadtest.test (email as password). Residents: resident1 to resident200, password "password".');
+        $this->line("  To undo: stop the app and copy {$backup} back over {$path}.");
+
+        return self::SUCCESS;
+    }
+
+    private function report(): void
+    {
+        $this->newLine();
+        $this->table(['Table', 'Rows'], collect(self::TABLES)->map(fn (string $table) => [$table, number_format(DB::table($table)->count())])->all());
+        $this->newLine();
     }
 }

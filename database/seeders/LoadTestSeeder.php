@@ -21,6 +21,7 @@ use App\Models\VulnerabilitySector;
 use App\Models\WellbeingLevel;
 use App\Services\DuplicateDetectionService;
 use App\Services\NotificationService;
+use App\Services\PsgcAddress;
 use App\Services\SectorClassificationService;
 use Carbon\CarbonInterface;
 use Faker\Factory;
@@ -31,6 +32,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 /**
  * About a thousand residents, and everything that hangs off them, to see how
@@ -74,12 +76,14 @@ class LoadTestSeeder extends Seeder
         ['DSWD', 'Burial Assistance', 'Financial help for the burial of a family member.', []],
         ['DSWD', 'Senior Wellness Day', 'Check-ups, vitamins and a hot meal for senior citizens.', ['SENIOR']],
         ['DSWD', 'Cash-for-Work Clean-up', 'Short paid work for out-of-school youth.', ['OSY']],
+        ['DSWD', 'Emergency Shelter Assistance', 'Help with repairs or a temporary shelter after a fire or flood.', []],
         ['PESO', 'Job Fair 2026', 'Employers hiring on the spot. Bring your resume.', ['OSY']],
         ['PESO', 'Welding and Electrical Skills Training', 'Free NCII-aligned short course with a certificate.', ['OSY']],
         ['PESO', 'Government Internship Program', 'Paid internship in a city office.', ['OSY']],
         ['PESO', 'Livelihood Program for Persons with Disability', 'Livelihood kits and training.', ['PWD']],
         ['PESO', 'Job Referral for Solo Parents', 'Priority referral to partner employers.', ['SOLO_PARENT']],
         ['PESO', 'Special Program for Employment of Students', 'Summer work for students.', ['OSY']],
+        ['PESO', 'Skills Certification for Solo Parents', 'Free certification courses with a training allowance.', ['SOLO_PARENT']],
         ['CEDO', 'Micro-enterprise Loan', 'Low-interest loans for small businesses.', []],
         ['CEDO', 'Sari-sari Store Support', 'Starter stock and a business permit walk-through.', []],
         ['CEDO', 'Market Stall Assistance', 'Discounted stalls for small vendors.', []],
@@ -105,6 +109,18 @@ class LoadTestSeeder extends Seeder
     /** @var array<int, array<int, Model>> */
     private array $zones = [];
 
+    /** @var array<int, array{region: ?string, province: ?string, city: ?string, barangay: ?string}|null> */
+    private array $codes = [];
+
+    private PsgcAddress $psgc;
+
+    /** Highest ids that existed before this run, so a run on a database that already has data only touches its own rows. */
+    private int $householdFloor = 0;
+
+    private int $alertFloor = 0;
+
+    private int $notificationFloor = 0;
+
     private int $philsys = 100000;
 
     /** @var array<int, array<string, mixed>> */
@@ -118,6 +134,15 @@ class LoadTestSeeder extends Seeder
     public function run(): void
     {
         abort_if(app()->isProduction(), 500, 'The load-test data is for development machines only.');
+
+        if (User::where('email', 'admin.b22@loadtest.test')->exists()) {
+            throw new RuntimeException('The load-test data is already in this database.');
+        }
+
+        $this->psgc = app(PsgcAddress::class);
+        $this->householdFloor = (int) Household::max('id');
+        $this->alertFloor = (int) DuplicateAlert::max('id');
+        $this->notificationFloor = (int) DB::table('app_notifications')->max('id');
 
         mt_srand(self::SEED);
         $this->f = Factory::create('en_PH');
@@ -223,6 +248,7 @@ class LoadTestSeeder extends Seeder
     {
         foreach ($this->barangays as $barangay) {
             $number = $this->barangayNumber($barangay);
+            $this->codes[$barangay->id] = $this->psgc->defaultsFor($barangay);
 
             foreach (range(1, 6) as $purok) {
                 $this->zones[$barangay->id][] = $barangay->zones()->firstOrCreate(['zone_name' => "Purok {$purok}"]);
@@ -275,17 +301,20 @@ class LoadTestSeeder extends Seeder
         while (count($residents) < $target) {
             $barangay = $this->barangays[$this->weighted($weights)];
             $bhw = $this->pick($this->bhws[$barangay->id]);
-            $registered = $this->daysAgo(360);
+            $registered = $this->daysAgo(180);
             $lastName = $this->f->lastName();
 
-            $members = $this->members((int) $this->weighted([1 => 10, 2 => 18, 3 => 22, 4 => 22, 5 => 15, 6 => 8, 7 => 5]), (string) $this->weighted(['couple_kids' => 40, 'single_parent' => 15, 'senior_only' => 14, 'senior_family' => 12, 'single' => 10, 'extended' => 9]));
+            $members = $this->members((int) $this->weighted([1 => 10, 2 => 18, 3 => 22, 4 => 22, 5 => 15, 6 => 8, 7 => 5]), (string) $this->weighted(['couple_kids' => 30, 'single_parent' => 24, 'senior_only' => 14, 'senior_family' => 11, 'single' => 9, 'extended' => 12]));
 
             $zone = $this->pick($this->zones[$barangay->id]);
+            $street = mt_rand(1, 300).' '.$this->pick(self::STREETS).', '.$zone->getAttribute('zone_name');
+            $codes = $this->codes[$barangay->id] ?? null;
             $household = Household::create([
                 'barangay_id' => $barangay->id,
                 'zone_id' => $zone->getKey(),
                 'household_number' => 'HH-'.mt_rand(1000, 9999),
-                'address' => mt_rand(1, 300).' '.$this->pick(self::STREETS).', '.$zone->getAttribute('zone_name').', '.$barangay->name,
+                'address' => $codes ? $this->psgc->compose($codes, $street, '9000') : $street.', '.$barangay->name,
+                ...($codes ? ['address_region_code' => $codes['region'], 'address_province_code' => $codes['province'], 'address_city_code' => $codes['city'], 'address_barangay_code' => $codes['barangay'], 'address_street' => $street, 'address_zip' => '9000'] : []),
                 'house_materials' => $this->pick(['concrete', 'semi-concrete', 'light materials']),
                 'house_ownership' => $this->weighted(['owned' => 60, 'rented' => 25, 'shared' => 15]),
                 'water_source' => $this->weighted(['pipe' => 70, 'well' => 20, 'others' => 10]),
@@ -339,7 +368,7 @@ class LoadTestSeeder extends Seeder
                 break;
             case 'single_parent':
                 $head = $this->chance(75) ? $woman($headAge, $this->pick(['separated', 'widowed', 'single'])) : $man($headAge, $this->pick(['separated', 'widowed']));
-                $head['solo'] = $this->chance(55);
+                $head['solo'] = $size >= 2 && $this->chance(95);
                 $members[] = $head;
                 break;
             default: // couple_kids, extended
@@ -388,6 +417,9 @@ class LoadTestSeeder extends Seeder
         $female = $m['sex'] === 'female';
         $firstName = $female ? $this->f->firstNameFemale() : $this->f->firstNameMale();
         $pregnant = $female && $age >= 18 && $age <= 40 && $this->chance(5);
+        $born = (string) $this->weighted(['Cagayan de Oro City' => 70, 'Iligan City' => 8, 'Bukidnon' => 8, 'Camiguin' => 4, 'Davao City' => 5, 'Cebu City' => 5]);
+        $codes = $this->codes[$barangay->id] ?? null;
+        $local = $born === 'Cagayan de Oro City' && $codes !== null;
 
         $resident = Resident::create([
             'household_id' => $household->id,
@@ -398,7 +430,8 @@ class LoadTestSeeder extends Seeder
             'middle_name' => $this->chance(85) ? $this->f->lastName() : null,
             'suffix' => ! $female && $this->chance(4) ? $this->pick(['Jr.', 'Sr.', 'III']) : null,
             'date_of_birth' => now()->subYears($age)->subDays(mt_rand(0, 360))->toDateString(),
-            'place_of_birth' => $this->weighted(['Cagayan de Oro City' => 70, 'Iligan City' => 8, 'Bukidnon' => 8, 'Camiguin' => 4, 'Davao City' => 5, 'Cebu City' => 5]),
+            'place_of_birth' => $local ? $this->psgc->compose(['region' => $codes['region'], 'province' => $codes['province'], 'city' => $codes['city']]) : $born,
+            ...($local ? ['birth_region_code' => $codes['region'], 'birth_province_code' => $codes['province'], 'birth_city_code' => $codes['city']] : []),
             'sex' => $m['sex'],
             'civil_status' => $age < 18 ? 'single' : $m['civil'],
             'religion' => $this->weighted(['Roman Catholic' => 75, 'Islam' => 8, 'Iglesia ni Cristo' => 7, 'Protestant' => 10]),
@@ -406,6 +439,7 @@ class LoadTestSeeder extends Seeder
             'contact_number' => $age >= 15 ? '09'.mt_rand(100000000, 999999999) : null,
             'email' => $age >= 18 && $this->chance(25) ? strtolower(preg_replace('/[^a-z]/i', '', $firstName.$lastName)).mt_rand(1, 999).'@example.com' : null,
             'address' => $household->address,
+            ...($codes ? ['address_region_code' => $codes['region'], 'address_province_code' => $codes['province'], 'address_city_code' => $codes['city'], 'address_barangay_code' => $codes['barangay'], 'address_street' => $household->getAttribute('address_street'), 'address_zip' => $household->getAttribute('address_zip')] : []),
             'occupation' => $employment === 'unemployed' ? null : $this->pick(self::JOBS),
             'employment_status' => $employment,
             'education_level' => $education,
@@ -476,7 +510,7 @@ class LoadTestSeeder extends Seeder
         }
 
         // Give the alerts the mix a real barangay would have: mostly waiting, some handled.
-        foreach (DuplicateAlert::query()->orderBy('id')->get() as $i => $alert) {
+        foreach (DuplicateAlert::query()->where('id', '>', $this->alertFloor)->orderBy('id')->get() as $i => $alert) {
             $barangayId = (int) (Resident::whereKey($alert->resident_id_1)->value('barangay_id') ?? array_key_first($this->barangays));
             $admin = $this->admins[$barangayId] ?? $this->pick($this->admins);
             $when = $this->daysAgo(90);
@@ -503,7 +537,7 @@ class LoadTestSeeder extends Seeder
     private function residentAccounts(): array
     {
         $accounts = [];
-        $pool = Resident::query()->where('is_active', true)->whereNull('transferred_to_barangay')->get()->filter(fn (Resident $r) => $r->age >= 16)->shuffle()->take(200);
+        $pool = Resident::query()->where('is_active', true)->whereNull('transferred_to_barangay')->whereDoesntHave('portalAccount')->get()->filter(fn (Resident $r) => $r->age >= 16)->shuffle()->take(200);
         $password = Hash::make('password');
 
         foreach ($pool->values() as $i => $resident) {
@@ -578,8 +612,10 @@ class LoadTestSeeder extends Seeder
                 'status' => $status,
             ]);
             $program->sectors()->sync(collect($codes)->map(fn ($code) => $sectorIds[$code])->all());
-            $program->forceFill(['created_at' => $start, 'updated_at' => $start])->save();
-            $this->audit[] = $this->entry($poster->id, 'create', 'programs', $program->id, null, ['title' => $title], $start);
+            // A program is created before it opens, so a start date still ahead does not date its creation.
+            $created = $start->greaterThan(now()) ? now()->subDays(mt_rand(1, 10)) : $start;
+            $program->forceFill(['created_at' => $created, 'updated_at' => $created])->save();
+            $this->audit[] = $this->entry($poster->id, 'create', 'programs', $program->id, null, ['title' => $title], $created);
             $programs[] = $program;
         }
 
@@ -736,8 +772,8 @@ class LoadTestSeeder extends Seeder
         }
 
         // Spread the notifications over the last four months, and read most of them.
-        DB::statement("UPDATE app_notifications SET created_at = datetime('now', '-' || (abs(random()) % 120) || ' days', '-' || (abs(random()) % 1400) || ' minutes'), updated_at = created_at");
-        DB::statement('UPDATE app_notifications SET is_read = 1, read_at = created_at WHERE abs(random()) % 100 < 65');
+        DB::statement("UPDATE app_notifications SET created_at = datetime('now', '-' || (abs(random()) % 120) || ' days', '-' || (abs(random()) % 1400) || ' minutes'), updated_at = created_at WHERE id > {$this->notificationFloor}");
+        DB::statement('UPDATE app_notifications SET is_read = 1, read_at = created_at WHERE id > '.$this->notificationFloor.' AND abs(random()) % 100 < 65');
     }
 
     // --- Household wellbeing ------------------------------------------------
@@ -746,9 +782,9 @@ class LoadTestSeeder extends Seeder
     {
         $levels = WellbeingLevel::orderBy('id')->pluck('id')->all();
 
-        foreach (Household::all()->shuffle()->take(110) as $household) {
+        foreach (Household::where('id', '>', $this->householdFloor)->get()->shuffle()->take(110) as $household) {
             $bhw = $this->pick($this->bhws[$household->barangay_id]);
-            $dates = $this->chance(35) ? [$this->daysAgo(320, 0.8), $this->daysAgo(120)] : [$this->daysAgo(200)];
+            $dates = $this->chance(35) ? [$this->daysAgo(170, 0.8), $this->daysAgo(90)] : [$this->daysAgo(120)];
             usort($dates, fn (CarbonInterface $a, CarbonInterface $b) => $a <=> $b);
 
             foreach ($dates as $when) {

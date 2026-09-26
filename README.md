@@ -89,11 +89,21 @@ Remove-Item Env:\DB_DATABASE
 
 ### Demo and load-test data
 
-Two ready-made datasets, each built into its **own** SQLite file (`database/demo.sqlite`, `database/loadtest.sqlite`, both git-ignored), so the working database, the sample snapshot and the live site are never touched. The command refuses to run in production.
+Realistic data for development, so the landing page, dashboards, map and every list show a full system instead of a handful of rows. The command refuses to run in production.
+
+**Add the load-test data to the database you are running now** (the usual way): it copies your database file to `database/backup-<time>.sqlite` first, only adds rows, leaves everything already there untouched, and refuses to run twice. Stop the app before, start it after.
+
+```powershell
+php artisan data:seed loadtest --here                  # about 1,000 residents added, 7 seconds
+```
+
+To undo it, stop the app and copy the backup file back over `database/database.sqlite`.
+
+The same data can also be built into its **own** SQLite file (`database/demo.sqlite`, `database/loadtest.sqlite`, both git-ignored) that never touches the working database, the sample snapshot or the live site:
 
 ```powershell
 php artisan data:seed demo                     # about 30 named people and one story, 3 seconds
-php artisan data:seed loadtest                 # about 1,000 residents, 7 seconds
+php artisan data:seed loadtest                 # about 1,000 residents in database/loadtest.sqlite, 7 seconds
 php artisan data:seed loadtest --residents=3000
 
 # Run the app against one of them (PHP's own server keeps the override; `php artisan serve` drops it):
@@ -102,7 +112,7 @@ php -S 127.0.0.1:8000 "$PWD\vendor\laravel\framework\src\Illuminate\Foundation\r
 Remove-Item Env:DB_DATABASE                    # when done
 ```
 
-Both are reproducible: one fixed random seed, so a rebuild gives the same people and records.
+Both are reproducible: one fixed random seed, so a rebuild gives the same people and records. Every date is in the past, over the last six months.
 
 **Demo set** (`DemoStorySeeder`): hand-made names, nothing random on screen. Use it for screenshots and the defense demo. Staff and agency passwords are the email; residents use `password`.
 
@@ -119,7 +129,7 @@ Both are reproducible: one fixed random seed, so a rebuild gives the same people
 
 It also plants two duplicate cases: the same woman registered twice in Barangay 22, and a resident who moved from Barangay 23 to 22 (a transfer).
 
-**Load-test set** (`LoadTestSeeder`): about 1,000 residents in about 280 households across the four barangays (Barangay 22 the largest), with realistic ages and sectors (about 12% seniors, 4% persons with disability, out-of-school youth, solo parents, pregnant mothers), 26 planted duplicate and transfer alerts in mixed states, about 200 resident logins and 15 waiting for verification, 23 programs (some full, expired or inactive) with about 780 applications and 350 beneficiaries, claim dates, 28 announcements with about 1,700 notifications, 200 certificate requests, 150 reports, household assessments, account deletion, reactivation and password recovery requests, and about 7,500 activity-log entries over the last year. Every account ends in `@loadtest.test`:
+**Load-test set** (`LoadTestSeeder`): about 1,000 residents in about 280 households across the four barangays (Barangay 22 the largest), with realistic ages and sectors (the real sector rules classify everyone: about 12% seniors, 3% persons with disability, 5% solo parents, 5% out-of-school youth, some pregnant mothers), real PSGC addresses (region, province, city, barangay, street and zip) and birthplaces, 26 planted duplicate and transfer alerts in mixed states, about 200 resident logins and 15 waiting for verification, 25 programs (some full, expired or inactive) with about 800 applications and 350 beneficiaries, claim dates, 28 announcements with about 1,700 notifications, 200 certificate requests, 150 reports, household assessments, account deletion, reactivation and password recovery requests, and about 7,500 activity-log entries over the last six months. Every account ends in `@loadtest.test`:
 
 | Login | Who |
 | --- | --- |
@@ -131,7 +141,7 @@ It also plants two duplicate cases: the same woman registered twice in Barangay 
 | `pending1@` to `pending15@loadtest.test` (password `password`) | Signed up online, not yet verified |
 | `superadmin@resitrack.test` | Super admin |
 
-On a laptop every page for every role loaded in under 120 ms with this data, and a barangay admin saw exactly their barangay's numbers. Passwords in these files use a cheap hash (4 rounds) so seeding is fast; never copy the files anywhere real.
+On a laptop every page for every role loaded in under 250 ms with this data, and a barangay admin saw exactly their barangay's numbers. Passwords in these files use a cheap hash (4 rounds) so seeding is fast; never copy the files anywhere real.
 
 ## Useful Commands
 
