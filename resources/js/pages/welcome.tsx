@@ -278,12 +278,7 @@ export default function Welcome({ stats }: { stats: Stats }) {
                 <main className="mx-auto w-full max-w-6xl px-4 sm:px-6">
                     <section className="grid items-center gap-12 py-10 lg:grid-cols-[1.05fr_1fr] lg:gap-8 lg:py-20">
                         <div>
-                            <span
-                                className="intro-gate animate-in fade-in-0 slide-in-from-bottom-4 inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground duration-700 motion-reduce:animate-none"
-                            >
-                                Barangay 22 · Cagayan de Oro City
-                            </span>
-                            <h1 className="mt-6 text-4xl font-bold uppercase leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+                            <h1 className="text-4xl font-bold uppercase leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
                                 {['Track', 'today.'].map((word, i) => (
                                     <span key={word} className="intro-gate intro-word" style={{ '--intro-delay': `${150 + i * 90}ms` } as React.CSSProperties}>
                                         {word}
@@ -343,10 +338,10 @@ export default function Welcome({ stats }: { stats: Stats }) {
                         </div>
                     </section>
 
-                    <section aria-label="resiTrack in Barangay 22" className="pb-6">
+                    <section aria-label="resiTrack in numbers" className="pb-6">
                         <ScrollReveal>
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                                Live in Barangay 22
+                                resiTrack in numbers
                             </p>
                             <dl className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
                                 {numbers.map((item) => (
