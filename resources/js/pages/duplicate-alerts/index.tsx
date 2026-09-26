@@ -98,6 +98,8 @@ function ResidentCard({
     onKeep: () => void;
     canAct: boolean;
 }) {
+    const viewer = usePage().props.auth.user;
+
     if (!resident) {
         return <div className="flex-1 rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Record unavailable</div>;
     }
@@ -107,15 +109,27 @@ function ResidentCard({
     const barangay = resident.barangay?.name ?? '-';
     const nameDiffers = !!other && other.full_name !== resident.full_name;
 
+    // A record from another barangay cannot be opened (the server answers 403), so it is not offered as a link.
+    const canOpen = viewer?.role === 'super_admin' || (viewer?.barangay_id != null && viewer.barangay_id === resident.barangay_id);
+
     return (
         <div className="flex-1 rounded-lg border p-3">
             <div className="flex items-center justify-between">
-                <Link
-                    href={`/residents/${resident.id}`}
-                    className={cn('font-medium hover:underline', nameDiffers && 'rounded bg-warning/25 px-1')}
-                >
-                    {resident.full_name}
-                </Link>
+                {canOpen ? (
+                    <Link
+                        href={`/residents/${resident.id}`}
+                        className={cn('font-medium hover:underline', nameDiffers && 'rounded bg-warning/25 px-1')}
+                    >
+                        {resident.full_name}
+                    </Link>
+                ) : (
+                    <span
+                        className={cn('font-medium', nameDiffers && 'rounded bg-warning/25 px-1')}
+                        title={`This record belongs to ${barangay}. Only their barangay can open it.`}
+                    >
+                        {resident.full_name}
+                    </span>
+                )}
                 {!resident.is_active && <Badge variant="outline">Inactive</Badge>}
             </div>
             <dl className="mt-2 space-y-1 text-xs text-muted-foreground">

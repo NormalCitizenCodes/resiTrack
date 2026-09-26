@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -76,14 +77,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // Laravel's own default error pages are plain and unbranded. Render
         // resiTrack's own error page for the status codes a visitor could
         // actually hit, leave everything else (like validation's 422) alone.
+        // In debug mode 500 and 503 keep Laravel's detailed page (that is what
+        // a developer needs); 401, 403 and 404 are safe and look the same everywhere.
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
-            if (! app()->hasDebugModeEnabled()
-                && ! $request->expectsJson()
-                && in_array($response->getStatusCode(), [404, 403, 500, 503], true)
-            ) {
-                return Inertia::render('error', ['status' => $response->getStatusCode()])
+            $status = $response->getStatusCode();
+            $branded = $status === 500 || $status === 503 ? ! app()->hasDebugModeEnabled() : in_array($status, [401, 403, 404], true);
+
+            if ($branded && ! $request->expectsJson()) {
+                // Only a 403 carries our own words ("This resident belongs to another barangay."),
+                // never another status: a 404's message can name internal models.
+                $detail = $status === 403 && $e instanceof HttpExceptionInterface ? trim($e->getMessage()) : null;
+
+                return Inertia::render('error', ['status' => $status, 'detail' => $detail ?: null])
                     ->toResponse($request)
-                    ->setStatusCode($response->getStatusCode());
+                    ->setStatusCode($status);
             }
 
             return $response;

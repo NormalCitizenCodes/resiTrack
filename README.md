@@ -302,6 +302,12 @@ The super admin represents the city or municipality, so the role is deliberately
 - These tags are in `resources/views/app.blade.php`, not in React, because production does not server-render pages and link crawlers only see the Blade template.
 - `/robots.txt` and `/sitemap.xml` are generated (`SeoController`) so their URLs follow `APP_URL`.
 
+### Error Pages
+- One branded screen (`components/error-screen.tsx`, page `pages/error.tsx`) for 401, 403, 404, 500 and 503, and a **No internet connection** screen (`components/network-guard.tsx`) that covers the app while the browser is offline and goes away by itself when the connection returns. Each has a big code, a plain message, two buttons, a flat illustration (`components/error-art.tsx`, drawn in the brand colors) and a help box. The offline screen stores nothing: resiTrack does not work offline.
+- `bootstrap/app.php` renders them for every visit. In debug mode 500 and 503 keep Laravel's detailed developer page; 401, 403 and 404 look the same everywhere. A 403 also shows the reason we gave ("This resident belongs to another barangay."); a 404 never shows Laravel's own message, which can name internal models. JSON requests stay JSON.
+- Because an Inertia request now gets this page back instead of raw HTML, a forbidden click no longer opens the plain grey error box over the app.
+- To use finished artwork instead of the drawn illustrations, point a kind at an `<img>` in `components/error-screen.tsx`.
+
 ### Sign In and Sign Up
 - Centered card with a Log in / Sign up switch (the highlight slides between the two), field icons, and Terms and Privacy links. The two columns have fixed proportions and every page reserves the scrollbar's width, so the divider does not jump when switching to the taller sign-up form.
 - The sign-up page shows a **live password checklist** built from the server's own password rules (`Password::defaults()`), so it always matches what the server enforces: 8 characters locally, and 12 with mixed case, a number, and a symbol in production.
