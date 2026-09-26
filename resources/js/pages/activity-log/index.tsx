@@ -38,16 +38,6 @@ const ROLE_LABEL: Record<string, string> = {
     resident: 'Resident',
 };
 
-/** Faint tint per category, so a long day scans by kind of work. */
-const CATEGORY_DOT: Record<string, string> = {
-    records: 'bg-primary',
-    programs: 'bg-success',
-    services: 'bg-info',
-    accounts: 'bg-warning',
-    reports: 'bg-muted-foreground',
-    signins: 'bg-border',
-};
-
 const initials = (name: string) =>
     name
         .split(' ')
@@ -89,6 +79,9 @@ export default function ActivityLog({
         const query = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== null && value !== '' && value !== ALL));
         router.get('/activity-log', query, { preserveState: true, preserveScroll: true, replace: true });
     };
+
+    // The closed "Who" dropdown shows only the name; the role and barangay stay in the open list.
+    const whoLabel = filters.who === 'residents' ? 'Residents' : (people.find((person) => String(person.id) === filters.who)?.name ?? 'Everyone');
 
     const filtered = Boolean(filters.who || filters.category || filters.from || filters.to);
 
@@ -166,10 +159,10 @@ export default function ActivityLog({
 
                 <section aria-label="Filters" className="grid gap-3 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]">
                     {isSuperAdmin && (
-                        <div className="grid gap-1.5">
+                        <div className="grid min-w-0 gap-1.5">
                             <Label>Barangay</Label>
                             <Select value={filters.barangay ? String(filters.barangay) : ALL} onValueChange={(value) => apply({ barangay: value })}>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger className="w-full min-w-0 overflow-hidden">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -183,11 +176,11 @@ export default function ActivityLog({
                             </Select>
                         </div>
                     )}
-                    <div className="grid gap-1.5">
+                    <div className="grid min-w-0 gap-1.5">
                         <Label>Who</Label>
                         <Select value={filters.who || ALL} onValueChange={(value) => apply({ who: value })}>
-                            <SelectTrigger className="w-full">
-                                <SelectValue />
+                            <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                                <SelectValue>{whoLabel}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value={ALL}>Everyone</SelectItem>
@@ -209,10 +202,10 @@ export default function ActivityLog({
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="grid gap-1.5">
+                    <div className="grid min-w-0 gap-1.5">
                         <Label>What</Label>
                         <Select value={filters.category || ALL} onValueChange={(value) => apply({ category: value })}>
-                            <SelectTrigger className="w-full">
+                            <SelectTrigger className="w-full min-w-0 overflow-hidden">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -225,11 +218,11 @@ export default function ActivityLog({
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="grid gap-1.5">
+                    <div className="grid min-w-0 gap-1.5">
                         <Label htmlFor="log-from">From</Label>
                         <Input id="log-from" type="date" value={filters.from ?? ''} onChange={(event) => apply({ from: event.target.value })} />
                     </div>
-                    <div className="grid gap-1.5">
+                    <div className="grid min-w-0 gap-1.5">
                         <Label htmlFor="log-to">To</Label>
                         <Input id="log-to" type="date" value={filters.to ?? ''} onChange={(event) => apply({ to: event.target.value })} />
                     </div>
@@ -263,7 +256,6 @@ export default function ActivityLog({
                                                 className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"
                                             >
                                                 {entry.actor ? initials(entry.actor.name) : '?'}
-                                                <span className={cn('absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-card', CATEGORY_DOT[entry.category])} />
                                             </span>
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-sm">
