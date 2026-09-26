@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -45,6 +46,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // A page the browser only PRE-loads (Inertia link hover) while nobody is signed
+        // in, for example the split second after logging out, must not become the
+        // "intended" page: Laravel would send the next person to log in there (for
+        // instance to Help) instead of their dashboard. Only a real visit is remembered.
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->headers->get('Purpose') === 'prefetch' && ! $request->expectsJson()) {
+                return redirect()->route('login');
+            }
+
+            return null;
+        });
 
         // A mail transport failure (misconfigured provider, a sandboxed sender
         // rejecting the recipient, etc.) should never surface as a raw 500 -

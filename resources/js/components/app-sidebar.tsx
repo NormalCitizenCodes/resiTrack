@@ -171,8 +171,9 @@ export function AppSidebar() {
             <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
+                        {/* No prefetch on Help: the account menu's Log out item opens over this link, so the pointer is left resting on it right after logging out. */}
                         <SidebarMenuButton asChild isActive={currentPath === '/help'} tooltip={{ children: role === 'resident' ? t('nav.help') : 'Help' }}>
-                            <Link href="/help" prefetch>
+                            <Link href="/help">
                                 <LifeBuoy />
                                 <span>{role === 'resident' ? t('nav.help') : 'Help'}</span>
                             </Link>
