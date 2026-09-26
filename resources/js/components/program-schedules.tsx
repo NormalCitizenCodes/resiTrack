@@ -1,6 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { CalendarPlus, Clock, MapPin, Package, Trash2 } from 'lucide-react';
 import type { FormEventHandler } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -164,7 +165,10 @@ export function ScheduleForm({ programId }: { programId: number }) {
 }
 
 export function removeSchedule(schedule: ProgramSchedule) {
-    if (confirm(`Remove "${schedule.title}"? Beneficiaries will be told it was cancelled.`)) {
-        router.delete(`/program-schedules/${schedule.id}`, { preserveScroll: true });
-    }
+    void confirmDialog({
+        title: `Remove "${schedule.title}"?`,
+        description: 'Beneficiaries will be told it was cancelled.',
+        confirmLabel: 'Remove',
+        destructive: true,
+    }).then((ok) => ok && router.delete(`/program-schedules/${schedule.id}`, { preserveScroll: true }));
 }

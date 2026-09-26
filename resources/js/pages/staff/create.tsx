@@ -1,5 +1,5 @@
-import { Head, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import type { FormEventHandler } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -120,6 +120,9 @@ export default function StaffCreate({
                 </Card>
 
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button asChild variant="outline" type="button" className="w-full sm:w-auto">
+                        <Link href="/staff">Cancel</Link>
+                    </Button>
                     <Button type="submit" className="w-full sm:w-auto" disabled={processing}>
                         Create Account
                     </Button>

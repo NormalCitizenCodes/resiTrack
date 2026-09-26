@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { Ambulance, Building2, Flame, Phone, PhoneCall, Plus, Shield, Siren, Trash2, Waves } from 'lucide-react';
 import type { ComponentType, FormEventHandler, SVGProps } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,9 +90,12 @@ export default function Hotlines({
     };
 
     const remove = (hotline: Hotline) => {
-        if (confirm(`Remove ${hotline.name} (${hotline.number})?`)) {
-            router.delete(`/hotlines/${hotline.id}`, { preserveScroll: true });
-        }
+        void confirmDialog({
+            title: `Remove ${hotline.name}?`,
+            description: `${hotline.number} will no longer be shown to residents.`,
+            confirmLabel: 'Remove',
+            destructive: true,
+        }).then((ok) => ok && router.delete(`/hotlines/${hotline.id}`, { preserveScroll: true }));
     };
 
     return (

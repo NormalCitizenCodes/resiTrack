@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { FileText } from 'lucide-react';
 import type { FormEventHandler } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import InputError from '@/components/input-error';
 import { DOCUMENT_TONE, StatusPill } from '@/components/status-pill';
 import { Button } from '@/components/ui/button';
@@ -37,9 +38,9 @@ export default function Documents({ hasResidentRecord, requests }: { hasResident
     };
 
     const cancel = (request: DocumentRequest) => {
-        if (confirm(t('documents.cancelConfirm'))) {
-            router.delete(`/documents/${request.id}`, { preserveScroll: true });
-        }
+        void confirmDialog({ title: t('documents.cancelConfirm'), confirmLabel: 'OK', destructive: true }).then(
+            (ok) => ok && router.delete(`/documents/${request.id}`, { preserveScroll: true }),
+        );
     };
 
     return (

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Beneficiary;
+use App\Models\ProgramClaim;
 use App\Models\Resident;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -67,10 +68,11 @@ class ResidentIdController extends Controller
         $signature = $request->string('s')->value();
 
         $resident = Resident::with(['barangay:id,name', 'sectors:id,code,sector_name'])
-            ->where('resident_id', $residentId)
+            ->whereIn('resident_id', Resident::officialIdSpellings($residentId))
             ->first();
 
-        $valid = $resident !== null && $signature !== '' && hash_equals(Resident::idSignature($residentId), $signature);
+        // The signature covers the stored ID, however the link spelled it.
+        $valid = $resident !== null && $signature !== '' && hash_equals(Resident::idSignature((string) $resident->resident_id), $signature);
 
         AuditLogger::record('verify_id', 'residents', $resident?->id, null, [
             'resident_id' => $residentId,
@@ -110,7 +112,7 @@ class ResidentIdController extends Controller
      * For an agency checking someone in on a payout day: which of the
      * agency's own programs this person is an active beneficiary of.
      *
-     * @return array<int, array{id: int, title: string}>
+     * @return array<int, array{id: int, title: string, schedule_id: int|null, schedule_title: string|null, claimed_today: bool, can_claim: bool}>
      */
     private function agencyPrograms(User $user, Resident $resident): array
     {
@@ -118,12 +120,28 @@ class ResidentIdController extends Controller
             ->where('resident_id', $resident->id)
             ->where('status', 'active')
             ->whereHas('program', fn ($q) => $q->where('agency_id', $user->agency_id))
-            ->with('program:id,title')
+            ->with('program')
             ->get()
-            ->map(fn (Beneficiary $beneficiary) => [
-                'id' => (int) $beneficiary->program_id,
-                'title' => (string) $beneficiary->program?->getAttribute('title'),
-            ])
+            ->map(function (Beneficiary $beneficiary) use ($user, $resident) {
+                $program = $beneficiary->program;
+                $schedule = $program?->schedules()->whereDate('starts_at', today())->first();
+
+                // Has this person already claimed on today's claim day (or, with none set, today)?
+                $claimed = ProgramClaim::query()
+                    ->where('program_id', $beneficiary->program_id)
+                    ->where('resident_id', $resident->id)
+                    ->when($schedule !== null, fn ($q) => $q->where('schedule_id', $schedule?->id), fn ($q) => $q->whereNull('schedule_id')->whereDate('claim_date', today()))
+                    ->exists();
+
+                return [
+                    'id' => (int) $beneficiary->program_id,
+                    'title' => (string) $program?->getAttribute('title'),
+                    'schedule_id' => $schedule?->id,
+                    'schedule_title' => $schedule?->title,
+                    'claimed_today' => $claimed,
+                    'can_claim' => $program !== null && $program->isManagedBy($user) && ($user->barangay_id === null || $user->barangay_id === $resident->barangay_id),
+                ];
+            })
             ->values()
             ->all();
     }

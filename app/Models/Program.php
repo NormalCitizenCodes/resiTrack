@@ -81,6 +81,12 @@ class Program extends Model
                 && ($user->barangay_id === null || $this->barangay_id === null || $this->barangay_id === $user->barangay_id));
     }
 
+    /** @return HasMany<ProgramClaim, $this> */
+    public function claims(): HasMany
+    {
+        return $this->hasMany(ProgramClaim::class);
+    }
+
     /** @return HasMany<ProgramSchedule, $this> */
     public function schedules(): HasMany
     {

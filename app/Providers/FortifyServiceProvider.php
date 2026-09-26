@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Models\Barangay;
+use App\Models\Resident;
 use App\Models\User;
 use App\Services\AccountStatusGuard;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -50,12 +51,12 @@ class FortifyServiceProvider extends ServiceProvider
         // (see StaffController) must be rejected here too, not just once logged in.
         Fortify::authenticateUsing(function (Request $request) {
             $identifier = trim((string) $request->input(Fortify::username()));
-            $residentIdentifier = strtoupper((string) $identifier);
-            $user = User::where(function ($query) use ($identifier, $residentIdentifier) {
+            $user = User::where(function ($query) use ($identifier) {
                 if (str_contains($identifier, '@')) {
                     $query->where('email', $identifier);
                 } else {
-                    $query->whereHas('resident', fn ($resident) => $resident->where('resident_id', $residentIdentifier));
+                    // The Resident ID may be typed with spaces or hyphens: RES 018 26 00045.
+                    $query->whereHas('resident', fn ($resident) => $resident->whereIn('resident_id', Resident::officialIdSpellings($identifier)));
                 }
             })
                 ->first();

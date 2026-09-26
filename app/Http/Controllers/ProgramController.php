@@ -10,6 +10,7 @@ use App\Models\VulnerabilitySector;
 use App\Services\AuditLogger;
 use App\Services\NotificationService;
 use App\Services\ProgramEligibilityService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,6 +77,31 @@ class ProgramController extends Controller
         ]);
     }
 
+    /**
+     * "About how many residents would this program reach?", asked while the agency picks sectors and
+     * a barangay, before anything is published. An agency tied to one barangay is always sized
+     * against that barangay, whatever the request says.
+     */
+    public function eligibilityPreview(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'sector_ids' => ['nullable', 'array'],
+            'sector_ids.*' => ['integer', 'exists:vulnerability_sectors,id'],
+            'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
+        ]);
+
+        $barangayId = $user->barangay_id !== null && ! $user->isSuperAdmin()
+            ? (int) $user->barangay_id
+            : (isset($validated['barangay_id']) ? (int) $validated['barangay_id'] : null);
+
+        return response()->json($this->eligibility->preview(
+            array_map('intval', $validated['sector_ids'] ?? []),
+            $barangayId,
+        ));
+    }
+
     public function store(StoreProgramRequest $request): RedirectResponse
     {
         $user = $request->user();
@@ -121,6 +147,22 @@ class ProgramController extends Controller
                 ->latest('date_added')
                 ->get();
             $props['schedules'] = $program->schedules()->get()->map(fn (ProgramSchedule $s) => $this->scheduleData($s))->all();
+
+            // Who came to claim, so the agency can see who has and who has not. Only the owning agency records them.
+            $props['canRecordClaims'] = $user->role === 'partner_agency';
+            $props['today'] = today()->toDateString();
+            $props['claims'] = $program->claims()
+                ->with('recorder:id,name')
+                ->latest('claimed_at')
+                ->get()
+                ->map(fn ($claim) => [
+                    'id' => $claim->id,
+                    'resident_id' => $claim->resident_id,
+                    'schedule_id' => $claim->schedule_id,
+                    'claimed_at' => $claim->claimed_at->format('Y-m-d\TH:i'),
+                    'recorded_by' => $claim->recorder?->getAttribute('name'),
+                ])
+                ->all();
         }
 
         // Barangay staff: eligible residents in their barangay + endorsements so far.
@@ -149,6 +191,12 @@ class ProgramController extends Controller
             $props['schedules'] = $isBeneficiary
                 ? $program->schedules()->where('starts_at', '>=', today())->get()->map(fn (ProgramSchedule $s) => $this->scheduleData($s))->all()
                 : [];
+            $props['myClaims'] = $program->claims()
+                ->where('resident_id', $user->resident_id)
+                ->latest('claimed_at')
+                ->get()
+                ->map(fn ($claim) => ['id' => $claim->id, 'claimed_on' => $claim->claimed_at->format('F j, Y')])
+                ->all();
         }
 
         return Inertia::render('programs/show', $props);

@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Megaphone, Plus, Trash2 } from 'lucide-react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { ReadAloudButton } from '@/components/read-aloud-button';
 import { SectorBadges } from '@/components/sector-badges';
@@ -14,8 +15,15 @@ import type { Announcement, Paginated } from '@/types';
 
 function initials(name: string): string {
     const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return '?';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+    if (parts.length === 0) {
+return '?';
+}
+
+    if (parts.length === 1) {
+return parts[0].slice(0, 2).toUpperCase();
+}
+
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
@@ -31,9 +39,9 @@ export default function AnnouncementsIndex({
     const formatLongDate = useLongDate();
 
     const remove = (announcement: Announcement) => {
-        if (confirm(`Delete "${announcement.title}"?`)) {
-            router.delete(`/announcements/${announcement.id}`, { preserveScroll: true });
-        }
+        void confirmDialog({ title: `Delete "${announcement.title}"?`, confirmLabel: 'Delete', destructive: true }).then(
+            (ok) => ok && router.delete(`/announcements/${announcement.id}`, { preserveScroll: true }),
+        );
     };
 
     return (

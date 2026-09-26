@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\AccountDeletionRequest;
 use App\Models\AccountReactivationRequest;
 use App\Models\Barangay;
+use App\Models\BarangayZone;
+use App\Models\Household;
 use App\Models\PartnerAgency;
 use App\Models\Resident;
 use App\Models\User;
@@ -111,6 +113,52 @@ class DashboardTest extends TestCase
         $this->actingAs($bhw)->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page
                 ->where('attention', fn ($items) => collect($items)->pluck('key')->all() === ['duplicates', 'registrations', 'documents', 'concerns']));
+    }
+
+    public function test_the_needs_attention_list_says_how_long_the_oldest_item_has_waited(): void
+    {
+        $this->seed(ReferenceDataSeeder::class);
+        $own = Barangay::where('name', 'Barangay 22')->first();
+        $admin = User::factory()->create(['role' => User::ROLE_BARANGAY_ADMIN, 'barangay_id' => $own->id]);
+        $resident = User::factory()->create(['role' => User::ROLE_RESIDENT, 'barangay_id' => $own->id]);
+
+        $old = AccountDeletionRequest::create(['user_id' => $resident->id, 'barangay_id' => $own->id, 'reason' => 'x', 'status' => AccountDeletionRequest::STATUS_PENDING]);
+        $old->forceFill(['created_at' => now()->subDays(12)])->save();
+        AccountDeletionRequest::create(['user_id' => $resident->id, 'barangay_id' => $own->id, 'reason' => 'y', 'status' => AccountDeletionRequest::STATUS_PENDING]);
+
+        $this->actingAs($admin)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('attention', fn ($items) => collect($items)->pluck('oldest_days', 'key')->all() === [
+                    'duplicates' => null,
+                    'documents' => null,
+                    'concerns' => null,
+                    'deletions' => 12,
+                    'reactivations' => null,
+                ]));
+    }
+
+    public function test_the_dashboard_shows_registrations_per_month_and_household_facts_for_its_own_barangay_only(): void
+    {
+        $this->seed(ReferenceDataSeeder::class);
+        $own = Barangay::where('name', 'Barangay 22')->first();
+        $other = Barangay::where('name', 'Barangay 23')->first();
+        $bhw = User::factory()->create(['role' => User::ROLE_BHW, 'barangay_id' => $own->id]);
+
+        $home = Household::factory()->create(['barangay_id' => $own->id, 'is_4ps_beneficiary' => true, 'zone_id' => null]);
+        Household::factory()->create(['barangay_id' => $own->id, 'is_4ps_beneficiary' => false, 'zone_id' => BarangayZone::create(['barangay_id' => $own->id, 'zone_name' => 'Purok 1'])->id]);
+
+        Resident::factory()->count(3)->create(['barangay_id' => $own->id, 'household_id' => $home->id, 'registered_at' => now()->startOfMonth()->addDay()]);
+        Resident::factory()->create(['barangay_id' => $own->id, 'registered_at' => now()->startOfMonth()->subMonth()->addDays(3)]);
+        Resident::factory()->count(5)->create(['barangay_id' => $other->id, 'registered_at' => now()->startOfMonth()->addDay()]);
+
+        $this->actingAs($bhw)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->has('stats.registrations', 6)
+                ->where('stats.registrations.5.count', 3)
+                ->where('stats.registrations.4.count', 1)
+                ->where('stats.registrations.0.count', 0)
+                ->where('stats.registrations.5.label', now()->format('F Y'))
+                ->where('stats.household_facts', ['average_size' => 1.5, 'fourps' => 1, 'no_purok' => 1]));
     }
 
     public function test_only_barangay_staff_get_the_needs_attention_list(): void

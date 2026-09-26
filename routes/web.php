@@ -21,6 +21,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PartnerAgencyController;
 use App\Http\Controllers\PasswordRecoveryController;
 use App\Http\Controllers\ProgramApplicationController;
+use App\Http\Controllers\ProgramClaimController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProgramScheduleController;
 use App\Http\Controllers\PsgcController;
@@ -73,7 +74,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('duplicate-alerts/{alert}/resolve', [DuplicateAlertController::class, 'resolve'])->name('duplicate-alerts.resolve');
         Route::post('duplicate-alerts/{alert}/dismiss', [DuplicateAlertController::class, 'dismiss'])->name('duplicate-alerts.dismiss');
         Route::post('duplicate-alerts/{alert}/escalate', [DuplicateAlertController::class, 'escalate'])->middleware('role:bhw')->name('duplicate-alerts.escalate');
-        Route::resource('households', HouseholdController::class)->only(['create', 'store']);
+        Route::resource('households', HouseholdController::class)->only(['create', 'store', 'edit', 'update']);
+        Route::put('households/{household}/leader', [HouseholdController::class, 'setLeader'])->name('households.leader.update');
         Route::post('households/{household}/wellbeing-assessments', [HouseholdWellbeingAssessmentController::class, 'store'])
             ->name('households.wellbeing-assessments.store');
     });
@@ -90,6 +92,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Reporting & visualization module (Objective 3).
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/print', [ReportController::class, 'print'])->name('reports.print');
         Route::get('reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
         Route::get('reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
     });
@@ -124,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:partner_agency,super_admin')->group(function () {
         Route::get('programs/create', [ProgramController::class, 'create'])->name('programs.create');
+        Route::get('programs/eligibility-preview', [ProgramController::class, 'eligibilityPreview'])->name('programs.eligibility-preview');
         Route::post('programs', [ProgramController::class, 'store'])->name('programs.store');
         Route::get('programs/{program}/edit', [ProgramController::class, 'edit'])->name('programs.edit');
         Route::put('programs/{program}', [ProgramController::class, 'update'])->name('programs.update');
@@ -139,6 +143,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:partner_agency')->group(function () {
         Route::get('agency-profile', [PartnerAgencyController::class, 'showProfile'])->name('agency-profile.show');
         Route::put('agency-profile', [PartnerAgencyController::class, 'updateProfile'])->name('agency-profile.update');
+
+        // Recording that beneficiaries actually claimed what a program gives (the agency's own counter).
+        Route::post('programs/{program}/claims', [ProgramClaimController::class, 'store'])->name('program-claims.store');
+        Route::delete('programs/{program}/claims/{claim}', [ProgramClaimController::class, 'destroy'])->name('program-claims.destroy');
     });
 
     Route::post('programs/{program}/apply', [ProgramApplicationController::class, 'store'])->name('programs.apply');
@@ -165,6 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Resident services: digital ID, household, certificates, reports.
         Route::get('my-id', [ResidentIdController::class, 'show'])->name('resident-id.show');
         Route::get('my-household', [MyHouseholdController::class, 'show'])->name('my-household.show');
+        Route::put('my-household/leader', [MyHouseholdController::class, 'setLeader'])->middleware('throttle:20,1')->name('my-household.leader');
         Route::get('documents', [DocumentRequestController::class, 'index'])->name('documents.index');
         Route::post('documents', [DocumentRequestController::class, 'store'])->middleware('throttle:10,1')->name('documents.store');
         Route::delete('documents/{documentRequest}', [DocumentRequestController::class, 'cancel'])->name('documents.cancel');

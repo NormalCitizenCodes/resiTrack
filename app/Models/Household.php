@@ -18,6 +18,7 @@ class Household extends Model
         'household_id',
         'barangay_id',
         'zone_id',
+        'leader_resident_id',
         'household_number',
         'address',
         'latitude',
@@ -60,6 +61,40 @@ class Household extends Model
     public function residents(): HasMany
     {
         return $this->hasMany(Resident::class);
+    }
+
+    /** The member the family chose to represent it. */
+    public function leader(): BelongsTo
+    {
+        return $this->belongsTo(Resident::class, 'leader_resident_id');
+    }
+
+    /** Leaders must be an active member of the household, and an adult (18 or older). */
+    public const LEADER_MIN_AGE = 18;
+
+    public static function canLead(Resident $resident, self $household): bool
+    {
+        return $resident->household_id === $household->id
+            && $resident->is_active
+            && $resident->age !== null
+            && $resident->age >= self::LEADER_MIN_AGE;
+    }
+
+    /**
+     * How the barangay refers to the household: the leader's surname, or failing that the
+     * most common surname among the members. Needs `leader` and `residents` loaded.
+     */
+    public function familyName(): ?string
+    {
+        $leader = $this->leader?->last_name;
+
+        if (is_string($leader) && $leader !== '') {
+            return $leader;
+        }
+
+        $common = $this->residents->pluck('last_name')->filter()->countBy()->sortDesc()->keys()->first();
+
+        return is_string($common) ? $common : null;
     }
 
     public function wellbeingAssessments(): HasMany

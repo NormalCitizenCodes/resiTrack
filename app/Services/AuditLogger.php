@@ -20,6 +20,7 @@ class AuditLogger
      * @param  array<string, mixed>|null  $old
      * @param  array<string, mixed>|null  $new
      * @param  int|null  $userId  who did it, when that is not the signed-in user (e.g. during the login event itself)
+     * @param  bool  $asSystem  done by the system itself (a scheduled or daily check), so it is never credited to whoever's request happened to trigger it
      */
     public static function record(
         string $action,
@@ -28,9 +29,10 @@ class AuditLogger
         ?array $old = null,
         ?array $new = null,
         ?int $userId = null,
+        bool $asSystem = false,
     ): void {
         AuditLog::create([
-            'user_id' => $userId ?? Auth::id(),
+            'user_id' => $asSystem ? null : ($userId ?? Auth::id()),
             'action' => $action,
             'table_affected' => $table,
             'record_id' => $recordId,

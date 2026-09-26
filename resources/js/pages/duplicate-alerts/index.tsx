@@ -1,9 +1,13 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeftRight, Copy, Users } from 'lucide-react';
+import { useState } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { DuplicateAlert, Paginated, Resident } from '@/types';
@@ -154,27 +158,49 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
     };
 
     const resolve = (alert: AlertRow, keepResidentId: number) => {
-        if (confirm('Keep this record and deactivate the other as a duplicate?')) {
-            router.post(`/duplicate-alerts/${alert.id}/resolve`, { keep_resident_id: keepResidentId }, { preserveScroll: true });
-        }
+        void confirmDialog({
+            title: 'Keep this record?',
+            description: 'The other record will be deactivated as a duplicate.',
+            confirmLabel: 'Keep this record',
+        }).then((ok) => ok && router.post(`/duplicate-alerts/${alert.id}/resolve`, { keep_resident_id: keepResidentId }, { preserveScroll: true }));
     };
 
     const dismiss = (alert: AlertRow) => {
-        if (confirm('Dismiss this alert as a false positive (the two records are different people)?')) {
-            router.post(`/duplicate-alerts/${alert.id}/dismiss`, {}, { preserveScroll: true });
-        }
+        void confirmDialog({
+            title: 'Dismiss this alert?',
+            description: 'This says the two records are different people.',
+            confirmLabel: 'Dismiss alert',
+        }).then((ok) => ok && router.post(`/duplicate-alerts/${alert.id}/dismiss`, {}, { preserveScroll: true }));
     };
 
     const isPending = filters.status === 'pending' || filters.status === 'escalated';
 
-    const escalate = (alert: AlertRow) => {
-        const note = window.prompt('Add a note for the barangay admin (optional):');
+    const [escalating, setEscalating] = useState<AlertRow | null>(null);
+    const [note, setNote] = useState('');
+    const [sending, setSending] = useState(false);
 
-        if (note === null) {
+    const openEscalate = (alert: AlertRow) => {
+        setNote('');
+        setEscalating(alert);
+    };
+
+    const sendEscalation = () => {
+        if (!escalating) {
             return;
         }
 
-        router.post(`/duplicate-alerts/${alert.id}/escalate`, { note }, { preserveScroll: true });
+        router.post(
+            `/duplicate-alerts/${escalating.id}/escalate`,
+            { note: note.trim() || null },
+            {
+                preserveScroll: true,
+                onStart: () => setSending(true),
+                onFinish: () => {
+                    setSending(false);
+                    setEscalating(null);
+                },
+            },
+        );
     };
 
     const tabs: { key: string; label: string; count: number }[] = [
@@ -291,7 +317,7 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
                                     {isPending && canReview && (
                                         <div className="flex flex-wrap justify-end gap-2">
                                             {role === 'bhw' && !isEscalated && (
-                                                <Button variant="outline" size="sm" onClick={() => escalate(alert)}>
+                                                <Button variant="outline" size="sm" onClick={() => openEscalate(alert)}>
                                                     Escalate to admin
                                                 </Button>
                                             )}
@@ -310,6 +336,41 @@ export default function DuplicateAlertsIndex({ alerts, counts, filters }: Props)
 
                 <DataPagination meta={alerts} />
             </div>
+
+            <Dialog open={escalating !== null} onOpenChange={(open) => !open && !sending && setEscalating(null)}>
+                <DialogContent
+                    bottomSheetOnPhone
+                    // On a touch screen, focusing the note box would raise the keyboard in the middle of the slide.
+                    onOpenAutoFocus={(event) => window.matchMedia('(pointer: coarse)').matches && event.preventDefault()}
+                >
+                    <DialogHeader>
+                        <DialogTitle>Escalate to the barangay admin</DialogTitle>
+                        <DialogDescription>
+                            The admin will be notified to review this case. Add anything that helps them decide, such as who you spoke to.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="escalation-note">Note (optional)</Label>
+                        <textarea
+                            id="escalation-note"
+                            value={note}
+                            onChange={(event) => setNote(event.target.value)}
+                            maxLength={1000}
+                            rows={4}
+                            placeholder="For example: the resident says they moved from Barangay 22 last month."
+                            className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEscalating(null)} disabled={sending}>
+                            Cancel
+                        </Button>
+                        <Button onClick={sendEscalation} disabled={sending}>
+                            {sending ? 'Sending...' : 'Escalate'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

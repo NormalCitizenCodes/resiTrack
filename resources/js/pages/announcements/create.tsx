@@ -1,5 +1,5 @@
-import { Head, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import type { FormEventHandler } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,7 +98,10 @@ export default function AnnouncementCreate({ sectors }: { sectors: Vulnerability
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                    <Button asChild variant="outline" type="button">
+                        <Link href="/announcements">Cancel</Link>
+                    </Button>
                     <Button type="submit" disabled={processing}>
                         Post Announcement
                     </Button>

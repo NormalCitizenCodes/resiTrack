@@ -104,6 +104,10 @@ export type Resident = {
     is_osy: boolean;
     is_senior_citizen: boolean;
     is_pregnant: boolean;
+    /** First day of the expected delivery month, e.g. "2026-11-01". */
+    pregnancy_expected_month?: string | null;
+    /** Who reported it: "staff" or "self". */
+    pregnancy_source?: string | null;
     is_active: boolean;
     is_duplicate_flagged: boolean;
     transferred_to_barangay: number | null;

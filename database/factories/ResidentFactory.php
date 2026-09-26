@@ -85,6 +85,8 @@ class ResidentFactory extends Factory
         return $this->state(fn () => [
             'sex' => 'female',
             'is_pregnant' => true,
+            'pregnancy_expected_month' => now()->startOfMonth()->addMonths(3)->toDateString(),
+            'pregnancy_source' => 'staff',
             'date_of_birth' => fake()->dateTimeBetween('-44 years', '-18 years')->format('Y-m-d'),
         ]);
     }

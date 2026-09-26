@@ -4,19 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreResidentRequest;
 use App\Http\Requests\UpdateResidentRequest;
+use App\Models\AuditLog;
 use App\Models\Barangay;
+use App\Models\Beneficiary;
+use App\Models\Concern;
+use App\Models\DocumentRequest;
 use App\Models\DuplicateAlert;
 use App\Models\Household;
+use App\Models\ProgramApplication;
 use App\Models\Resident;
 use App\Models\User;
 use App\Models\VulnerabilitySector;
+use App\Services\ActivityLogPresenter;
 use App\Services\AuditLogger;
 use App\Services\DuplicateDetectionService;
 use App\Services\NotificationService;
+use App\Services\PregnancyStatus;
 use App\Services\PsgcAddress;
 use App\Services\SectorClassificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +36,7 @@ class ResidentController extends Controller
     public function __construct(
         private readonly SectorClassificationService $classifier,
         private readonly DuplicateDetectionService $duplicates,
+        private readonly PregnancyStatus $pregnancy,
     ) {}
 
     public function index(Request $request): Response
@@ -43,7 +52,7 @@ class ResidentController extends Controller
                     $inner->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('resident_id', 'like', "%{$search}%")
+                        ->orWhere('resident_id', 'like', '%'.(Resident::normalizeOfficialId($search) ?: $search).'%')
                         ->orWhere('philsys_card_no', 'like', "%{$search}%");
                 });
             })
@@ -81,9 +90,20 @@ class ResidentController extends Controller
             }
         }
 
+        // "Add member" on a household page opens this form with that household chosen,
+        // but only one of the viewer's own barangay (anything else is ignored).
+        $user = $request->user();
+        $prefillHouseholdId = $request->integer('household_id') > 0
+            ? Household::query()
+                ->whereKey($request->integer('household_id'))
+                ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('barangay_id', $user->barangay_id))
+                ->value('id')
+            : null;
+
         return Inertia::render('residents/create', [
             ...$this->formData($request),
             'linkedAccount' => $this->linkedAccountPayload($request),
+            'prefillHouseholdId' => $prefillHouseholdId,
         ]);
     }
 
@@ -135,7 +155,10 @@ class ResidentController extends Controller
                 'password',
                 'password_confirmation',
                 'linked_user_id',
+                'is_pregnant',
+                'pregnancy_expected_month',
             ]));
+            $this->pregnancy->apply($resident, $request->boolean('is_pregnant'), $request->string('pregnancy_expected_month')->value() ?: null, 'staff');
             $resident->barangay_id = $user->isSuperAdmin()
                 ? ($request->integer('barangay_id') ?: Barangay::value('id'))
                 : $user->barangay_id;
@@ -184,6 +207,11 @@ class ResidentController extends Controller
             $message .= " {$newAlerts} possible duplicate/transfer match(es) were flagged for review.";
         }
 
+        $leaderNote = $this->applyLeaderChoice($request, $resident);
+        if ($leaderNote !== null) {
+            $message .= ' '.$leaderNote;
+        }
+
         $accountCreated = $linkedAccount === null && $request->boolean('create_account');
         $emailLoginAvailable = $linkedAccount
             ? filled($linkedAccount->email)
@@ -202,31 +230,145 @@ class ResidentController extends Controller
             ]);
     }
 
-    public function show(Request $request, Resident $resident): Response
+    public function show(Request $request, Resident $resident, ActivityLogPresenter $presenter): Response
     {
         $this->authorizeBarangay($request, $resident);
+        $viewer = $request->user();
 
         $resident->load([
             'sectors:id,code,sector_name',
             'household',
             'barangay:id,name',
             'transferBarangay:id,name',
-            'profiledBy:id,name',
+            'profiledBy:id,name,role',
         ]);
 
-        // Any open duplicate/transfer alerts that reference this resident.
+        // Duplicate/transfer alerts that reference this resident. The other record is
+        // named, but only linked when this viewer may open it (the same rule as the
+        // Duplicate Alerts page: a record from another barangay stays closed).
         $alerts = DuplicateAlert::query()
-            ->with(['residentOne:id,first_name,last_name,barangay_id', 'residentTwo:id,first_name,last_name,barangay_id'])
+            ->with([
+                'residentOne:id,first_name,middle_name,last_name,barangay_id',
+                'residentOne.barangay:id,name',
+                'residentTwo:id,first_name,middle_name,last_name,barangay_id',
+                'residentTwo.barangay:id,name',
+            ])
             ->where(function ($q) use ($resident) {
                 $q->where('resident_id_1', $resident->id)
                     ->orWhere('resident_id_2', $resident->id);
             })
             ->orderByDesc('detected_at')
+            ->get()
+            ->map(function (DuplicateAlert $alert) use ($resident, $viewer) {
+                $other = $alert->resident_id_1 === $resident->id ? $alert->residentTwo : $alert->residentOne;
+
+                return [
+                    'id' => $alert->id,
+                    'match_basis' => $alert->match_basis,
+                    'similarity_score' => $alert->similarity_score,
+                    'status' => $alert->status,
+                    'escalated' => $alert->escalated_at !== null,
+                    'other' => $other ? [
+                        'id' => $other->id,
+                        'name' => $other->full_name,
+                        'barangay' => $other->barangay?->getAttribute('name'),
+                        'can_open' => $viewer->isSuperAdmin() || $other->barangay_id === $viewer->barangay_id,
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        $memberQuery = Resident::query()
+            ->where('household_id', $resident->household_id)
+            ->where('barangay_id', $resident->barangay_id)
+            ->whereKeyNot($resident->id);
+        $memberTotal = $resident->household_id === null ? 0 : (clone $memberQuery)->count();
+        $members = $resident->household_id === null ? collect() : $memberQuery
+            ->with('sectors:id,code,sector_name')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->limit(12)
             ->get();
+
+        $beneficiaryStatus = Beneficiary::query()->where('resident_id', $resident->id)->pluck('status', 'program_id');
+
+        $portal = $viewer->isBarangayStaff()
+            ? User::query()->where('resident_id', $resident->id)->first(['id', 'is_active', 'last_login_at'])
+            : null;
 
         return Inertia::render('residents/show', [
             'resident' => $resident,
             'alerts' => $alerts,
+            'profiler' => [
+                'name' => $resident->profiledBy?->getAttribute('name'),
+                'role' => $resident->profiledBy instanceof User ? $resident->profiledBy->roleLabel() : null,
+                'at' => $resident->profiled_at?->format('F j, Y'),
+                'registered' => ($resident->registered_at ?? $resident->created_at)?->format('F j, Y'),
+            ],
+            'sector_reasons' => $this->classifier->explain($resident),
+            'household_member_total' => $memberTotal,
+            'is_household_leader' => $resident->household !== null && $resident->household->leader_resident_id === $resident->id,
+            'household_members' => $members->map(fn (Resident $member) => [
+                'id' => $member->id,
+                'is_leader' => $resident->household !== null && $resident->household->leader_resident_id === $member->id,
+                'name' => $member->full_name,
+                'age' => $member->age,
+                'sex' => $member->sex,
+                'is_active' => $member->is_active,
+                'sectors' => $member->sectors->pluck('sector_name')->all(),
+            ])->values(),
+            'programs' => ProgramApplication::query()
+                ->where('resident_id', $resident->id)
+                ->with('program:id,title,agency_id', 'program.agency:id,agency_name')
+                ->latest('applied_at')
+                ->limit(10)
+                ->get()
+                ->map(fn (ProgramApplication $application) => [
+                    'id' => $application->id,
+                    'title' => $application->program?->getAttribute('title'),
+                    'agency' => $application->program?->agency?->getAttribute('agency_name'),
+                    'status' => $application->status,
+                    'beneficiary' => $beneficiaryStatus[$application->program_id] ?? null,
+                    'applied_on' => $application->applied_at?->format('M j, Y'),
+                ])->values(),
+            // The certificate and concern desks belong to barangay staff; the super admin has none.
+            'requests' => $viewer->isSuperAdmin() ? null : [
+                'certificates' => DocumentRequest::query()->where('resident_id', $resident->id)->latest()->limit(5)->get()
+                    ->map(fn (DocumentRequest $request) => [
+                        'id' => $request->id,
+                        'label' => DocumentRequest::TYPE_LABELS[$request->type] ?? $request->type,
+                        'status' => $request->status,
+                        'on' => $request->created_at?->format('M j, Y'),
+                    ])->values(),
+                'concerns' => Concern::query()->where('resident_id', $resident->id)->latest()->limit(5)->get()
+                    ->map(fn (Concern $concern) => [
+                        'id' => $concern->id,
+                        'label' => Concern::CATEGORY_LABELS[$concern->category] ?? $concern->category,
+                        'status' => $concern->status,
+                        'on' => $concern->created_at?->format('M j, Y'),
+                    ])->values(),
+            ],
+            // Who did what to this record: the Activity Log's audience (admins) only.
+            'history' => in_array($viewer->role, [User::ROLE_BARANGAY_ADMIN, User::ROLE_SUPER_ADMIN], true)
+                ? AuditLog::query()
+                    ->where('table_affected', 'residents')
+                    ->where('record_id', $resident->id)
+                    ->with('user:id,name,role')
+                    ->latest('performed_at')
+                    ->limit(8)
+                    ->get()
+                    ->map(fn (AuditLog $log) => [
+                        'id' => $log->id,
+                        'summary' => $presenter->describe($log)['summary'],
+                        'by' => $log->user?->getAttribute('name'),
+                        'at' => $log->performed_at?->format('M j, Y g:i A'),
+                    ])->values()
+                : null,
+            'portal' => $viewer->isBarangayStaff() ? [
+                'has_account' => $portal !== null,
+                'is_active' => $portal?->is_active,
+                'last_login' => $portal?->last_login_at?->format('F j, Y'),
+            ] : null,
         ]);
     }
 
@@ -234,9 +376,13 @@ class ResidentController extends Controller
     {
         $this->authorizeBarangay($request, $resident);
 
+        $resident->load('sectors:id,code');
+        $resident->setAttribute('is_household_leader', $resident->household_id !== null
+            && Household::query()->whereKey($resident->household_id)->where('leader_resident_id', $resident->id)->exists());
+
         return Inertia::render('residents/edit', [
             ...$this->formData($request),
-            'resident' => $resident->load('sectors:id,code'),
+            'resident' => $resident,
         ]);
     }
 
@@ -244,7 +390,8 @@ class ResidentController extends Controller
     {
         $this->authorizeBarangay($request, $resident);
 
-        $resident->fill($request->validated());
+        $resident->fill(Arr::except($request->validated(), ['is_pregnant', 'pregnancy_expected_month']));
+        $this->pregnancy->apply($resident, $request->boolean('is_pregnant'), $request->string('pregnancy_expected_month')->value() ?: null, 'staff');
         $resident->save();
 
         // Attributes may have changed sector membership; re-run classification.
@@ -253,9 +400,64 @@ class ResidentController extends Controller
 
         AuditLogger::record('update', 'residents', $resident->id, null, ['name' => $resident->full_name]);
 
+        $message = "Resident {$resident->full_name} updated successfully.";
+        $leaderNote = $this->applyLeaderChoice($request, $resident);
+        if ($leaderNote !== null) {
+            $message .= ' '.$leaderNote;
+        }
+
         return redirect()
             ->route('residents.show', $resident)
-            ->with('success', "Resident {$resident->full_name} updated successfully.");
+            ->with('success', $message);
+    }
+
+    /**
+     * The form's "household leader" tick: records this person as their household's leader (the family's
+     * choice, entered by staff), or clears it when someone who is the leader is unticked. Returns a note
+     * when the choice could not be applied, so the confirmation message can say why.
+     */
+    private function applyLeaderChoice(Request $request, Resident $resident): ?string
+    {
+        if (! $request->has('is_household_leader') || $resident->household_id === null) {
+            return null;
+        }
+
+        $household = Household::query()->where('barangay_id', $resident->barangay_id)->find($resident->household_id);
+
+        if ($household === null) {
+            return null;
+        }
+
+        // A just-created resident has not read its database defaults (is_active) back yet.
+        $resident->refresh();
+
+        if ($request->boolean('is_household_leader')) {
+            if ($household->leader_resident_id === $resident->id) {
+                return null;
+            }
+
+            if (! Household::canLead($resident, $household)) {
+                return 'Not set as household leader: a leader must be an active member aged 18 or older.';
+            }
+
+            $household->update(['leader_resident_id' => $resident->id]);
+            AuditLogger::record('update', 'households', $household->id, null, [
+                'household_number' => $household->household_number,
+                'changed' => 'household leader set to '.$resident->full_name,
+            ]);
+
+            return null;
+        }
+
+        if ($household->leader_resident_id === $resident->id) {
+            $household->update(['leader_resident_id' => null]);
+            AuditLogger::record('update', 'households', $household->id, null, [
+                'household_number' => $household->household_number,
+                'changed' => 'household leader cleared',
+            ]);
+        }
+
+        return null;
     }
 
     public function destroy(Request $request, Resident $resident): RedirectResponse

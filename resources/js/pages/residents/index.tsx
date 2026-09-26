@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ChevronRight, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatResidentId } from '@/lib/resident-id';
 import { dashboard } from '@/routes';
 import type { Paginated, Resident, VulnerabilitySector } from '@/types';
 
@@ -32,9 +34,9 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
     const isSuperAdmin = role === 'super_admin';
 
     const restore = (resident: Resident) => {
-        if (confirm(`Activate / Restore ${resident.full_name}?`)) {
-            router.post(`/residents/${resident.id}/toggle`, {}, { preserveScroll: true });
-        }
+        void confirmDialog({ title: `Restore ${resident.full_name}?`, description: 'The record becomes active again.', confirmLabel: 'Restore' }).then(
+            (ok) => ok && router.post(`/residents/${resident.id}/toggle`, {}, { preserveScroll: true }),
+        );
     };
 
     // Debounced search so we don't fire a request on every keystroke.
@@ -179,7 +181,7 @@ export default function ResidentsIndex({ residents, sectors, filters, barangays 
                                         </div>
                                         {(resident.resident_id || resident.contact_number) && (
                                             <span className="block text-xs text-muted-foreground">
-                                                {[resident.resident_id, resident.contact_number].filter(Boolean).join(' · ')}
+                                                {[formatResidentId(resident.resident_id), resident.contact_number].filter(Boolean).join(' · ')}
                                             </span>
                                         )}
                                         {resident.philsys_card_no && (

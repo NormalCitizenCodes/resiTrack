@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { dashboard } from '@/routes';
 import type { Household, Paginated } from '@/types';
 
-type Filters = { search?: string; barangay_id?: string; zone_id?: string; wellbeing?: string; is_4ps?: string };
+type Filters = { search?: string; barangay_id?: string; zone_id?: string; wellbeing?: string; is_4ps?: string; leader?: string };
 
 type Props = {
     households: Paginated<
@@ -19,6 +19,8 @@ type Props = {
             zone?: { zone_name: string };
             barangay?: { name: string };
             current_wellbeing?: { level?: { label: string } } | null;
+            family_name?: string | null;
+            leader?: { full_name: string } | null;
         }
     >;
     filters: Filters;
@@ -60,7 +62,7 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
         return () => clearTimeout(handler);
     }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const hasFilters = Boolean(filters.search || filters.barangay_id || filters.zone_id || filters.wellbeing || filters.is_4ps);
+    const hasFilters = Boolean(filters.search || filters.barangay_id || filters.zone_id || filters.wellbeing || filters.is_4ps || filters.leader);
 
     return (
         <>
@@ -91,7 +93,7 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search by household number or address…"
+                            placeholder="Search by family name, number or address…"
                             className="pl-8"
                         />
                     </div>
@@ -147,6 +149,15 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
                             <SelectItem value="no">Non-4Ps</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Select value={filters.leader ?? ALL} onValueChange={(v) => setFilter('leader', v)}>
+                        <SelectTrigger className="w-44">
+                            <SelectValue placeholder="Leader" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value={ALL}>Leader: any</SelectItem>
+                            <SelectItem value="none">No leader yet</SelectItem>
+                        </SelectContent>
+                    </Select>
                     {hasFilters && (
                         <Button
                             variant="ghost"
@@ -165,7 +176,8 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Household No.</TableHead>
+                                <TableHead>Household</TableHead>
+                                <TableHead>Leader</TableHead>
                                 {isSuperAdmin && <TableHead>Barangay</TableHead>}
                                 <TableHead>Address</TableHead>
                                 <TableHead>Zone / Purok</TableHead>
@@ -178,7 +190,7 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
                         <TableBody>
                             {households.data.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={isSuperAdmin ? 8 : 7} className="py-10 text-center text-muted-foreground">
+                                    <TableCell colSpan={isSuperAdmin ? 9 : 8} className="py-10 text-center text-muted-foreground">
                                         No households found.
                                     </TableCell>
                                 </TableRow>
@@ -187,8 +199,14 @@ export default function HouseholdsIndex({ households, filters, barangays, zones,
                                 <TableRow key={household.id}>
                                     <TableCell className="font-medium">
                                         <Link href={`/households/${household.id}`} className="hover:underline">
-                                            {household.household_number ?? `#${household.id}`}
+                                            {household.family_name ? `${household.family_name} household` : (household.household_number ?? `#${household.id}`)}
                                         </Link>
+                                        {household.family_name && (
+                                            <span className="block text-xs font-normal text-muted-foreground">{household.household_number ?? `#${household.id}`}</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                        {household.leader ? household.leader.full_name : <span className="text-muted-foreground">No leader yet</span>}
                                     </TableCell>
                                     {isSuperAdmin && (
                                         <TableCell className="text-muted-foreground">{household.barangay?.name ?? '-'}</TableCell>

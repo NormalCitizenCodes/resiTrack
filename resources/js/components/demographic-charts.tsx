@@ -107,15 +107,15 @@ export function SectorBars({ sectors, totalResidents, compound }: { sectors: Sec
 
             {compound.with_sector > 0 && (
                 <div className="border-t pt-4">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold tracking-tight tabular-nums">{compound.multi.toLocaleString()}</span>
-                        <span className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                        <span className="text-3xl leading-none font-bold tracking-tight tabular-nums">{compound.multi.toLocaleString()}</span>
+                        <span className="min-w-0 flex-1 text-sm text-pretty text-muted-foreground">
                             residents in 2 or more sectors ({Math.round((compound.multi / compound.with_sector) * 100)}% of the{' '}
                             {compound.with_sector.toLocaleString()} with any sector)
                         </span>
                     </div>
                     {compound.combos.length > 0 && (
-                        <ul className="mt-3 space-y-1 text-sm">
+                        <ul className="mt-4 space-y-1 text-sm">
                             {compound.combos.map((combo) => (
                                 <li key={combo.label} className="flex justify-between gap-2">
                                     <span className="text-muted-foreground">{combo.label}</span>

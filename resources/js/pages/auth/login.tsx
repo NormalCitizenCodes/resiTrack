@@ -80,7 +80,7 @@ export default function Login({ status, error, canResetPassword }: Props) {
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="username"
-                                    placeholder="RES-2026-000123 or email@example.com"
+                                    placeholder="RES0182600045 or email@example.com"
                                 />
                                 {!errors.email?.startsWith('Account Deactivated.') && (
                                     <InputError message={errors.email} />

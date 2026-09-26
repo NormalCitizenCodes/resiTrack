@@ -8,8 +8,11 @@ export default function ResidentCreate({
     households,
     linkedAccount,
     addressDefaults,
+    prefillHouseholdId = null,
 }: {
     households: Household[];
+    /** Set by "Add member" on a household page. */
+    prefillHouseholdId?: number | null;
     addressDefaults?: AddressDefaults | null;
     linkedAccount?: {
         id: number;
@@ -19,13 +22,13 @@ export default function ResidentCreate({
         last_name: string;
     } | null;
 }) {
-    const prefill = linkedAccount
-        ? ({
-              first_name: linkedAccount.first_name,
-              last_name: linkedAccount.last_name,
-              email: linkedAccount.email,
-          } as Resident)
-        : undefined;
+    const prefill =
+        linkedAccount || prefillHouseholdId
+            ? ({
+                  ...(linkedAccount ? { first_name: linkedAccount.first_name, last_name: linkedAccount.last_name, email: linkedAccount.email } : {}),
+                  ...(prefillHouseholdId ? { household_id: prefillHouseholdId } : {}),
+              } as Resident)
+            : undefined;
 
     return (
         <>

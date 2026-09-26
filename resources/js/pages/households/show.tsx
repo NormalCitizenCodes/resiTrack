@@ -1,21 +1,28 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
-import { SectorBadges } from '@/components/sector-badges';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Pencil, UserPlus, UserRound } from 'lucide-react';
+import type { FormEventHandler } from 'react';
+import { useState } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
+import { SectorBadge, SectorBadges } from '@/components/sector-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatDay, humanize } from '@/lib/humanize';
 import { dashboard } from '@/routes';
 import type { Household, HouseholdWellbeingAssessment, Resident, WellbeingLevel } from '@/types';
+
+type Summary = {
+    members: number;
+    children: number;
+    seniors: number;
+    average_age: number | null;
+    sectors: { code: string; name: string; count: number }[];
+};
 
 function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
     return (
@@ -26,17 +33,129 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
     );
 }
 
+function Stat({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div>
+            <p className="text-xl leading-tight font-semibold tabular-nums">{value}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+    );
+}
+
+type Leader = { id: number; name: string; age: number | null; contact_number: string | null };
+type Candidate = { id: number; name: string; age: number | null };
+
+/** The one member the family chose to represent it. Staff record the family's choice here. */
+function LeaderCard({ household, leader, candidates, canWrite }: { household: Household; leader: Leader | null; candidates: Candidate[]; canWrite: boolean }) {
+    const [open, setOpen] = useState(false);
+    const { data, setData, put, processing, errors, reset, clearErrors } = useForm<{ resident_id: string }>({ resident_id: '' });
+
+    const close = () => {
+        setOpen(false);
+        reset();
+        clearErrors();
+    };
+
+    const save = () => {
+        put(`/households/${household.id}/leader`, { preserveScroll: true, onSuccess: close });
+    };
+
+    const clear = () => {
+        void confirmDialog({
+            title: 'Clear the household leader?',
+            description: 'The household will show no leader until the family picks one again.',
+            confirmLabel: 'Clear leader',
+            destructive: true,
+        }).then((ok) => ok && router.put(`/households/${household.id}/leader`, { resident_id: null }, { preserveScroll: true }));
+    };
+
+    return (
+        <Card>
+            <CardContent className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Household leader</p>
+                    {leader ? (
+                        <>
+                            <p className="text-base font-semibold">
+                                <Link href={`/residents/${leader.id}`} className="hover:underline">
+                                    {leader.name}
+                                </Link>
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {[leader.age !== null ? `${leader.age} yrs` : null, leader.contact_number].filter(Boolean).join(' · ') || 'No contact number recorded'}
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-sm text-pretty text-muted-foreground">
+                            {candidates.length > 0
+                                ? 'No leader recorded yet. Ask the family who they chose to represent them, then record it here.'
+                                : 'No leader yet, and no adult member is recorded to choose from.'}
+                        </p>
+                    )}
+                </div>
+                {canWrite && (
+                    <div className="flex items-center gap-2">
+                        {leader && (
+                            <Button type="button" variant="ghost" onClick={clear}>
+                                Clear
+                            </Button>
+                        )}
+                        <Button type="button" variant="outline" disabled={candidates.length === 0} onClick={() => setOpen(true)}>
+                            <UserRound className="size-4" /> {leader ? 'Change leader' : 'Set leader'}
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+
+            <Dialog open={open} onOpenChange={(next) => !next && close()}>
+                <DialogContent bottomSheetOnPhone>
+                    <DialogHeader>
+                        <DialogTitle>Who did the family choose?</DialogTitle>
+                        <DialogDescription>Any member aged 18 or older can represent the household. Record the family&apos;s choice, not your own.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-1.5">
+                        <Label>Household leader</Label>
+                        <Select value={data.resident_id} onValueChange={(value) => setData('resident_id', value)}>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select a member" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {candidates.map((candidate) => (
+                                    <SelectItem key={candidate.id} value={String(candidate.id)}>
+                                        {candidate.name}
+                                        {candidate.age !== null ? `, ${candidate.age}` : ''}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.resident_id && <p className="text-sm text-red-600">{errors.resident_id}</p>}
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={close}>
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={save} disabled={processing || data.resident_id === ''}>
+                            Save leader
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
+    );
+}
+
 function WellbeingCard({
     household,
     levels,
     assessments,
+    canRecord,
 }: {
     household: Household;
     levels: WellbeingLevel[];
     assessments: HouseholdWellbeingAssessment[];
+    canRecord: boolean;
 }) {
-    const current = assessments[0];
-    const readOnly = usePage().props.auth.user?.role === 'super_admin';
+    const [recording, setRecording] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         level_id: '',
         assessment_date: '',
@@ -47,56 +166,66 @@ function WellbeingCard({
         e.preventDefault();
         post(`/households/${household.id}/wellbeing-assessments`, {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                setRecording(false);
+            },
         });
     };
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    Wellbeing Assessment
-                    {current?.level && <Badge variant="secondary">{current.level.label}</Badge>}
-                </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+                <CardTitle>Wellbeing Assessment</CardTitle>
+                {canRecord && !recording && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setRecording(true)}>
+                        Record assessment
+                    </Button>
+                )}
             </CardHeader>
             <CardContent className="space-y-4">
-                {!readOnly && <form onSubmit={submit} className="grid gap-3 md:grid-cols-4">
-                    <div className="md:col-span-1">
-                        <Label className="mb-1.5 block">Level</Label>
-                        <Select value={data.level_id} onValueChange={(v) => setData('level_id', v)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {levels.map((level) => (
-                                    <SelectItem key={level.id} value={String(level.id)}>
-                                        {level.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label className="mb-1.5 block">Date</Label>
-                        <Input
-                            type="date"
-                            value={data.assessment_date}
-                            onChange={(e) => setData('assessment_date', e.target.value)}
-                        />
-                    </div>
-                    <div className="md:col-span-1">
-                        <Label className="mb-1.5 block">Remarks</Label>
-                        <Input value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />
-                    </div>
-                    <div className="flex items-end">
-                        <Button type="submit" disabled={processing || !data.level_id}>
-                            Record
-                        </Button>
-                    </div>
-                    {errors.level_id && <p className="text-sm text-red-600 md:col-span-4">{errors.level_id}</p>}
-                </form>}
+                {canRecord && recording && (
+                    <form onSubmit={submit} className="grid gap-3 rounded-lg border bg-muted/30 p-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_auto] md:items-end">
+                        <div className="min-w-0">
+                            <Label className="mb-1.5 block">Level</Label>
+                            <Select value={data.level_id} onValueChange={(v) => setData('level_id', v)}>
+                                <SelectTrigger className="w-full min-w-0">
+                                    <SelectValue placeholder="Select…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {levels.map((level) => (
+                                        <SelectItem key={level.id} value={String(level.id)}>
+                                            {level.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="min-w-0">
+                            <Label className="mb-1.5 block">Date</Label>
+                            <Input type="date" value={data.assessment_date} onChange={(e) => setData('assessment_date', e.target.value)} />
+                        </div>
+                        <div className="min-w-0">
+                            <Label className="mb-1.5 block">Remarks</Label>
+                            <Input value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="outline" onClick={() => {
+ reset(); setRecording(false); 
+}}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={processing || !data.level_id}>
+                                Record
+                            </Button>
+                        </div>
+                        {errors.level_id && <p className="text-sm text-red-600 md:col-span-4">{errors.level_id}</p>}
+                    </form>
+                )}
 
-                {assessments.length > 0 && (
+                {assessments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No assessment has been recorded for this household yet.</p>
+                ) : (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -109,11 +238,9 @@ function WellbeingCard({
                         <TableBody>
                             {assessments.map((assessment) => (
                                 <TableRow key={assessment.id}>
-                                    <TableCell>{assessment.assessment_date?.substring(0, 10) ?? '-'}</TableCell>
+                                    <TableCell>{formatDay(assessment.assessment_date) ?? '-'}</TableCell>
                                     <TableCell>{assessment.level?.label ?? '-'}</TableCell>
-                                    <TableCell className="text-muted-foreground">
-                                        {assessment.assessor?.name ?? '-'}
-                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">{assessment.assessor?.name ?? '-'}</TableCell>
                                     <TableCell className="text-muted-foreground">{assessment.remarks ?? '-'}</TableCell>
                                 </TableRow>
                             ))}
@@ -128,44 +255,104 @@ function WellbeingCard({
 export default function HouseholdShow({
     household,
     wellbeingLevels,
+    summary,
+    family_name,
+    leader,
+    eligible_leaders,
 }: {
     household: Household & { residents?: Resident[]; zone?: { zone_name: string } };
     wellbeingLevels: WellbeingLevel[];
+    summary: Summary;
+    family_name: string | null;
+    leader: Leader | null;
+    eligible_leaders: Candidate[];
 }) {
+    const role = usePage().props.auth.user?.role;
+    const canWrite = role !== 'super_admin';
     const members = household.residents ?? [];
     const assessments = household.wellbeing_assessments ?? [];
+    const current = assessments[0];
+    const name = household.household_number ?? `Household #${household.id}`;
+    const declared = household.member_count;
 
     return (
         <>
-            <Head title={household.household_number ?? `Household #${household.id}`} />
+            <Head title={name} />
             <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {household.household_number ?? `Household #${household.id}`}
-                    </h1>
-                    {household.is_4ps_beneficiary && <Badge variant="secondary">4Ps</Badge>}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-2xl font-semibold tracking-tight">{family_name ? `${family_name} household` : name}</h1>
+                            {family_name && <span className="text-sm text-muted-foreground">{name}</span>}
+                            {household.zone && <Badge variant="outline">{household.zone.zone_name}</Badge>}
+                            {household.is_4ps_beneficiary && <Badge variant="secondary">4Ps</Badge>}
+                            {current?.level ? (
+                                <Badge variant="secondary">Wellbeing: {current.level.label}</Badge>
+                            ) : (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                    Not assessed
+                                </Badge>
+                            )}
+                        </div>
+                        {household.address && <p className="max-w-2xl text-sm text-pretty text-muted-foreground">{household.address}</p>}
+                    </div>
+                    {canWrite && (
+                        <div className="flex flex-wrap gap-2">
+                            <Button asChild variant="outline">
+                                <Link href={`/residents/create?household_id=${household.id}`}>
+                                    <UserPlus className="size-4" /> Add member
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline">
+                                <Link href={`/households/${household.id}/edit`}>
+                                    <Pencil className="size-4" /> Edit household
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
                 </div>
+
+                <LeaderCard household={household} leader={leader} candidates={eligible_leaders} canWrite={canWrite} />
+
+                <Card>
+                    <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3">
+                        <Stat label={summary.members === 1 ? 'Member' : 'Members'} value={summary.members} />
+                        <Stat label="Children (under 18)" value={summary.children} />
+                        <Stat label="Seniors (60+)" value={summary.seniors} />
+                        <Stat label="Average age" value={summary.average_age ?? '-'} />
+                        {summary.sectors.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 md:ml-auto">
+                                {summary.sectors.map((sector) => (
+                                    <SectorBadge key={sector.code} code={sector.code} label={`${sector.count} ${sector.name}`} />
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>
                         <CardTitle>Household Details</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <dl className="grid gap-4 md:grid-cols-3">
+                        <dl className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
                             <DetailRow label="Address" value={household.address} />
                             <DetailRow label="Zone / Purok" value={household.zone?.zone_name} />
-                            <DetailRow label="Members" value={household.member_count} />
-                            <DetailRow label="House Ownership" value={household.house_ownership} />
-                            <DetailRow label="Water Source" value={household.water_source} />
-                            <DetailRow label="Electricity" value={household.electricity_source} />
-                            <DetailRow label="Waste Management" value={household.waste_management} />
-                            <DetailRow label="Toilet Facility" value={household.toilet_facility} />
-                            <DetailRow label="Monthly Income" value={household.monthly_income ? `₱${household.monthly_income}` : null} />
+                            <DetailRow
+                                label="Members"
+                                value={declared === null || declared === undefined || declared === summary.members ? declared : `${declared} declared, ${summary.members} recorded`}
+                            />
+                            <DetailRow label="House Ownership" value={humanize(household.house_ownership)} />
+                            <DetailRow label="Water Source" value={humanize(household.water_source)} />
+                            <DetailRow label="Electricity" value={humanize(household.electricity_source)} />
+                            <DetailRow label="Waste Management" value={humanize(household.waste_management)} />
+                            <DetailRow label="Toilet Facility" value={humanize(household.toilet_facility)} />
+                            <DetailRow label="Monthly Income" value={household.monthly_income ? `₱${Number(household.monthly_income).toLocaleString('en-US')}` : null} />
                         </dl>
                     </CardContent>
                 </Card>
 
-                <WellbeingCard household={household} levels={wellbeingLevels} assessments={assessments} />
+                <WellbeingCard household={household} levels={wellbeingLevels} assessments={assessments} canRecord={canWrite} />
 
                 <Card>
                     <CardHeader>
@@ -191,10 +378,17 @@ export default function HouseholdShow({
                                 )}
                                 {members.map((member) => (
                                     <TableRow key={member.id}>
-                                        <TableCell className="font-medium">{member.full_name}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {member.full_name}
+                                            {leader?.id === member.id && (
+                                                <Badge variant="secondary" className="ml-2">
+                                                    Leader
+                                                </Badge>
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             {member.age ?? '-'}
-                                            <span className="text-muted-foreground"> / {member.sex ?? '-'}</span>
+                                            <span className="text-muted-foreground"> / {humanize(member.sex) ?? '-'}</span>
                                         </TableCell>
                                         <TableCell>
                                             <SectorBadges sectors={member.sectors} />

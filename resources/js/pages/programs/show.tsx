@@ -1,5 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Building2, Check, MapPin, Pencil, Trash2, X } from 'lucide-react';
+import { confirmDialog } from '@/components/confirm-dialog';
+import { ProgramClaims } from '@/components/program-claims';
+import type { ProgramClaim } from '@/components/program-claims';
 import { ScheduleForm, ScheduleList, removeSchedule } from '@/components/program-schedules';
 import type { ProgramSchedule } from '@/components/program-schedules';
 import { ReadAloudButton } from '@/components/read-aloud-button';
@@ -23,6 +26,10 @@ type Props = {
     myApplication?: ProgramApplication | null;
     isEligible?: boolean;
     schedules?: ProgramSchedule[];
+    claims?: ProgramClaim[];
+    canRecordClaims?: boolean;
+    today?: string;
+    myClaims?: { id: number; claimed_on: string }[];
 };
 
 const STATUS_VARIANT: Record<string, 'secondary' | 'outline' | 'destructive' | 'default'> = {
@@ -49,6 +56,10 @@ export default function ProgramShow(props: Props) {
         myApplication,
         isEligible,
         schedules = [],
+        claims = [],
+        canRecordClaims = false,
+        today = '',
+        myClaims = [],
     } = props;
     const { t } = useTranslation();
 
@@ -68,9 +79,12 @@ export default function ProgramShow(props: Props) {
     };
 
     const remove = () => {
-        if (confirm(`Delete “${program.title}”? This cannot be undone.`)) {
-            router.delete(`/programs/${program.id}`);
-        }
+        void confirmDialog({
+            title: `Delete “${program.title}”?`,
+            description: 'This cannot be undone.',
+            confirmLabel: 'Delete',
+            destructive: true,
+        }).then((ok) => ok && router.delete(`/programs/${program.id}`));
     };
 
     return (
@@ -195,6 +209,16 @@ export default function ProgramShow(props: Props) {
                     </Card>
                 )}
 
+                {props.viewerRole === 'resident' && myClaims.length > 0 && (
+                    <Card>
+                        <CardContent className="space-y-1 text-sm">
+                            {myClaims.map((claim) => (
+                                <p key={claim.id}>{t('programs.claimedOn', { date: claim.claimed_on })}</p>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Agency: payout / service-day schedule */}
                 {isOwner && (
                     <Card>
@@ -293,6 +317,18 @@ export default function ProgramShow(props: Props) {
                             </div>
                         </CardContent>
                     </Card>
+                )}
+
+                {/* Agency: who has claimed */}
+                {isOwner && beneficiaries && beneficiaries.length > 0 && (
+                    <ProgramClaims
+                        programId={program.id}
+                        beneficiaries={beneficiaries}
+                        claims={claims}
+                        days={schedules}
+                        today={today}
+                        canRecord={canRecordClaims}
+                    />
                 )}
 
                 {/* Barangay staff: endorse eligible residents */}

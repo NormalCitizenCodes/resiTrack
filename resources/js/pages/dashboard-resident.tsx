@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRelativeDate } from '@/hooks/use-relative-date';
 import { useTranslation } from '@/hooks/use-translation';
+import { formatResidentId } from '@/lib/resident-id';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { AppNotification, ProgramApplication, Resident } from '@/types';
@@ -454,7 +455,7 @@ export default function ResidentDashboard({
                                     Status: Profiled / Verified / Linked
                                 </span>
                                 <span className="text-sm">
-                                    Resident ID: <strong>{resident.resident_id}</strong>
+                                    Resident ID: <strong>{formatResidentId(resident.resident_id)}</strong>
                                 </span>
                             </p>
                             <Button asChild size="lg" variant="secondary" className="mt-2 bg-white text-brand-navy hover:bg-white/90">

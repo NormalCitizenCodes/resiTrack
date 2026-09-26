@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatResidentId } from '@/lib/resident-id';
 import { dashboard } from '@/routes';
 
 type DeletionRequest = {
@@ -39,7 +40,7 @@ export default function AccountDeletionRequests({ requests, highlight }: { reque
                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                 <div className="space-y-1">
                                     <p className="font-semibold">{request.resident ? `${request.resident.first_name} ${request.resident.last_name}` : request.user.name}</p>
-                                    <p className="text-sm text-muted-foreground">{request.resident?.resident_id ?? 'No resident record'} · {request.user.email}</p>
+                                    <p className="text-sm text-muted-foreground">{formatResidentId(request.resident?.resident_id) ?? 'No resident record'} · {request.user.email}</p>
                                     <p className="text-xs text-muted-foreground">Requested {new Date(request.created_at).toLocaleString()}</p>
                                 </div>
                                 <Badge variant={request.status === 'pending' ? 'secondary' : request.status === 'rejected' ? 'destructive' : 'outline'}>{request.status}</Badge>

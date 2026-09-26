@@ -15,7 +15,7 @@ const faqs: { id?: string; question: string; answer: string }[] = [
     },
     {
         question: 'What is my Resident ID?',
-        answer: 'A number in the form RES-2026-000123 that is assigned when your profile is completed. You can log in with either your Resident ID or your registered email address, together with your password.',
+        answer: 'A number like RES0182600045 (shown as RES 018 26 00045) that is assigned when your profile is completed. You can log in with either your Resident ID or your registered email address, together with your password.',
     },
     {
         question: 'I forgot my password. What do I do?',

@@ -107,6 +107,19 @@ class SectorClassificationService
         $value = $criterion->criteria_value;
         $label = self::FIELD_LABELS[$field] ?? str_replace('_', ' ', $field);
 
+        // Pregnancy is time-limited, so say when it is due, who reported it, and when the tag clears.
+        if ($field === 'is_pregnant' && $criterion->criteria_operator === 'is_true') {
+            $month = $resident->pregnancy_expected_month;
+
+            if ($month === null) {
+                return 'Pregnancy is marked yes. Add the expected month of delivery so the tag can clear by itself.';
+            }
+
+            $who = $resident->pregnancy_source === 'self' ? 'reported by the resident' : 'recorded by staff';
+
+            return 'Expected delivery in '.$month->format('F Y').", {$who}. The tag clears by itself on ".PregnancyStatus::endsOn($month)->format('F j, Y').'.';
+        }
+
         return match ($criterion->criteria_operator) {
             'age_gte' => "Age {$this->age($resident)} (must be {$value} or older)",
             'age_lte' => "Age {$this->age($resident)} (must be {$value} or younger)",

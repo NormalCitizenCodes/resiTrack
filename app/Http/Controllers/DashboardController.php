@@ -16,6 +16,7 @@ use App\Services\DashboardStatsService;
 use App\Services\OnboardingService;
 use App\Services\ProgramEligibilityService;
 use App\Services\ResidentDashboardService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -64,65 +65,76 @@ class DashboardController extends Controller
      * links lead to: BHWs verify resident accounts, admins review account
      * requests, everyone sees pending duplicate alerts.
      *
-     * @return array<int, array{key: string, label: string, count: int, href: string}>
+     * @return array<int, array{key: string, label: string, count: int, oldest_days: int|null, href: string}>
      */
     private function attentionItems(User $user, ?int $barangayId): array
     {
+        $duplicates = $this->stats->pendingDuplicates($barangayId);
+
         $items = [
-            ['key' => 'duplicates', 'label' => 'Pending duplicate alerts', 'count' => $this->stats->pendingDuplicates($barangayId), 'href' => '/duplicate-alerts'],
+            [
+                'key' => 'duplicates',
+                'label' => 'Pending duplicate alerts',
+                'count' => $duplicates,
+                'oldest_days' => $duplicates > 0 ? $this->daysSince($this->stats->oldestPendingDuplicate($barangayId)) : null,
+                'href' => '/duplicate-alerts',
+            ],
         ];
 
         if ($user->role === User::ROLE_BHW) {
-            $items[] = [
-                'key' => 'registrations',
-                'label' => 'Resident accounts to verify',
-                'count' => User::query()
+            $items[] = ['key' => 'registrations', 'label' => 'Resident accounts to verify', 'href' => '/resident-registrations', ...$this->waiting(
+                User::query()
                     ->where('role', User::ROLE_RESIDENT)
                     ->whereNull('resident_id')
                     ->whereNotNull('registration_id')
-                    ->where('barangay_id', $barangayId)
-                    ->count(),
-                'href' => '/resident-registrations',
-            ];
+                    ->where('barangay_id', $barangayId),
+            )];
         }
 
         if (! $user->isSuperAdmin()) {
-            $items[] = [
-                'key' => 'documents',
-                'label' => 'Certificate requests to prepare',
-                'count' => DocumentRequest::where('barangay_id', $barangayId)->where('status', DocumentRequest::STATUS_PENDING)->count(),
-                'href' => '/document-requests',
-            ];
-            $items[] = [
-                'key' => 'concerns',
-                'label' => 'New reports from residents',
-                'count' => Concern::where('barangay_id', $barangayId)->where('status', 'open')->count(),
-                'href' => '/resident-concerns',
-            ];
+            $items[] = ['key' => 'documents', 'label' => 'Certificate requests to prepare', 'href' => '/document-requests', ...$this->waiting(
+                DocumentRequest::where('barangay_id', $barangayId)->where('status', DocumentRequest::STATUS_PENDING),
+            )];
+            $items[] = ['key' => 'concerns', 'label' => 'New reports from residents', 'href' => '/resident-concerns', ...$this->waiting(
+                Concern::where('barangay_id', $barangayId)->where('status', 'open'),
+            )];
         }
 
         if ($user->role !== User::ROLE_BHW) {
-            $items[] = [
-                'key' => 'deletions',
-                'label' => 'Account deletion requests',
-                'count' => AccountDeletionRequest::query()
+            $items[] = ['key' => 'deletions', 'label' => 'Account deletion requests', 'href' => '/account-deletion-requests', ...$this->waiting(
+                AccountDeletionRequest::query()
                     ->where('status', AccountDeletionRequest::STATUS_PENDING)
-                    ->when($barangayId, fn ($query) => $query->where('barangay_id', $barangayId))
-                    ->count(),
-                'href' => '/account-deletion-requests',
-            ];
-            $items[] = [
-                'key' => 'reactivations',
-                'label' => 'Account reactivation requests',
-                'count' => AccountReactivationRequest::query()
+                    ->when($barangayId, fn ($query) => $query->where('barangay_id', $barangayId)),
+            )];
+            $items[] = ['key' => 'reactivations', 'label' => 'Account reactivation requests', 'href' => '/account-reactivation-requests', ...$this->waiting(
+                AccountReactivationRequest::query()
                     ->where('status', AccountReactivationRequest::STATUS_PENDING)
-                    ->when($barangayId, fn ($query) => $query->where('barangay_id', $barangayId))
-                    ->count(),
-                'href' => '/account-reactivation-requests',
-            ];
+                    ->when($barangayId, fn ($query) => $query->where('barangay_id', $barangayId)),
+            )];
         }
 
         return $items;
+    }
+
+    /**
+     * How many are waiting and for how many days the longest-waiting one has been.
+     *
+     * @param  Builder<covariant Model>  $query
+     * @return array{count: int, oldest_days: int|null}
+     */
+    private function waiting(Builder $query): array
+    {
+        $count = (clone $query)->count();
+
+        return [
+            'count' => $count,
+            'oldest_days' => $count > 0 ? $this->daysSince((clone $query)->min('created_at')) : null,
+        ];
+    }
+
+    private function daysSince(mixed $moment): ?int
+    {
+        return is_string($moment) ? max(0, (int) Carbon::parse($moment)->startOfDay()->diffInDays(Carbon::today())) : null;
     }
 
     /**

@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { ConfirmHost } from '@/components/confirm-dialog';
 import { NetworkGuard } from '@/components/network-guard';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -16,6 +17,7 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
             case name === 'error':
+            case name === 'reports/print':
             case name.startsWith('legal/'):
                 return null;
             case name.startsWith('auth/'):
@@ -37,6 +39,7 @@ createInertiaApp({
                 {app}
                 <Toaster />
                 <NetworkGuard />
+                <ConfirmHost />
             </TooltipProvider>
         );
     },

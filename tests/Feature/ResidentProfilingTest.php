@@ -99,9 +99,8 @@ it('lets a BHW search pending accounts and complete official profiling without c
         ->assertRedirect();
 
     $resident = Resident::where('email', 'maria@example.com')->firstOrFail();
-    $year = now()->year;
 
-    expect($resident->resident_id)->toBe(sprintf('RES-%d-%06d', $year, $resident->id))
+    expect($resident->resident_id)->toMatch('/^RES\d{3}'.now()->format('y').'00001$/')
         ->and($resident->profiled_by_user_id)->toBe($this->staff->id)
         ->and($resident->profiled_at)->not->toBeNull()
         ->and($registration->fresh()->resident_id)->toBe($resident->id)
@@ -264,7 +263,7 @@ it('creates an optional resident portal account with a generated resident ID', f
     $resident = Resident::where('last_name', 'Reyes')->firstOrFail();
     $account = User::where('resident_id', $resident->id)->firstOrFail();
 
-    expect($resident->resident_id)->toBe('RES-'.now()->year.'-'.str_pad((string) $resident->id, 6, '0', STR_PAD_LEFT))
+    expect($resident->resident_id)->toMatch('/^RES\d{3}'.now()->format('y').'00001$/')
         ->and($account->email)->toBe('ana.reyes@example.test')
         ->and(password_verify('resident-secret', $account->password))->toBeTrue()
         ->and(User::whereHas('resident', fn ($query) => $query->where('resident_id', $resident->resident_id))->whereKey($account->id)->exists())->toBeTrue();

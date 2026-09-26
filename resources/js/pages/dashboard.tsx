@@ -1,11 +1,14 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, Home, Users } from 'lucide-react';
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { BarangayHeatmap } from '@/components/barangay-heatmap';
 import { AgePyramid, SectorBars } from '@/components/demographic-charts';
 import type { AgeBracket, Compound, SectorCount } from '@/components/demographic-charts';
 import { GettingStarted } from '@/components/getting-started';
 import type { Onboarding } from '@/components/getting-started';
+import { RegistrationBars, registrationNote } from '@/components/registration-bars';
+import type { RegistrationMonth } from '@/components/registration-bars';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -14,6 +17,8 @@ type Stats = {
     total_residents: number;
     total_households: number;
     pending_duplicates: number;
+    registrations: RegistrationMonth[];
+    household_facts: { average_size: number | null; fourps: number; no_purok: number };
     age_distribution: AgeBracket[];
     sector_counts: SectorCount[];
     compound: Compound;
@@ -24,20 +29,30 @@ function StatCard({
     value,
     icon: Icon,
     href,
+    note,
+    aside,
 }: {
     label: string;
     value: number;
     icon: typeof Users;
     href?: string;
+    /** One line under the number. */
+    note?: string;
+    /** Detail that fills the right side of the card. */
+    aside?: ReactNode;
 }) {
     const body = (
         <Card className={cn('h-full', href && 'transition-colors hover:border-primary/50')}>
-            <CardContent className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-                    <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{value.toLocaleString()}</p>
+            <CardContent className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+                <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <Icon className="size-4 shrink-0" aria-hidden="true" />
+                        {label}
+                    </p>
+                    <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{value.toLocaleString('en-US')}</p>
+                    {note && <p className="mt-1 max-w-64 text-xs text-pretty text-muted-foreground">{note}</p>}
                 </div>
-                <Icon className="size-5 shrink-0 text-muted-foreground" />
+                {aside}
             </CardContent>
         </Card>
     );
@@ -60,7 +75,37 @@ type BarangaySummary = {
     sector_counts: SectorCount[];
 };
 
-type AttentionItem = { key: string; label: string; count: number; href: string };
+type AttentionItem = { key: string; label: string; count: number; oldest_days: number | null; href: string };
+
+function oldestWait(days: number): string {
+    return days === 0 ? 'today' : days === 1 ? '1 day' : `${days} days`;
+}
+
+/** The right-hand side of the Total Households card: the few facts that say how complete the records are. */
+function HouseholdFacts({ facts }: { facts: Stats['household_facts'] }) {
+    const rows: { value: string; label: string }[] = [];
+
+    if (facts.average_size !== null) {
+        rows.push({ value: facts.average_size.toLocaleString('en-US'), label: 'people per household' });
+    }
+
+    rows.push({ value: facts.fourps.toLocaleString('en-US'), label: facts.fourps === 1 ? '4Ps household' : '4Ps households' });
+
+    if (facts.no_purok > 0) {
+        rows.push({ value: facts.no_purok.toLocaleString('en-US'), label: 'without a purok recorded' });
+    }
+
+    return (
+        <dl className="w-full max-w-72 space-y-1.5 text-sm">
+            {rows.map((row) => (
+                <div key={row.label} className="flex items-baseline gap-2">
+                    <dt className="w-10 text-right font-semibold tabular-nums">{row.value}</dt>
+                    <dd className="text-muted-foreground">{row.label}</dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
 
 /** What is waiting on this staff member. Empty counts stay quiet; anything waiting is loud. */
 function NeedsAttention({ items }: { items: AttentionItem[] }) {
@@ -95,6 +140,12 @@ function NeedsAttention({ items }: { items: AttentionItem[] }) {
                             </p>
                             <p className="mt-0.5 text-sm text-muted-foreground">{item.label}</p>
                         </div>
+                        {item.oldest_days !== null && (
+                            <p className="ml-auto shrink-0 text-right text-xs leading-tight whitespace-nowrap text-muted-foreground">
+                                Oldest waiting
+                                <span className="mt-0.5 block text-sm font-semibold text-warning-text">{oldestWait(item.oldest_days)}</span>
+                            </p>
+                        )}
                         <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                     </Link>
                 ))}
@@ -141,12 +192,15 @@ export default function Dashboard({
                         value={stats.total_residents}
                         icon={Users}
                         href={isStaff ? '/residents' : undefined}
+                        note={registrationNote(stats.registrations)}
+                        aside={<RegistrationBars months={stats.registrations} />}
                     />
                     <StatCard
                         label="Total Households"
                         value={stats.total_households}
                         icon={Home}
                         href={isStaff ? '/households' : undefined}
+                        aside={<HouseholdFacts facts={stats.household_facts} />}
                     />
                 </div>
 

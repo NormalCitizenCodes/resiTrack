@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\AuditLogger;
+use Carbon\CarbonInterface;
 use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,18 +13,49 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property-read string $full_name
  * @property-read int|null $age
  * @property Carbon|null $date_of_birth
  * @property Carbon|null $registered_at
+ * @property Carbon|null $pregnancy_expected_month
  * @property Carbon|null $profiled_at
  */
 class Resident extends Model
 {
     /** @use HasFactory<ResidentFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        // A household leader who moves to another household, is deactivated, or turns out to be
+        // under 18 no longer leads. The family then picks again, so the household is left without one.
+        static::updated(function (Resident $resident): void {
+            if (! $resident->wasChanged(['household_id', 'is_active', 'date_of_birth'])) {
+                return;
+            }
+
+            Household::query()->where('leader_resident_id', $resident->id)->get()->each(function (Household $household) use ($resident): void {
+                if (Household::canLead($resident, $household)) {
+                    return;
+                }
+
+                $household->update(['leader_resident_id' => null]);
+
+                AuditLogger::record('update', 'households', $household->id, null, [
+                    'household_number' => $household->household_number,
+                    'changed' => 'household leader removed, '.$resident->full_name.' no longer qualifies',
+                ]);
+            });
+        });
+    }
+
+    private const ID_PREFIX = 'RES';
+
+    /** RES + 3-digit barangay + 2-digit year + 5-digit number. */
+    private const ID_LENGTH = 13;
 
     protected $fillable = [
         'household_id',
@@ -52,6 +85,8 @@ class Resident extends Model
         'is_osy',
         'is_senior_citizen',
         'is_pregnant',
+        'pregnancy_expected_month',
+        'pregnancy_source',
         'is_active',
         'is_duplicate_flagged',
         'transferred_to_barangay',
@@ -92,6 +127,7 @@ class Resident extends Model
             'is_osy' => 'boolean',
             'is_senior_citizen' => 'boolean',
             'is_pregnant' => 'boolean',
+            'pregnancy_expected_month' => 'date',
             'is_active' => 'boolean',
             'is_duplicate_flagged' => 'boolean',
         ];
@@ -141,18 +177,77 @@ class Resident extends Model
         return $this->belongsTo(User::class, 'profiled_by_user_id');
     }
 
-    public static function makeOfficialId(int $id, Carbon|string|null $at = null): string
+    /**
+     * The next resident ID for a barangay, like RES0182600045: RES, the barangay's
+     * three-digit code, the two-digit registration year, then a five-digit running
+     * number that counts every resident of that barangay and never resets. The
+     * widths are fixed, so the compact form can only be read one way.
+     */
+    public static function nextOfficialId(int $barangayId, CarbonInterface|string|null $at = null): string
     {
-        $year = Carbon::parse($at ?? now())->year;
+        $code = self::barangayCode($barangayId);
+        $year = Carbon::parse($at ?? now())->format('y');
 
-        return sprintf('RES-%d-%06d', $year, $id);
+        // Fixed width, so the highest number is also the highest string.
+        $last = (string) self::query()
+            ->where('resident_id', 'like', self::ID_PREFIX.$code.'%')
+            ->whereRaw('length(resident_id) = ?', [self::ID_LENGTH])
+            ->max(DB::raw('substr(resident_id, '.(strlen(self::ID_PREFIX) + 3 + 2 + 1).')'));
+
+        return sprintf('%s%s%s%05d', self::ID_PREFIX, $code, $year, ((int) $last) + 1);
+    }
+
+    /**
+     * The barangay's part of an ID: the last three digits of its PSGC code (unique
+     * within a city, and what the PWD ID uses). A barangay not yet linked to a PSGC
+     * code falls back to its own number, which still cannot collide because the
+     * running number is counted per code.
+     */
+    private static function barangayCode(int $barangayId): string
+    {
+        $psgc = (string) Barangay::query()->whereKey($barangayId)->value('psgc_code');
+
+        return strlen($psgc) >= 3 ? substr($psgc, -3) : sprintf('%03d', $barangayId % 1000);
+    }
+
+    /** Uppercase letters and digits only, so RES 018 26 00045 and res-018-26-00045 mean the same ID. */
+    public static function normalizeOfficialId(string $value): string
+    {
+        return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $value));
+    }
+
+    /** RES 018 26 00045, for reading. The stored and typed form is the compact one. */
+    public static function formatOfficialId(?string $id): ?string
+    {
+        if ($id !== null && preg_match('/^RES(\d{3})(\d{2})(\d{5})$/', $id, $parts)) {
+            return "RES {$parts[1]} {$parts[2]} {$parts[3]}";
+        }
+
+        return $id;
+    }
+
+    /**
+     * The stored spellings an ID typed by a person can match: with or without spaces
+     * or hyphens (the exact text is also tried, for an ID kept in an older form).
+     * Use with whereIn('resident_id', ...).
+     *
+     * @return array<int, string>
+     */
+    public static function officialIdSpellings(string $typed): array
+    {
+        return array_values(array_unique([strtoupper(trim($typed)), self::normalizeOfficialId($typed)]));
     }
 
     public function assignOfficialId(): void
     {
-        $this->update([
-            'resident_id' => self::makeOfficialId($this->id, $this->registered_at ?? $this->created_at),
-        ]);
+        DB::transaction(function () {
+            // Two people registering in one barangay at once must not read the same "last" number.
+            Barangay::query()->whereKey($this->barangay_id)->lockForUpdate()->first();
+
+            $this->update([
+                'resident_id' => self::nextOfficialId((int) $this->barangay_id, $this->registered_at ?? $this->created_at),
+            ]);
+        });
     }
 
     public function transferBarangay(): BelongsTo

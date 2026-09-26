@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Resident;
 use App\Services\AuditLogger;
+use App\Services\PregnancyStatus;
 use App\Services\SectorClassificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,12 +19,17 @@ use Inertia\Response;
  *
  * Deliberately a small field subset: contact/socio-economic data only.
  * Identity fields (name, DOB, PhilSys) and certified vulnerability flags
- * (is_pwd, is_solo_parent, is_pregnant) require staff/document verification
- * and stay behind ResidentController's staff-only routes.
+ * (is_pwd, is_solo_parent) require staff/document verification and stay
+ * behind ResidentController's staff-only routes. Pregnancy is the one
+ * exception: it ends by itself (see PregnancyStatus), so the resident may
+ * report it, marked as self-reported.
  */
 class MyProfileController extends Controller
 {
-    public function __construct(private readonly SectorClassificationService $classifier) {}
+    public function __construct(
+        private readonly SectorClassificationService $classifier,
+        private readonly PregnancyStatus $pregnancy,
+    ) {}
 
     public function edit(Request $request): Response
     {
@@ -49,18 +56,53 @@ class MyProfileController extends Controller
         ]);
 
         $resident->fill($validated);
+
+        // A pregnancy is the one sector a resident may report themselves: it ends by itself, so it
+        // needs no certificate. It is marked self-reported so staff and programs can tell.
+        $pregnancyNote = $this->applyPregnancy($request, $resident);
+
         $resident->save();
 
-        // Socio-economic edits (education/employment status) can change which
+        // Socio-economic edits (education/employment status) and a pregnancy can change which
         // sectors this resident belongs to, e.g. OSY - same as staff updates.
         $this->classifier->classify($resident);
 
-        AuditLogger::record('update', 'residents', $resident->id, null, [
+        AuditLogger::record('update', 'residents', $resident->id, null, array_filter([
             'name' => $resident->full_name,
             'source' => 'self_service',
-        ]);
+            'pregnancy' => $pregnancyNote,
+        ]));
 
         return redirect()->route('my-profile.edit')->with('success', 'Your profile was updated.');
+    }
+
+    /**
+     * Applies the resident's own pregnancy report (a tick and an expected month), if the form sent one.
+     * Returns a short note for the Activity Log when something changed.
+     */
+    private function applyPregnancy(Request $request, Resident $resident): ?string
+    {
+        if (! $request->has('is_pregnant')) {
+            return null;
+        }
+
+        $pregnant = $request->boolean('is_pregnant');
+        $month = $request->string('pregnancy_expected_month')->value() ?: null;
+
+        Validator::make(['pregnancy_expected_month' => $month], ['pregnancy_expected_month' => ['nullable', 'date_format:Y-m']])
+            ->after(fn ($validator) => $this->pregnancy->validate($validator, $pregnant, $month, $resident->sex, $resident->date_of_birth))
+            ->validate();
+
+        $wasPregnant = $resident->is_pregnant;
+        $wasMonth = $resident->pregnancy_expected_month?->format('Y-m');
+
+        $this->pregnancy->apply($resident, $pregnant, $month, 'self');
+
+        if ($pregnant && (! $wasPregnant || $wasMonth !== $month)) {
+            return 'declared, expected '.$resident->pregnancy_expected_month?->format('F Y');
+        }
+
+        return ! $pregnant && $wasPregnant ? 'ended, reported by the resident' : null;
     }
 
     private function residentFor(Request $request): ?Resident

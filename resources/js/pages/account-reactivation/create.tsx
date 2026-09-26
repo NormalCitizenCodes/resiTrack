@@ -18,7 +18,7 @@ export default function CreateReactivation({ account, pending }: { account: Acco
                         {pending && <div className="flex gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm"><AlertTriangle className="size-5 shrink-0" /><p>You already have a pending account reactivation request. Please visit your Barangay Hall and wait for the barangay staff to review your request.</p></div>}
                         {!account && !pending && <Form action="/account-reactivation/request" method="get" className="space-y-4">
                             {({ errors }) => <>
-                                <div className="grid gap-2"><Label htmlFor="identifier">Registered Email or Resident ID</Label><Input id="identifier" name="identifier" required placeholder="email@example.com or RES-2026-000123" /><InputError message={errors.identifier} /></div>
+                                <div className="grid gap-2"><Label htmlFor="identifier">Registered Email or Resident ID</Label><Input id="identifier" name="identifier" required placeholder="email@example.com or RES0182600045" /><InputError message={errors.identifier} /></div>
                                 <Button type="submit">Find My Account</Button>
                             </>}
                         </Form>}

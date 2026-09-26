@@ -114,7 +114,7 @@ class NotificationService
             $resident->id,
             'system',
             'Your resident profile has been verified',
-            "Your resident profile has been successfully completed and verified. Resident ID: {$resident->resident_id}. You can now log in using either your Resident ID or registered email address together with your password.",
+            'Your resident profile has been successfully completed and verified. Resident ID: '.Resident::formatOfficialId($resident->resident_id).'. You can now log in using either your Resident ID or registered email address together with your password.',
         );
 
         User::query()

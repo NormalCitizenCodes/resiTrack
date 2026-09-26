@@ -1,6 +1,7 @@
 import { Form as InertiaForm, Head, router, useForm } from '@inertiajs/react';
 import { Plus, Power, UserPlus } from 'lucide-react';
 import type { FormEventHandler } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,9 +49,14 @@ export default function PartnerAgencies({
         accountForm.post('/partner-agency-accounts');
     };
     const toggle = (account: Account) => {
-        if (confirm(`${account.is_active ? 'Deactivate' : 'Activate'} ${account.name}?`)) {
-            router.post(`/partner-agency-accounts/${account.id}/toggle`, {}, { preserveScroll: true });
-        }
+        const verb = account.is_active ? 'Deactivate' : 'Activate';
+
+        void confirmDialog({
+            title: `${verb} ${account.name}?`,
+            description: account.is_active ? 'This account will not be able to sign in until activated again.' : 'This account will be able to sign in again.',
+            confirmLabel: verb,
+            destructive: account.is_active,
+        }).then((ok) => ok && router.post(`/partner-agency-accounts/${account.id}/toggle`, {}, { preserveScroll: true }));
     };
 
     return (

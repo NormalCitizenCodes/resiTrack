@@ -5,6 +5,7 @@ import { SectorBadge } from '@/components/sector-badges';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCalendarDate } from '@/hooks/use-relative-date';
 import { useTranslation } from '@/hooks/use-translation';
+import { formatResidentId } from '@/lib/resident-id';
 import { dashboard } from '@/routes';
 
 type IdCardData = {
@@ -92,7 +93,7 @@ export default function MyId({ card }: { card: IdCardData | null }) {
 
                                     <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                                         <div className="col-span-2">
-                                            <Field label={t('id.residentId')} value={card.resident_id} mono />
+                                            <Field label={t('id.residentId')} value={formatResidentId(card.resident_id)} mono />
                                         </div>
                                         <Field label={t('id.birthdate')} value={formatDate(card.date_of_birth)} />
                                         <Field label={t('id.sex')} value={card.sex ? t(`sex.${card.sex}`) : ''} />
@@ -116,7 +117,7 @@ export default function MyId({ card }: { card: IdCardData | null }) {
                                     <div
                                         className="size-44 rounded-lg bg-white p-2 [&>svg]:size-full"
                                         role="img"
-                                        aria-label={`QR code for ${card.resident_id}`}
+                                        aria-label={`QR code for ${formatResidentId(card.resident_id)}`}
                                         dangerouslySetInnerHTML={{ __html: card.qr_svg }}
                                     />
                                     <figcaption className="text-xs text-muted-foreground">{t('id.scanHint')}</figcaption>

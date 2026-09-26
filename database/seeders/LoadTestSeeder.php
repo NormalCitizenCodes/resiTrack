@@ -448,6 +448,8 @@ class LoadTestSeeder extends Seeder
             'is_pwd' => $age >= 4 && $this->chance(4),
             'is_solo_parent' => $m['solo'],
             'is_pregnant' => $pregnant,
+            'pregnancy_expected_month' => $pregnant ? now()->startOfMonth()->addMonths(mt_rand(1, 8))->toDateString() : null,
+            'pregnancy_source' => $pregnant ? ($this->chance(30) ? 'self' : 'staff') : null,
             'is_active' => true,
             'registered_at' => $registered,
             'profiled_by_user_id' => $bhw->id,
@@ -455,7 +457,7 @@ class LoadTestSeeder extends Seeder
         ]);
         $this->philsys += mt_rand(1, 9000);
 
-        $resident->forceFill(['resident_id' => Resident::makeOfficialId($resident->id, $registered), 'created_at' => $registered, 'updated_at' => $registered])->save();
+        $resident->forceFill(['resident_id' => Resident::nextOfficialId((int) $resident->barangay_id, $registered), 'created_at' => $registered, 'updated_at' => $registered])->save();
         $this->audit[] = $this->entry($bhw->id, 'create', 'residents', $resident->id, null, ['name' => $resident->full_name], $registered);
 
         return $resident;
@@ -501,7 +503,7 @@ class LoadTestSeeder extends Seeder
                 'profiled_by_user_id' => $bhw->id,
                 'profiled_at' => $when,
             ]);
-            $copy->forceFill(['resident_id' => Resident::makeOfficialId($copy->id, $when), 'created_at' => $when, 'updated_at' => $when])->save();
+            $copy->forceFill(['resident_id' => Resident::nextOfficialId((int) $copy->barangay_id, $when), 'created_at' => $when, 'updated_at' => $when])->save();
 
             $this->classifier->classify($copy);
             $this->duplicates->scan($copy);

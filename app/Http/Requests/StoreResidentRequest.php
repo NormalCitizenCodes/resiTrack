@@ -4,7 +4,9 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\HasStructuredAddresses;
 use App\Models\User;
+use App\Services\PregnancyStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class StoreResidentRequest extends FormRequest
@@ -74,6 +76,7 @@ class StoreResidentRequest extends FormRequest
             'is_pwd' => ['boolean'],
             'is_solo_parent' => ['boolean'],
             'is_pregnant' => ['boolean'],
+            'pregnancy_expected_month' => ['nullable', 'date_format:Y-m'],
 
             ...$this->addressRules(),
         ];
@@ -126,10 +129,16 @@ class StoreResidentRequest extends FormRequest
         $this->validateAddressChains($validator);
 
         $validator->after(function ($validator) {
-            // Cross-field consistency: only female residents can be marked pregnant.
-            if ($this->boolean('is_pregnant') && $this->input('sex') !== 'female') {
-                $validator->errors()->add('is_pregnant', 'Only female residents can be marked as pregnant.');
-            }
+            // Pregnancy needs an expected month, a female resident in a plausible age range, and a plausible month.
+            $birth = $this->input('date_of_birth');
+
+            app(PregnancyStatus::class)->validate(
+                $validator,
+                $this->boolean('is_pregnant'),
+                is_string($this->input('pregnancy_expected_month')) ? $this->input('pregnancy_expected_month') : null,
+                is_string($this->input('sex')) ? $this->input('sex') : null,
+                is_string($birth) && strtotime($birth) !== false ? Carbon::parse($birth) : null,
+            );
         });
     }
 }

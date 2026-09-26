@@ -222,10 +222,10 @@ class DemoStorySeeder extends Seeder
                 'address' => $household->address, 'occupation' => $member['job'],
                 'employment_status' => $member['job'] ? ($member['income'] > 8000 ? 'employed' : 'self_employed') : 'unemployed',
                 'education_level' => $member['edu'], 'education_status' => $member['enrol'], 'monthly_income' => $member['income'],
-                'is_pwd' => $member['pwd'] ?? false, 'is_solo_parent' => $member['solo'] ?? false, 'is_pregnant' => $member['pregnant'] ?? false,
+                'is_pwd' => $member['pwd'] ?? false, 'is_solo_parent' => $member['solo'] ?? false, 'is_pregnant' => $member['pregnant'] ?? false, 'pregnancy_expected_month' => ($member['pregnant'] ?? false) ? now()->startOfMonth()->addMonths(4)->toDateString() : null, 'pregnancy_source' => ($member['pregnant'] ?? false) ? 'staff' : null,
                 'is_active' => true, 'registered_at' => $registered, 'profiled_by_user_id' => $bhw->id, 'profiled_at' => $registered,
             ]);
-            $resident->forceFill(['resident_id' => Resident::makeOfficialId($resident->id, $registered), 'created_at' => $registered, 'updated_at' => $registered])->save();
+            $resident->forceFill(['resident_id' => Resident::nextOfficialId((int) $resident->barangay_id, $registered), 'created_at' => $registered, 'updated_at' => $registered])->save();
             $created[] = $resident;
 
             if (isset($member['key'])) {
@@ -261,13 +261,13 @@ class DemoStorySeeder extends Seeder
 
         // The same woman registered twice in the same barangay by different health workers: no middle name, no PhilSys number.
         $copy = Resident::create(['barangay_id' => $b['Barangay 22'], 'first_name' => 'Maribel', 'last_name' => 'Cabahug', 'date_of_birth' => $maribel->date_of_birth->toDateString(), 'sex' => 'female', 'civil_status' => 'married', 'citizenship' => 'Filipino', 'contact_number' => $maribel->contact_number, 'address' => 'Purok 3, Barangay 22', 'is_active' => true, 'registered_at' => now()->subDays(6), 'profiled_by_user_id' => $bhw->id, 'profiled_at' => now()->subDays(6)]);
-        $copy->forceFill(['resident_id' => Resident::makeOfficialId($copy->id, now()), 'created_at' => now()->subDays(6)])->save();
+        $copy->forceFill(['resident_id' => Resident::nextOfficialId((int) $copy->barangay_id, now()), 'created_at' => now()->subDays(6)])->save();
         $this->classifier->classify($copy);
         $this->duplicates->scan($copy);
 
         // Lorna moved from Barangay 23 to Barangay 22 and was registered again there.
         $moved = Resident::create(['barangay_id' => $b['Barangay 22'], 'first_name' => 'Lorna', 'middle_name' => 'Gaviola', 'last_name' => 'Mabini', 'date_of_birth' => $lorna->date_of_birth->toDateString(), 'philsys_card_no' => $lorna->philsys_card_no, 'sex' => 'female', 'civil_status' => 'married', 'citizenship' => 'Filipino', 'address' => 'Purok 2, Barangay 22', 'is_active' => true, 'registered_at' => now()->subDays(3), 'profiled_by_user_id' => $bhw->id, 'profiled_at' => now()->subDays(3)]);
-        $moved->forceFill(['resident_id' => Resident::makeOfficialId($moved->id, now()), 'created_at' => now()->subDays(3)])->save();
+        $moved->forceFill(['resident_id' => Resident::nextOfficialId((int) $moved->barangay_id, now()), 'created_at' => now()->subDays(3)])->save();
         $this->classifier->classify($moved);
         $this->duplicates->scan($moved);
     }

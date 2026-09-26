@@ -7,6 +7,7 @@ use App\Models\DuplicateAlert;
 use App\Models\Household;
 use App\Models\Resident;
 use App\Models\VulnerabilitySector;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -30,14 +31,50 @@ class DashboardStatsService
             $households->where('barangay_id', $barangayId);
         }
 
+        $householdCount = (clone $households)->count();
+        $residentsInHomes = (clone $residents)->whereNotNull('household_id')->count();
+
         return [
             'total_residents' => (clone $residents)->count(),
-            'total_households' => $households->count(),
+            'total_households' => $householdCount,
+            'registrations' => $this->registrationTrend($barangayId),
+            'household_facts' => [
+                'average_size' => $householdCount > 0 ? round($residentsInHomes / $householdCount, 1) : null,
+                'fourps' => (clone $households)->where('is_4ps_beneficiary', true)->count(),
+                'no_purok' => (clone $households)->whereNull('zone_id')->count(),
+            ],
             'pending_duplicates' => $this->pendingDuplicates($barangayId),
             'age_distribution' => $this->ageDistribution($barangayId),
             'sector_counts' => $this->sectorCounts($barangayId),
             'compound' => $this->compoundVulnerability($barangayId),
         ];
+    }
+
+    /**
+     * New registrations in each of the last six calendar months, oldest first, the
+     * current month last (and still filling up).
+     *
+     * @return array<int, array{month: string, label: string, count: int}>
+     */
+    public function registrationTrend(?int $barangayId = null): array
+    {
+        $thisMonth = Carbon::today()->startOfMonth();
+        $trend = [];
+
+        for ($back = 5; $back >= 0; $back--) {
+            $start = $thisMonth->copy()->subMonths($back);
+
+            $trend[] = [
+                'month' => $start->format('M'),
+                'label' => $start->format('F Y'),
+                'count' => Resident::query()
+                    ->when($barangayId, fn ($q) => $q->where('barangay_id', $barangayId))
+                    ->whereBetween('registered_at', [$start, $start->copy()->endOfMonth()])
+                    ->count(),
+            ];
+        }
+
+        return $trend;
     }
 
     /**
@@ -167,6 +204,22 @@ class DashboardStatsService
 
     public function pendingDuplicates(?int $barangayId = null): int
     {
+        return $this->pendingDuplicateQuery($barangayId)->count();
+    }
+
+    /** When the longest-waiting pending alert was raised, or null if none is waiting. */
+    public function oldestPendingDuplicate(?int $barangayId = null): ?string
+    {
+        $oldest = $this->pendingDuplicateQuery($barangayId)->min('created_at');
+
+        return is_string($oldest) ? $oldest : null;
+    }
+
+    /**
+     * @return Builder<DuplicateAlert>
+     */
+    private function pendingDuplicateQuery(?int $barangayId): Builder
+    {
         return DuplicateAlert::query()
             ->where('status', 'pending')
             ->when($barangayId, function ($query) use ($barangayId) {
@@ -176,7 +229,6 @@ class DashboardStatsService
                     $outer->whereHas('residentOne', fn ($q) => $q->where('barangay_id', $barangayId))
                         ->orWhereHas('residentTwo', fn ($q) => $q->where('barangay_id', $barangayId));
                 });
-            })
-            ->count();
+            });
     }
 }

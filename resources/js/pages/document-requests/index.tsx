@@ -7,6 +7,7 @@ import { DOCUMENT_TONE, StatusPill } from '@/components/status-pill';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRelativeDate } from '@/hooks/use-relative-date';
+import { formatResidentId } from '@/lib/resident-id';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { Paginated } from '@/types';
@@ -67,7 +68,7 @@ function RequestCard({ request, typeLabel }: { request: Request; typeLabel: stri
                             ) : (
                                 'Removed resident'
                             )}
-                            {request.resident?.resident_id && <span className="ml-2 font-mono text-xs text-muted-foreground">{request.resident.resident_id}</span>}
+                            {request.resident?.resident_id && <span className="ml-2 font-mono text-xs text-muted-foreground">{formatResidentId(request.resident.resident_id)}</span>}
                         </p>
                     </div>
                     <StatusPill tone={DOCUMENT_TONE[request.status] ?? 'waiting'}>{STATUS_LABEL[request.status] ?? request.status}</StatusPill>

@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import type { FormEventHandler} from 'react';
 import { useState } from 'react';
 import { AddressPicker, emptyAddress } from '@/components/address-picker';
@@ -17,10 +17,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import type { Household, Resident } from '@/types';
 
 type ResidentFormData = {
     household_id: string;
+    is_household_leader: boolean;
+    pregnancy_expected_month: string;
     philsys_card_no: string;
     last_name: string;
     first_name: string;
@@ -113,6 +116,8 @@ function toInitial(resident?: Resident, addressDefaults?: AddressDefaults | null
         is_pwd: resident?.is_pwd ?? false,
         is_solo_parent: resident?.is_solo_parent ?? false,
         is_pregnant: resident?.is_pregnant ?? false,
+        pregnancy_expected_month: resident?.pregnancy_expected_month?.substring(0, 7) ?? '',
+        is_household_leader: (resident as (Resident & { is_household_leader?: boolean }) | undefined)?.is_household_leader ?? false,
         create_account: false,
         password: '',
         password_confirmation: '',
@@ -310,7 +315,7 @@ export function ResidentForm({
                             value={data.household_id || NONE}
                             onValueChange={(v) => setData('household_id', v === NONE ? '' : v)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className="w-full min-w-0">
                                 <SelectValue placeholder="Unassigned" />
                             </SelectTrigger>
                             <SelectContent>
@@ -323,6 +328,21 @@ export function ResidentForm({
                             </SelectContent>
                         </Select>
                     </Field>
+                    {data.household_id !== '' && (
+                        <label className="flex items-start gap-2 text-sm md:col-span-3">
+                            <Checkbox
+                                className="mt-0.5"
+                                checked={data.is_household_leader}
+                                onCheckedChange={(checked) => setData('is_household_leader', checked === true)}
+                            />
+                            <span>
+                                This person is the household leader
+                                <span className="block text-xs text-muted-foreground">
+                                    The one member, 18 or older, whom the family chose to represent it. Tick this only if the family picked them.
+                                </span>
+                            </span>
+                        </label>
+                    )}
                     <Field label="Occupation" error={errors.occupation}>
                         <Input value={data.occupation} onChange={(e) => setData('occupation', e.target.value)} />
                     </Field>
@@ -382,16 +402,47 @@ export function ResidentForm({
                         <CheckboxField label="Pregnant" checked={data.is_pregnant} onChange={(v) => setData('is_pregnant', v)} />
                     </div>
                     <InputError message={errors.is_pregnant} />
+                    {data.is_pregnant && (
+                        <div className="max-w-xs">
+                            <Label htmlFor="pregnancy_expected_month" className="mb-1.5 block">
+                                Expected month of delivery <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="pregnancy_expected_month"
+                                type="month"
+                                value={data.pregnancy_expected_month}
+                                onChange={(e) => setData('pregnancy_expected_month', e.target.value)}
+                            />
+                            <p className="mt-1 text-xs text-muted-foreground">The Pregnant tag is removed by itself 30 days after the end of this month.</p>
+                            <InputError message={errors.pregnancy_expected_month} className="mt-1" />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
             <div className="flex justify-end gap-2">
+                <Button asChild variant="outline" type="button">
+                    <Link href={cancelTarget(resident)}>Cancel</Link>
+                </Button>
                 <Button type="submit" disabled={processing}>
                     {submitLabel}
                 </Button>
             </div>
         </form>
     );
+}
+
+/** Where Cancel goes: the record being edited, the household "Add member" came from, or the list. */
+function cancelTarget(resident?: Resident): string {
+    if (resident?.id) {
+        return `/residents/${resident.id}`;
+    }
+
+    if (resident?.household_id) {
+        return `/households/${resident.household_id}`;
+    }
+
+    return '/residents';
 }
 
 function Field({
@@ -408,7 +459,8 @@ function Field({
     children: React.ReactNode;
 }) {
     return (
-        <div className={className}>
+        // min-w-0 lets a long value (a household with a long address) shrink to the column instead of pushing past the card.
+        <div className={cn('min-w-0', className)}>
             <Label className="mb-1.5 block">
                 {label} {required && <span className="text-red-500">*</span>}
             </Label>
@@ -429,7 +481,7 @@ function SelectField({
 }) {
     return (
         <Select value={value || undefined} onValueChange={onChange}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full min-w-0">
                 <SelectValue placeholder="Select…" />
             </SelectTrigger>
             <SelectContent>

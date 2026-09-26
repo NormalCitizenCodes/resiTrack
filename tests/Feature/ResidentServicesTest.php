@@ -119,7 +119,7 @@ it('shows an agency which of its own programs the person is a beneficiary of', f
     $this->actingAs(agencyUser())->get("/verify/{$id}?s=".Resident::idSignature($id))
         ->assertInertia(fn ($page) => $page
             ->where('result.can_open_record', false)
-            ->where('result.agency_programs', [['id' => $mine->id, 'title' => 'Mine']]));
+            ->where('result.agency_programs', [['id' => $mine->id, 'title' => 'Mine', 'schedule_id' => null, 'schedule_title' => null, 'claimed_today' => false, 'can_claim' => true]]));
 });
 
 // --- Claim schedules -------------------------------------------------------

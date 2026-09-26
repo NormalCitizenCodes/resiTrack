@@ -1,7 +1,8 @@
 import { Head, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import type { FormEventHandler } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -61,6 +62,8 @@ export default function MyProfile({ resident }: { resident: Resident | null }) {
         education_level: resident?.education_level ?? '',
         education_status: resident?.education_status ?? '',
         monthly_income: resident?.monthly_income ?? '',
+        is_pregnant: resident?.is_pregnant ?? false,
+        pregnancy_expected_month: resident?.pregnancy_expected_month?.substring(0, 7) ?? '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -169,6 +172,33 @@ export default function MyProfile({ resident }: { resident: Resident | null }) {
                                     onChange={(v) => setData('education_status', v)}
                                     error={errors.education_status}
                                 />
+
+                                {resident.sex === 'female' && (
+                                    <div className="space-y-3 rounded-lg border p-4 md:col-span-2">
+                                        <p className="text-sm font-semibold">{t('profile.pregnancyTitle')}</p>
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <Checkbox checked={data.is_pregnant} onCheckedChange={(checked) => setData('is_pregnant', checked === true)} />
+                                            {t('profile.pregnantLabel')}
+                                        </label>
+                                        {data.is_pregnant && (
+                                            <div className="max-w-xs">
+                                                <Label htmlFor="pregnancy_expected_month" className="mb-1.5 block">
+                                                    {t('profile.expectedMonth')}
+                                                </Label>
+                                                <Input
+                                                    id="pregnancy_expected_month"
+                                                    type="month"
+                                                    value={data.pregnancy_expected_month}
+                                                    onChange={(e) => setData('pregnancy_expected_month', e.target.value)}
+                                                />
+                                                <p className="mt-1 text-xs text-pretty text-muted-foreground">{t('profile.pregnancyHint')}</p>
+                                            </div>
+                                        )}
+                                        {(errors.is_pregnant || errors.pregnancy_expected_month) && (
+                                            <p className="text-sm text-red-600">{errors.pregnancy_expected_month ?? errors.is_pregnant}</p>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="md:col-span-2">
                                     <Button type="submit" disabled={processing} size="lg">

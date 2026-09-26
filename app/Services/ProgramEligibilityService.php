@@ -27,7 +27,7 @@ class ProgramEligibilityService
     public function eligibleResidents(Program $program, int $barangayId): Collection
     {
         if ($program->barangay_id !== null && $program->barangay_id !== $barangayId) {
-            return new Collection();
+            return new Collection;
         }
 
         $sectorIds = $program->sectors->pluck('id');
@@ -43,6 +43,28 @@ class ProgramEligibilityService
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+    }
+
+    /**
+     * How many active residents a program aimed at these sectors (any one of them; none means
+     * everyone) and this barangay (null means the whole city) would reach. Used to size a program
+     * before it is published.
+     *
+     * @param  array<int, int>  $sectorIds
+     * @return array{eligible: int, total: int}
+     */
+    public function preview(array $sectorIds, ?int $barangayId): array
+    {
+        $residents = fn () => Resident::query()
+            ->where('is_active', true)
+            ->when($barangayId !== null, fn ($q) => $q->where('barangay_id', $barangayId));
+
+        return [
+            'eligible' => $residents()
+                ->when($sectorIds !== [], fn ($q) => $q->whereHas('sectors', fn ($s) => $s->whereIn('vulnerability_sectors.id', $sectorIds)))
+                ->count(),
+            'total' => $residents()->count(),
+        ];
     }
 
     /**

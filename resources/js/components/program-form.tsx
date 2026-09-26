@@ -1,5 +1,6 @@
-import { useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Link, useForm } from '@inertiajs/react';
+import type { FormEventHandler } from 'react';
+import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,13 +65,48 @@ export function ProgramForm({
         barangay_id: formData.barangay_id === CITYWIDE ? '' : formData.barangay_id,
     }));
 
+    // "About how many residents would this reach?", refreshed as the sectors or barangay change.
+    const [estimate, setEstimate] = useState<{ eligible: number; total: number } | null>(null);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const timer = window.setTimeout(() => {
+            const params = new URLSearchParams();
+            data.sector_ids.forEach((id) => params.append('sector_ids[]', String(id)));
+
+            if (data.barangay_id !== CITYWIDE && data.barangay_id !== '') {
+                params.set('barangay_id', data.barangay_id);
+            }
+
+            fetch(`/programs/eligibility-preview?${params.toString()}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                signal: controller.signal,
+            })
+                .then((response) => (response.ok ? response.json() : null))
+                .then((json) => json && setEstimate(json as { eligible: number; total: number }))
+                .catch(() => undefined);
+        }, 300);
+
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+    }, [data.sector_ids, data.barangay_id]);
+
     const toggleSector = (id: number, checked: boolean) => {
         setData('sector_ids', checked ? [...data.sector_ids, id] : data.sector_ids.filter((s) => s !== id));
     };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        mode === 'create' ? post(action) : put(action);
+
+        if (mode === 'create') {
+            post(action);
+        } else {
+            put(action);
+        }
     };
 
     return (
@@ -153,6 +189,20 @@ export function ProgramForm({
                             ))}
                         </div>
                         <InputError message={errors.sector_ids} className="mt-1" />
+                        {estimate && (
+                            <p role="status" className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm">
+                                {estimate.total === 0 ? (
+                                    'There are no active residents in this area yet.'
+                                ) : (
+                                    <>
+                                        About <strong className="tabular-nums">{estimate.eligible.toLocaleString('en-US')}</strong> active resident
+                                        {estimate.eligible === 1 ? '' : 's'} would qualify ({Math.round((estimate.eligible / estimate.total) * 100)}% of{' '}
+                                        {estimate.total.toLocaleString('en-US')}
+                                        {data.barangay_id === CITYWIDE ? ', across the whole city' : ' in the chosen barangay'}).
+                                    </>
+                                )}
+                            </p>
+                        )}
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-3">
@@ -197,7 +247,10 @@ export function ProgramForm({
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+                <Button asChild variant="outline" type="button">
+                    <Link href={program ? `/programs/${program.id}` : '/programs'}>Cancel</Link>
+                </Button>
                 <Button type="submit" disabled={processing}>
                     {submitLabel}
                 </Button>

@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Plus, Search, UserCog } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '@/components/confirm-dialog';
 import { DataPagination } from '@/components/data-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,9 +42,12 @@ export default function StaffIndex({ staff, isSuperAdmin, filters, barangays }: 
     const toggle = (member: Staff) => {
         const verb = member.is_active ? 'deactivate' : 'reactivate';
 
-        if (confirm(`${verb.charAt(0).toUpperCase() + verb.slice(1)} ${member.name}?`)) {
-            router.post(`/staff/${member.id}/toggle`, {}, { preserveScroll: true });
-        }
+        void confirmDialog({
+            title: `${verb.charAt(0).toUpperCase() + verb.slice(1)} ${member.name}?`,
+            description: member.is_active ? 'They will not be able to sign in until reactivated.' : 'They will be able to sign in again.',
+            confirmLabel: verb.charAt(0).toUpperCase() + verb.slice(1),
+            destructive: member.is_active,
+        }).then((ok) => ok && router.post(`/staff/${member.id}/toggle`, {}, { preserveScroll: true }));
     };
 
     // Debounced search so we don't fire a request on every keystroke.

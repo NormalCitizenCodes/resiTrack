@@ -356,3 +356,349 @@ html.intro-hide-logo #site-logo {
 .leaflet-tooltip.heat-label::before {
     display: none;
 }
+
+/*
+ * Printable reports (pages/reports/print.tsx). A report is a paper document, so it
+ * uses its own fixed light colours and ignores the app theme, on screen and in print.
+ * The named page removes the browser's margin (and with it the URL/date header and
+ * footer it prints there); the table's repeating head and foot give every printed page
+ * its own top and bottom space and carry the running header and footer.
+ */
+@page report {
+    size: A4;
+    margin: 0;
+}
+
+.report-screen {
+    --rp-ink: #111827;
+    --rp-muted: #4b5563;
+    --rp-line: #d1d5db;
+    --rp-soft: #f3f4f6;
+    --rp-accent: #1e40af;
+    min-height: 100svh;
+    background: #e5e7eb;
+    color: var(--rp-ink);
+    color-scheme: light;
+    font-size: 13px;
+    padding-bottom: 2rem;
+}
+
+.report-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid var(--rp-line);
+}
+
+.report-toolbar-hint {
+    flex: 1;
+    min-width: 12rem;
+    font-size: 12px;
+    color: var(--rp-muted);
+}
+
+.report-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--rp-line);
+    border-radius: 0.5rem;
+    background: #fff;
+    color: var(--rp-ink);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.report-toolbar-primary {
+    background: var(--rp-accent);
+    border-color: var(--rp-accent);
+    color: #fff;
+}
+
+.report-sheet {
+    page: report;
+    width: 210mm;
+    max-width: 100%;
+    min-height: 297mm;
+    margin: 1.25rem auto 0;
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2), 0 8px 24px rgb(0 0 0 / 0.12);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.report-frame {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.report-frame > thead > tr > td {
+    padding: 10mm 14mm 0;
+}
+
+.report-frame > tbody > tr > td {
+    padding: 4mm 14mm 6mm;
+    vertical-align: top;
+}
+
+.report-frame > tfoot > tr > td {
+    padding: 0 14mm 9mm;
+}
+
+.report-running-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 2.5mm;
+    border-bottom: 1.5px solid var(--rp-accent);
+    font-size: 11px;
+    color: var(--rp-muted);
+}
+
+.report-running-title {
+    margin-left: auto;
+}
+
+.report-running-foot {
+    padding-top: 2.5mm;
+    border-top: 1px solid var(--rp-line);
+    font-size: 9.5px;
+    color: var(--rp-muted);
+}
+
+.rp-eyebrow {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rp-accent);
+}
+
+.rp-title {
+    margin: 0.15rem 0 0.5rem;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--rp-ink);
+}
+
+.rp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    margin: 0 0 1rem;
+    font-size: 11.5px;
+}
+
+.rp-meta dt {
+    display: inline;
+    color: var(--rp-muted);
+}
+
+.rp-meta dt::after {
+    content: ': ';
+}
+
+.rp-meta dd {
+    display: inline;
+    margin: 0;
+    font-weight: 600;
+}
+
+.rp-h2 {
+    margin: 1.1rem 0 0.4rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--rp-line);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--rp-ink);
+    break-after: avoid;
+}
+
+.rp-note {
+    margin: 0.35rem 0 0;
+    font-size: 10.5px;
+    color: var(--rp-muted);
+}
+
+.rp-sub {
+    font-size: 10.5px;
+    color: var(--rp-muted);
+}
+
+.rp-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(30mm, 1fr));
+    gap: 0.5rem;
+    margin: 0.4rem 0 0.2rem;
+}
+
+.rp-kpi {
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--rp-line);
+    border-radius: 6px;
+    background: var(--rp-soft);
+    break-inside: avoid;
+}
+
+.rp-kpi strong {
+    display: block;
+    font-size: 20px;
+    line-height: 1.1;
+    color: var(--rp-accent);
+}
+
+.rp-kpi span {
+    font-size: 10.5px;
+    color: var(--rp-muted);
+}
+
+.rp-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1.5rem;
+    break-inside: avoid;
+}
+
+.rp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.rp-table th {
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1.5px solid var(--rp-ink);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.rp-table td {
+    padding: 0.28rem 0.4rem;
+    border-bottom: 1px solid var(--rp-line);
+    vertical-align: top;
+}
+
+.rp-table thead {
+    display: table-header-group;
+}
+
+.rp-table tr {
+    break-inside: avoid;
+}
+
+.rp-num {
+    text-align: right !important;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.rp-idx {
+    width: 8mm;
+    color: var(--rp-muted);
+}
+
+.rp-empty {
+    padding: 1rem;
+    text-align: center;
+    color: var(--rp-muted);
+}
+
+.rp-bars td {
+    border-bottom: 0;
+    padding: 0.18rem 0.4rem;
+}
+
+.rp-bars-label {
+    width: 46%;
+}
+
+.rp-bars-track {
+    width: 38%;
+}
+
+.rp-nowrap {
+    white-space: nowrap;
+}
+
+.rp-bars-track span {
+    display: block;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--rp-accent);
+}
+
+.rp-signatures {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-top: 2.2rem;
+    break-inside: avoid;
+}
+
+.rp-sign-line {
+    min-height: 1.6rem;
+    padding-top: 1rem;
+    border-bottom: 1px solid var(--rp-ink);
+    font-weight: 600;
+}
+
+.rp-signatures span {
+    font-size: 10.5px;
+    color: var(--rp-muted);
+}
+
+@media (max-width: 800px) {
+    .report-screen {
+        overflow-x: auto;
+    }
+
+    .report-sheet {
+        width: 210mm;
+        max-width: none;
+    }
+}
+
+@media print {
+    html,
+    body {
+        background: #fff !important;
+    }
+
+    .report-screen {
+        min-height: 0;
+        padding: 0;
+        background: #fff;
+        overflow: visible;
+    }
+
+    .report-toolbar {
+        display: none !important;
+    }
+
+    .report-sheet {
+        width: auto;
+        min-height: 0;
+        margin: 0;
+        box-shadow: none;
+    }
+}
+
+/* The signature column on the household leaders' sheet: wide enough to sign in, ruled so it prints as a line. */
+.rp-sign-col {
+    width: 32%;
+}
+
+.rp-list td.rp-sign-col {
+    height: 9mm;
+}

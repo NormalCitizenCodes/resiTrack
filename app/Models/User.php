@@ -124,6 +124,18 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return in_array($this->role, $roles, true);
     }
 
+    /** The role as people say it, for printed lines like "Profiled by Ana Cruz, Barangay Health Worker". */
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            self::ROLE_SUPER_ADMIN => 'System Administrator',
+            self::ROLE_BARANGAY_ADMIN => 'Barangay Admin',
+            self::ROLE_BHW => 'Barangay Health Worker',
+            self::ROLE_PARTNER_AGENCY => 'Partner agency officer',
+            default => 'Resident',
+        };
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === self::ROLE_SUPER_ADMIN;

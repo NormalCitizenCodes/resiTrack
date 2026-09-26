@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountReactivationRequest;
 use App\Models\AppNotification;
+use App\Models\Resident;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\GuestFormThrottle;
@@ -148,12 +149,11 @@ class AccountReactivationRequestController extends Controller
         if ($identifier === '') {
             return null;
         }
-        $residentIdentifier = strtoupper($identifier);
 
         return User::query()->with('barangay:id,name')->where('role', User::ROLE_RESIDENT)
             ->where('is_active', false)
-            ->where(function ($query) use ($identifier, $residentIdentifier) {
-                $query->where('email', $identifier)->orWhereHas('resident', fn ($resident) => $resident->where('resident_id', $residentIdentifier));
+            ->where(function ($query) use ($identifier) {
+                $query->where('email', $identifier)->orWhereHas('resident', fn ($resident) => $resident->whereIn('resident_id', Resident::officialIdSpellings($identifier)));
             })->first();
     }
 

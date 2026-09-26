@@ -1,6 +1,8 @@
 import { Head } from '@inertiajs/react';
-import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
+import { RecentReports } from '@/components/recent-reports';
+import { ReportBuilder } from '@/components/report-builder';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +14,9 @@ type SectorCount = { code: string; name: string; count: number };
 type AgeBracket = { label: string; count: number };
 
 type Props = {
+    sectors: { code: string; name: string }[];
+    zones: { id: number; name: string; barangay_id: number }[];
+    barangays: { id: number; name: string }[];
     scope: string;
     totals: { residents: number };
     sectorSummary: { sectors: SectorCount[]; fourps_households: number };
@@ -28,6 +33,10 @@ type Props = {
 const REPORT_LABELS: Record<string, string> = {
     sector_dashboard: 'Sector Dashboard',
     resident_population: 'Resident Population',
+    barangay_summary: 'Barangay Summary',
+    resident_list: 'Resident List',
+    program_reach: 'Program Reach',
+    household_leaders: 'Household Leaders',
 };
 
 function AuditStat({ label, value }: { label: string; value: number }) {
@@ -40,6 +49,9 @@ function AuditStat({ label, value }: { label: string; value: number }) {
 }
 
 export default function ReportsIndex({
+    sectors,
+    zones,
+    barangays,
     scope,
     totals,
     sectorSummary,
@@ -58,18 +70,30 @@ export default function ReportsIndex({
                             compliance and decision-making.
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Or download a file:</span>
                         {/* Downloads are file responses, so use plain anchors, not Inertia links. */}
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <a href="/reports/export/pdf">
-                                <FileText className="size-4" /> Export PDF
+                                <FileText className="size-4" /> PDF
                             </a>
                         </Button>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <a href="/reports/export/csv">
-                                <FileSpreadsheet className="size-4" /> Export CSV
+                                <FileSpreadsheet className="size-4" /> CSV
                             </a>
                         </Button>
+                    </div>
+                </div>
+
+                {/* On wide screens the recent reports sit beside the builder; below that the full history table further down is enough. */}
+                <div className="grid gap-4 2xl:grid-cols-[minmax(0,64rem)_minmax(22rem,1fr)]">
+                    <ReportBuilder sectors={sectors} zones={zones} barangays={barangays} />
+                    {/* The builder sets the row's height; the list fits inside it and scrolls, so it never leaves a gap under the builder. */}
+                    <div className="relative hidden 2xl:block">
+                        <div className="absolute inset-0">
+                            <RecentReports entries={generatedReports.data} />
+                        </div>
                     </div>
                 </div>
 
@@ -114,7 +138,7 @@ export default function ReportsIndex({
                 </div>
 
                 {/* Generated report history */}
-                <Card>
+                <Card id="report-history" className="scroll-mt-4">
                     <CardHeader>
                         <CardTitle>Previously Generated Reports</CardTitle>
                     </CardHeader>
@@ -138,11 +162,13 @@ export default function ReportsIndex({
                                 )}
                                 {generatedReports.data.map((entry) => {
                                     let format: string | null = null;
+
                                     try {
                                         format = entry.new_value ? JSON.parse(entry.new_value).format : null;
                                     } catch {
                                         format = null;
                                     }
+
                                     return (
                                         <TableRow key={entry.id}>
                                             <TableCell className="font-medium">

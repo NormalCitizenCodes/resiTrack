@@ -1,8 +1,10 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { BadgeCheck, CircleX, HandHeart, TriangleAlert } from 'lucide-react';
+import { toast } from 'sonner';
 import { SectorBadge } from '@/components/sector-badges';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatResidentId } from '@/lib/resident-id';
 import { dashboard } from '@/routes';
 
 type Result = {
@@ -15,7 +17,9 @@ type Result = {
     is_active: boolean;
     sectors: { code: string; name: string }[];
     can_open_record: boolean;
-    agency_programs: { id: number; title: string }[] | null;
+    agency_programs:
+        | { id: number; title: string; schedule_id: number | null; schedule_title: string | null; claimed_today: boolean; can_claim: boolean }[]
+        | null;
 };
 
 /**
@@ -68,7 +72,7 @@ export default function VerifyResident({ result, checkedId }: { result: Result |
                         <CardContent className="space-y-4">
                             <div>
                                 <p className="text-xl font-bold tracking-tight">{result.full_name}</p>
-                                <p className="font-mono text-sm text-muted-foreground">{result.resident_id}</p>
+                                <p className="font-mono text-sm text-muted-foreground">{formatResidentId(result.resident_id)}</p>
                             </div>
                             <dl className="grid grid-cols-3 gap-3 text-sm">
                                 <div>
@@ -100,12 +104,35 @@ export default function VerifyResident({ result, checkedId }: { result: Result |
                                     {result.agency_programs.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">Not an active beneficiary of any of your agency's programs.</p>
                                     ) : (
-                                        <ul className="space-y-1 text-sm">
+                                        <ul className="space-y-2 text-sm">
                                             {result.agency_programs.map((program) => (
-                                                <li key={program.id}>
-                                                    <Link href={`/programs/${program.id}`} className="underline underline-offset-4">
-                                                        {program.title}
-                                                    </Link>
+                                                <li key={program.id} className="flex flex-wrap items-center justify-between gap-2">
+                                                    <span>
+                                                        <Link href={`/programs/${program.id}`} className="underline underline-offset-4">
+                                                            {program.title}
+                                                        </Link>
+                                                        {program.schedule_title && <span className="text-muted-foreground"> · {program.schedule_title}</span>}
+                                                    </span>
+                                                    {program.claimed_today ? (
+                                                        <span className="text-xs font-medium text-success-text">Already claimed today</span>
+                                                    ) : (
+                                                        program.can_claim &&
+                                                        good && (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    router.post(
+                                                                        `/programs/${program.id}/claims`,
+                                                                        { resident_id: result.id, schedule_id: program.schedule_id },
+                                                                        { preserveScroll: true, onError: (errors) => toast.error(Object.values(errors)[0] ?? 'That could not be recorded.') },
+                                                                    )
+                                                                }
+                                                            >
+                                                                Record claim
+                                                            </Button>
+                                                        )
+                                                    )}
                                                 </li>
                                             ))}
                                         </ul>

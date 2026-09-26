@@ -28,7 +28,7 @@ class ActivityLogPresenter
 
     private const RECORD_TABLES = ['residents', 'households', 'household_wellbeing_assessments', 'duplicate_alerts'];
 
-    private const PROGRAM_TABLES = ['programs', 'program_applications', 'program_schedules', 'announcements'];
+    private const PROGRAM_TABLES = ['programs', 'program_applications', 'program_schedules', 'program_claims', 'announcements'];
 
     private const SERVICE_TABLES = ['document_requests', 'concerns', 'hotlines'];
 
@@ -76,9 +76,11 @@ class ActivityLogPresenter
             'login|users' => ['Signed in', null, null, null],
 
             'create|residents' => ['Registered resident', $value('name'), null, $id ? "/residents/{$id}" : null],
-            'update|residents' => $selfService
-                ? ['Updated their own profile', null, null, null]
-                : ['Updated resident', $value('name'), null, $id ? "/residents/{$id}" : null],
+            'update|residents' => ($new['source'] ?? null) === 'system'
+                ? ['Pregnancy ended automatically', $value('name'), 'The expected month passed.', $id ? "/residents/{$id}" : null]
+                : ($selfService
+                    ? ['Updated their own profile', null, $value('pregnancy') ? 'Pregnancy '.$value('pregnancy') : null, null]
+                    : ['Updated resident', $value('name'), null, $id ? "/residents/{$id}" : null]),
             'deactivate|residents' => ['Deactivated resident', $value('name'), null, $id ? "/residents/{$id}" : null],
             'activate|residents' => ['Reactivated resident', $value('name'), null, $id ? "/residents/{$id}" : null],
             'force_delete|residents' => ['Permanently deleted resident', trim(($value('name') ?? '').' '.($value('resident_id') ? '('.$value('resident_id').')' : '')), null, null],
@@ -89,6 +91,9 @@ class ActivityLogPresenter
                 $value('result') === 'valid' && $id ? "/residents/{$id}" : null,
             ],
 
+            'create|program_claims' => ['Recorded a program claim', trim(($value('name') ?? '').($value('program') ? ', '.$value('program') : '')), null, $value('program_id') ? '/programs/'.$value('program_id') : null],
+            'delete|program_claims' => ['Removed a program claim', trim(($value('name') ?? '').($value('program') ? ', '.$value('program') : '')), null, $value('program_id') ? '/programs/'.$value('program_id') : null],
+            'update|households' => ['Updated household', $value('household_number'), $value('changed'), $id ? "/households/{$id}" : null],
             'create|households' => ['Registered household', $value('household_number'), null, $id ? "/households/{$id}" : null],
             'create|household_wellbeing_assessments' => ['Recorded a wellbeing assessment', null, null, $value('household_id') ? '/households/'.$value('household_id') : null],
 
@@ -140,6 +145,10 @@ class ActivityLogPresenter
             'partner_agency_account_deactivated|users' => ['Deactivated a partner agency account', null, null, null],
 
             'generated_report|sector_dashboard' => ['Exported the sector report', '('.strtoupper($value('format') ?? 'pdf').')', null, '/reports'],
+            'generated_report|barangay_summary' => ['Printed the barangay summary report', $value('period'), null, '/reports'],
+            'generated_report|resident_list' => ['Printed a resident list', $value('names') ? '(with names)' : '(counts only)', null, '/reports'],
+            'generated_report|household_leaders' => ['Printed the household leaders list', $value('period'), null, '/reports'],
+            'generated_report|program_reach' => ['Printed the program reach report', $value('period'), null, '/reports'],
             'generated_report|resident_population' => ['Exported the resident list', '('.strtoupper($value('format') ?? 'csv').')', null, '/reports'],
 
             default => [ucfirst(str_replace('_', ' ', $log->action)).' '.str_replace('_', ' ', (string) $log->table_affected), null, null, null],
