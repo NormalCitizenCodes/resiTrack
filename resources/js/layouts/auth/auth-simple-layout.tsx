@@ -52,7 +52,23 @@ export default function AuthSimpleLayout({
 }: AuthLayoutProps) {
     return (
         <div className="grid min-h-svh bg-background bg-page-gradient lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)]">
-            <aside className="relative hidden overflow-hidden bg-brand-navy bg-brand-gradient p-10 text-white lg:flex lg:flex-col lg:justify-between">
+            <aside className="relative hidden overflow-hidden bg-brand-navy bg-brand-gradient p-10 text-white lg:sticky lg:top-0 lg:flex lg:h-svh lg:flex-col lg:justify-between lg:self-start">
+                {/* The city in the brand blue, rising from the bottom edge under the text. */}
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%] opacity-30 mix-blend-luminosity [mask-image:linear-gradient(to_top,black_35%,transparent)]"
+                >
+                    <img
+                        src="/images/landing/cdo.webp"
+                        srcSet="/images/landing/cdo-960.webp 960w, /images/landing/cdo.webp 1672w"
+                        sizes="34vw"
+                        width={1672}
+                        height={941}
+                        alt=""
+                        decoding="async"
+                        className="size-full object-cover object-bottom"
+                    />
+                </div>
                 <BrandPath />
                 <div className="relative">
                     <Link href={home()} className="inline-flex items-center gap-3">
@@ -83,10 +99,11 @@ export default function AuthSimpleLayout({
                         </ul>
                     </div>
                 </div>
-                <p className="relative text-xs text-white/50">Cagayan de Oro City · Community services</p>
+                <p className="relative text-xs font-medium text-white/85 [text-shadow:0_1px_8px_rgb(5_25_90/0.9)]">Cagayan de Oro City · Community services</p>
             </aside>
 
             <main className="relative flex flex-col items-center justify-center px-4 py-10 sm:px-8">
+
                 <div className="absolute top-4 right-4 sm:top-6 sm:right-8">
                     <ThemeToggle />
                 </div>
@@ -105,7 +122,7 @@ export default function AuthSimpleLayout({
                     {children}
                 </div>
 
-                <p className="mt-6 max-w-md text-center text-xs leading-5 text-muted-foreground">
+                <p className="mt-6 max-w-md rounded-lg bg-card/70 px-3 py-1.5 text-center text-xs leading-5 text-muted-foreground backdrop-blur-sm">
                     By continuing you agree to the{' '}
                     <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
                         Terms of Use

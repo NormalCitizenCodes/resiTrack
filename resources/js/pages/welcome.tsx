@@ -175,7 +175,7 @@ function MobileMenu({ isGuest }: { isGuest: boolean }) {
                         ),
                     )}
                     {isGuest && (
-                        <Button asChild variant="outline" size="lg" className="mt-3">
+                        <Button asChild variant="outline" size="lg" className="mt-3 rounded-full px-6">
                             <Link href={register()}>Register as resident</Link>
                         </Button>
                     )}
@@ -188,7 +188,7 @@ function MobileMenu({ isGuest }: { isGuest: boolean }) {
 /** Real screenshots of the app (sample data only), framed as a browser and a phone. */
 function DeviceMockups() {
     return (
-        <div className="relative mx-auto w-full max-w-xl pb-16 sm:pb-20">
+        <div className="relative mx-auto w-full max-w-xl pb-16 sm:pb-20 lg:max-w-2xl">
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-brand-navy/20">
                 <div className="flex items-center gap-1.5 border-b border-border bg-muted px-3 py-2" aria-hidden="true">
                     <span className="size-2.5 rounded-full bg-border" />
@@ -240,9 +240,25 @@ export default function Welcome({ stats }: { stats: Stats }) {
     return (
         <>
             <Head title="Welcome" />
-            <div className="min-h-screen bg-background bg-page-gradient text-foreground">
+            <div className="relative min-h-screen bg-background bg-page-gradient text-foreground">
                 <IntroSplash />
-                <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 p-4 sm:p-6">
+                {/* The city behind the page: it rises out of the hero and fades away on all sides, so the text never sits on it. */}
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 top-[44rem] h-[28rem] overflow-hidden opacity-60 [mask-image:linear-gradient(to_bottom,transparent,black_35%,black_70%,transparent)] lg:top-[37rem] dark:opacity-25"
+                >
+                    <img
+                        src="/images/landing/cdo.webp"
+                        srcSet="/images/landing/cdo-960.webp 960w, /images/landing/cdo.webp 1672w"
+                        sizes="100vw"
+                        width={1672}
+                        height={941}
+                        alt=""
+                        decoding="async"
+                        className="size-full object-cover object-bottom"
+                    />
+                </div>
+                <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-3 p-4 sm:p-6">
                     <Link href="/" id="site-logo" className="flex shrink-0 items-center gap-2">
                         <AppLogoIcon className="size-9" />
                         <span className="text-lg font-semibold tracking-tight">resiTrack</span>
@@ -267,7 +283,7 @@ export default function Welcome({ stats }: { stats: Stats }) {
                     <div className="flex items-center gap-2 md:hidden">
                         <ThemeToggle />
                         {!auth.user && (
-                            <Button asChild size="sm">
+                            <Button asChild size="sm" className="rounded-full px-4">
                                 <Link href={login()}>Log in</Link>
                             </Button>
                         )}
@@ -275,10 +291,10 @@ export default function Welcome({ stats }: { stats: Stats }) {
                     </div>
                 </header>
 
-                <main className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-                    <section className="grid items-center gap-12 py-10 lg:grid-cols-[1.05fr_1fr] lg:gap-8 lg:py-20">
+                <main className="relative z-10 mx-auto w-full max-w-6xl px-4 sm:px-6">
+                    <section className="grid items-center gap-12 py-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-6 lg:py-20">
                         <div>
-                            <h1 className="text-4xl font-bold uppercase leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+                            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
                                 {['Track', 'today.'].map((word, i) => (
                                     <span key={word} className="intro-gate intro-word" style={{ '--intro-delay': `${150 + i * 90}ms` } as React.CSSProperties}>
                                         {word}
@@ -309,7 +325,7 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                 <Button
                                     asChild
                                     size="lg"
-                                    className="group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                                    className="group rounded-full px-7 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                                 >
                                     <Link href={auth.user ? '/programs' : login()}>
                                         {auth.user ? 'View Programs' : 'Access System'}
@@ -321,7 +337,7 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                         asChild
                                         size="lg"
                                         variant="outline"
-                                        className="transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:text-primary hover:shadow-lg hover:shadow-brand-navy/10 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                                        className="rounded-full px-7 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:text-primary hover:shadow-lg hover:shadow-brand-navy/10 active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                                     >
                                         <Link href={register()}>Register as resident</Link>
                                     </Button>
@@ -338,9 +354,9 @@ export default function Welcome({ stats }: { stats: Stats }) {
                         </div>
                     </section>
 
-                    <section aria-label="resiTrack in numbers" className="pb-6">
+                    <section aria-label="resiTrack in numbers" className="pt-4 pb-6 lg:pt-10">
                         <ScrollReveal>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                            <p className="inline-block rounded-full bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground backdrop-blur-sm">
                                 resiTrack in numbers
                             </p>
                             <dl className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -482,7 +498,7 @@ export default function Welcome({ stats }: { stats: Stats }) {
                                     Contact them to request access, then log in to publish your first program.
                                 </p>
                                 {!auth.user && (
-                                    <Button asChild variant="secondary" size="lg" className="mt-6">
+                                    <Button asChild variant="secondary" size="lg" className="mt-6 rounded-full px-6">
                                         <Link href={login()}>Log in to your account</Link>
                                     </Button>
                                 )}

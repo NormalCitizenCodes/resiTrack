@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import { ScrollReveal } from '@/components/scroll-reveal';
 
 const directory = [
     { label: 'Home', href: '/' },
@@ -20,9 +21,9 @@ const legal = [
     { label: 'Terms of Use', href: '/terms' },
 ];
 
-function Column({ title, links }: { title: string; links: { label: string; href: string }[] }) {
+function Column({ title, links, delay }: { title: string; links: { label: string; href: string }[]; delay: number }) {
     return (
-        <div>
+        <ScrollReveal delay={delay}>
             <h2 className="border-b border-white/20 pb-2 text-xs font-semibold uppercase tracking-[0.15em] text-white">
                 {title}
             </h2>
@@ -30,18 +31,18 @@ function Column({ title, links }: { title: string; links: { label: string; href:
                 {links.map((link) => (
                     <li key={link.label}>
                         {link.href.includes('#') ? (
-                            <a href={link.href} className="text-white/75 transition-colors hover:text-white">
+                            <a href={link.href} className="inline-block text-white/75 transition duration-200 hover:translate-x-1 hover:text-white motion-reduce:transition-none motion-reduce:hover:translate-x-0">
                                 {link.label}
                             </a>
                         ) : (
-                            <Link href={link.href} className="text-white/75 transition-colors hover:text-white">
+                            <Link href={link.href} className="inline-block text-white/75 transition duration-200 hover:translate-x-1 hover:text-white motion-reduce:transition-none motion-reduce:hover:translate-x-0">
                                 {link.label}
                             </Link>
                         )}
                     </li>
                 ))}
             </ul>
-        </div>
+        </ScrollReveal>
     );
 }
 
@@ -54,7 +55,7 @@ export function SiteFooter() {
     return (
         <footer className="bg-brand-navy bg-footer-gradient text-white">
             <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-                <div>
+                <ScrollReveal>
                     <div className="flex items-center gap-2">
                         <AppLogoIcon className="size-9 rounded-md bg-white/95 p-1" />
                         <span className="text-lg font-semibold tracking-tight">resiTrack</span>
@@ -66,10 +67,10 @@ export function SiteFooter() {
                     <p className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-brand-cyan">
                         Track today. Brighter tomorrows.
                     </p>
-                </div>
-                <Column title="Site directory" links={directory} />
-                <Column title="Help" links={help} />
-                <Column title="Legal" links={legal} />
+                </ScrollReveal>
+                <Column title="Site directory" links={directory} delay={100} />
+                <Column title="Help" links={help} delay={200} />
+                <Column title="Legal" links={legal} delay={300} />
             </div>
             <div className="border-t border-white/15">
                 <p className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-white/60 sm:px-6">
